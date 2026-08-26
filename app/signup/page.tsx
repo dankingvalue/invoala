@@ -31,7 +31,7 @@ export default async function SignupPage() {
           <h1 className="mb-6 text-center text-xl font-semibold tracking-tight">
             Create your account
           </h1>
-          <SignupForm />
+          <SignupForm googleEnabled={googleEnabled} />
         </div>
         <p className="mt-6 text-center text-sm text-subtle">
           Already have an account?{" "}
