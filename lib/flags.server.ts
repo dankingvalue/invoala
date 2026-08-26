@@ -13,7 +13,7 @@ function filePath(): string {
 
 export async function getFlags(): Promise<FlagsState> {
   try {
-    const raw = await readFile(filePath(), "utf8");
+    const raw = await readFile(/* turbopackIgnore: true */ filePath(), "utf8");
     const parsed = JSON.parse(raw) as Partial<FlagsState>;
     const state = defaultFlags();
     if (parsed.flags && typeof parsed.flags === "object") {
