@@ -1,0 +1,83 @@
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { getCurrentUser, verificationRequired } from "@/lib/server-auth";
+import { getSubscription, isUserPro } from "@/lib/billing";
+import { listClients, listInvoices } from "@/lib/data";
+import { DashboardClient } from "./DashboardClient";
+import { Nav } from "@/components/Nav";
+import { TrustStrip } from "@/components/TrustStrip";
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+  robots: { index: false, follow: false },
+};
+
+export const dynamic = "force-dynamic";
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  const params = await searchParams;
+  const invoices = listInvoices(user.id);
+  const clients = listClients(user.id);
+  const subscription = getSubscription(user.id);
+  const pro = isUserPro(user.id, user.role);
+
+  return (
+    <div className="min-h-screen bg-[#f3f4f6]">
+      <Nav />
+      <main className="pt-[72px]">
+        <div className="mx-auto max-w-[1400px] px-5 py-8 sm:px-8">
+          <DashboardClient
+            userId={user.id}
+            email={user.email}
+            name={user.name}
+            timezone={user.timezone}
+            emailVerified={user.email_verified}
+            initialInvoices={invoices}
+            initialClients={clients}
+            subscription={subscription}
+            isPro={pro}
+            needsVerification={verificationRequired() && !user.email_verified}
+            userRole={user.role}
+            initialTab={params.tab || "general"}
+          />
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-[#e5e7eb] bg-white px-5 py-8 sm:px-8">
+        <div className="mx-auto max-w-[1400px]">
+          <div className="flex flex-col items-center justify-between gap-4 text-[13px] text-[#6b7280] md:flex-row">
+            <div className="flex items-center gap-2 font-bold text-ink">
+              <svg width="18" height="18" viewBox="0 0 64 64" aria-hidden="true">
+                <rect width="64" height="64" rx="14.5" fill="#166534" />
+                <path d="M35.5 10 19 37h9.5l-3 17L43 27h-9.5l2-17z" fill="#fff" />
+              </svg>
+              Invoala
+            </div>
+            <nav className="flex items-center gap-6">
+              <Link href="/" className="transition-colors hover:text-ink">Home</Link>
+              <Link href="/dashboard?tab=general" className="transition-colors hover:text-ink">Dashboard</Link>
+              <Link href="/privacy" className="transition-colors hover:text-ink">Privacy</Link>
+              <Link href="/terms" className="transition-colors hover:text-ink">Terms</Link>
+              <a href="mailto:hello@invoala.com" className="transition-colors hover:text-ink">
+                Contact
+              </a>
+            </nav>
+            <p>&copy; 2026 Invoala. All rights reserved.</p>
+          </div>
+          <div className="pt-5">
+            <TrustStrip />
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}

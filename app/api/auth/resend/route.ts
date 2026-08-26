@@ -1,0 +1,30 @@
+import { getDb } from "@/lib/db";
+import { rateLimit, issueToken, getSessionUser } from "@/lib/server-auth";
+import { sendVerificationEmail } from "@/lib/email";
+
+export async function POST(req: Request) {
+  const user = getSessionUser(req);
+  if (!user) {
+    return Response.json({ error: "Not signed in." }, { status: 401 });
+  }
+
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  if (!rateLimit(`resend:${ip}`, 3, 60 * 60e3)) {
+    return Response.json({ error: "Too many requests. Try again later." }, { status: 429 });
+  }
+
+  const db = getDb();
+  const row = db.prepare("SELECT email, email_verified FROM users WHERE id = ?").get(user.id) as
+    | { email: string; email_verified: number }
+    | undefined;
+
+  if (!row || row.email_verified) {
+    return Response.json({ ok: true });
+  }
+
+  const code = issueToken(user.id, "verify", 24 * 60 * 60e3);
+  const linkToken = issueToken(user.id, "verify", 24 * 60 * 60e3);
+  void sendVerificationEmail({ to: row.email, userId: user.id, code, linkToken });
+
+  return Response.json({ ok: true });
+}

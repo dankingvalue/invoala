@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /verify/
+Disallow: /reset-password/
+Disallow: /forgot-password/
+Disallow: /teams/
+
+Sitemap: https://invoala.com/sitemap.xml
