@@ -3,23 +3,20 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { USER_COOKIE, getUserByToken } from "@/lib/server-auth";
-import { AdminDashboard } from "./AdminDashboard";
+import { SupportDashboard } from "./SupportDashboard";
 
 export const metadata: Metadata = {
-  title: "Admin",
+  title: "Support Panel",
   robots: { index: false, follow: false },
 };
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPage() {
+export default async function SupportPage() {
   const store = await cookies();
   const user = getUserByToken(store.get(USER_COOKIE)?.value);
   if (!user) redirect("/login");
-  if (!["superadmin", "admin"].includes(user.role)) {
-    if (user.role === "support") redirect("/support");
-    redirect("/dashboard");
-  }
+  if (user.role !== "support") redirect(user.role === "user" ? "/dashboard" : "/admin");
 
   return (
     <main className="min-h-screen bg-fog px-6 py-12">
@@ -36,10 +33,10 @@ export default async function AdminPage() {
             Invoala
           </Link>
           <span className="text-xs uppercase tracking-wider text-subtle">
-            Admin · {user.role}
+            Support
           </span>
         </header>
-        <AdminDashboard myRole={user.role} />
+        <SupportDashboard />
       </div>
     </main>
   );

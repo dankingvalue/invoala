@@ -42,8 +42,8 @@ export async function Nav() {
               </Link>
             </nav>
             <div className="flex items-center gap-3">
-              <NavAuthActions />
-              <MobileMenuButton />
+              <NavAuthActions role={user.role} />
+              <MobileMenuButton role={user.role} />
             </div>
           </>
         ) : (

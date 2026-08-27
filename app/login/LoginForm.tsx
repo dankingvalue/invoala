@@ -28,7 +28,8 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
       });
       const json = (await res.json()) as { ok?: boolean; role?: string; error?: string; needsVerification?: boolean };
       if (res.ok && json.ok) {
-        router.push(json.role === "user" ? "/dashboard" : "/admin");
+        const dest = json.role === "superadmin" ? "/superadmin" : json.role === "admin" ? "/admin" : json.role === "support" ? "/support" : "/dashboard";
+        router.push(dest);
         router.refresh();
         return;
       }

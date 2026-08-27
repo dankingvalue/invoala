@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 
-export function NavAuthActions() {
+export function NavAuthActions({ role }: { role: string }) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const adminLink = role === "superadmin" ? "/superadmin" : role === "admin" ? "/admin" : role === "support" ? "/support" : null;
 
   useEffect(() => {
     function close(e: MouseEvent) {
@@ -66,6 +68,19 @@ export function NavAuthActions() {
               </svg>
               My account
             </Link>
+            {adminLink && (
+              <Link
+                href={adminLink}
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center gap-2 px-4 py-2.5 text-[13px] text-ink transition hover:bg-fog"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+                {role === "superadmin" ? "Super Admin" : role === "admin" ? "Admin" : "Support"}
+              </Link>
+            )}
             <div className="my-1 border-t border-[#e5e7eb]" />
             <button
               type="button"
@@ -105,10 +120,12 @@ export function NavAuthLinks() {
   );
 }
 
-export function MobileMenuButton() {
+export function MobileMenuButton({ role }: { role: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const adminLink = role === "superadmin" ? "/superadmin" : role === "admin" ? "/admin" : role === "support" ? "/support" : null;
 
   useEffect(() => {
     function close(e: MouseEvent) {
@@ -167,6 +184,11 @@ export function MobileMenuButton() {
           <Link href="/dashboard?tab=general" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-[13px] text-ink transition hover:bg-fog">
             Settings
           </Link>
+          {adminLink && (
+            <Link href={adminLink} onClick={() => setOpen(false)} className="block px-4 py-2.5 text-[13px] text-ink transition hover:bg-fog">
+              {role === "superadmin" ? "Super Admin" : role === "admin" ? "Admin" : "Support"}
+            </Link>
+          )}
           <div className="my-1 border-t border-[#e5e7eb]" />
           <Link href="/#pricing" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-[13px] text-ink transition hover:bg-fog">
             Upgrade
