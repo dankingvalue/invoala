@@ -8,7 +8,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const { id } = await params;
 
-  const conversation = await dbGet<{ id: string; user_id: string; status: string; subject: string; created_at: number; updated_at: number }>(
+  const conversation = await dbGet<{
+    id: string; user_id: string; status: string; subject: string;
+    rating: number | null; rating_comment: string | null; rating_at: number | null;
+    created_at: number; updated_at: number;
+  }>(
     "SELECT * FROM conversations WHERE id = ? AND user_id = ?",
     id, user.id
   );
@@ -17,7 +21,17 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return Response.json({ error: "Not found" }, { status: 404 });
   }
 
-  const messages = await dbAll("SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC", id);
+  const messages = await dbAll<{
+    id: string; conversation_id: string; sender_type: string; sender_id: string | null;
+    content: string; created_at: number;
+  } & { sender_name?: string }>(
+    `SELECT m.*, u.name as sender_name
+     FROM messages m
+     LEFT JOIN users u ON m.sender_id = u.id
+     WHERE m.conversation_id = ?
+     ORDER BY m.created_at ASC`,
+    id
+  );
 
   // Mark as read
   await dbRun("UPDATE conversations SET updated_at = ? WHERE id = ?", Date.now(), id);
@@ -47,6 +61,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   if (!conversation) {
     return Response.json({ error: "Not found" }, { status: 404 });
+  }
+
+  if (conversation.status === "resolved") {
+    return Response.json({ error: "This conversation is resolved." }, { status: 400 });
   }
 
   const now = Date.now();

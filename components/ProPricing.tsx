@@ -101,7 +101,7 @@ export function ProPricing() {
                 ))}
               </ul>
               <a
-                href="#subscribe"
+                href="/dashboard?tab=billing"
                 className="mt-auto rounded-lg bg-[#14532d] px-5 py-2.5 text-center text-[14px] font-semibold text-white transition hover:bg-[#0f3d22]"
               >
                 Get Pro
@@ -131,7 +131,7 @@ export function ProPricing() {
                 ))}
               </ul>
               <a
-                href="#subscribe"
+                href="/dashboard?tab=billing"
                 className="mt-auto rounded-lg border border-white/20 px-5 py-2.5 text-center text-[14px] font-semibold text-white transition hover:bg-white/10"
               >
                 Get Teams
@@ -163,7 +163,7 @@ export function ProPricing() {
                 ))}
               </ul>
               <a
-                href="#subscribe"
+                href="/dashboard?tab=billing"
                 className="mt-auto rounded-lg bg-[#86efac] px-5 py-2.5 text-center text-[14px] font-bold text-[#0f3d22] transition hover:bg-[#6ee7b7]"
               >
                 Get Lifetime

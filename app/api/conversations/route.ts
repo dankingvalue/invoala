@@ -56,7 +56,6 @@ export async function POST(req: Request) {
   const aiResponse = await generateAiResponse(content, user.email);
 
   if (aiResponse.escalate) {
-    // Escalate to human support
     await dbRun("UPDATE conversations SET status = 'escalated', updated_at = ? WHERE id = ?", now, convId);
 
     await dbRun(
@@ -65,7 +64,6 @@ export async function POST(req: Request) {
       randomUUID(), convId, "This conversation has been escalated to our support team. A team member will respond shortly.", now + 1
     );
 
-    // Send to Telegram
     await sendToTelegram(user.email, content, convId);
   } else {
     await dbRun(
@@ -85,12 +83,8 @@ export async function POST(req: Request) {
 }
 
 async function generateAiResponse(message: string, userEmail: string): Promise<{ message: string; escalate: boolean }> {
-  const apiKey = process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.GEMINI_API_KEY;
-
-  // If no AI key, use predefined responses
   const lowerMessage = message.toLowerCase();
 
-  // Check for common questions
   if (lowerMessage.includes("price") || lowerMessage.includes("cost") || lowerMessage.includes("plan")) {
     return {
       message: "We offer 4 plans:\n\n• Free - Basic invoicing\n• Pro Monthly - $9/mo\n• Pro Yearly - $79/yr (save 27%)\n• Teams Monthly - $29/mo\n• Teams Yearly - $249/yr\n• Lifetime - $499 (one-time)\n\nAll paid plans include unlimited invoices, AI-powered drafting, and priority support. Visit invoala.com/#pricing for details.",
@@ -133,7 +127,6 @@ async function generateAiResponse(message: string, userEmail: string): Promise<{
     };
   }
 
-  // Default: escalate to human
   return {
     message: "I've connected you with our support team. A team member will review your message and respond shortly.",
     escalate: true

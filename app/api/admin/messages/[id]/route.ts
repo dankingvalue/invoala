@@ -11,7 +11,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const { id } = await params;
 
-  const conversation = await dbGet<{ id: string; user_id: string; status: string; subject: string; user_email: string; user_name: string; created_at: number; updated_at: number }>(
+  const conversation = await dbGet<{
+    id: string; user_id: string; status: string; subject: string;
+    rating: number | null; rating_comment: string | null; rating_at: number | null;
+    user_email: string; user_name: string;
+    created_at: number; updated_at: number;
+  }>(
     `SELECT c.*, u.email as user_email, u.name as user_name
     FROM conversations c
     JOIN users u ON c.user_id = u.id
@@ -23,7 +28,17 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return Response.json({ error: "Not found" }, { status: 404 });
   }
 
-  const messages = await dbAll("SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC", id);
+  const messages = await dbAll<{
+    id: string; conversation_id: string; sender_type: string; sender_id: string | null;
+    content: string; created_at: number;
+  } & { sender_name?: string }>(
+    `SELECT m.*, u.name as sender_name
+     FROM messages m
+     LEFT JOIN users u ON m.sender_id = u.id
+     WHERE m.conversation_id = ?
+     ORDER BY m.created_at ASC`,
+    id
+  );
 
   return Response.json({ conversation, messages });
 }

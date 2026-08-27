@@ -142,6 +142,9 @@ async function ensureSchema(): Promise<void> {
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       status TEXT NOT NULL DEFAULT 'ai',
       subject TEXT NOT NULL DEFAULT '',
+      rating INTEGER,
+      rating_comment TEXT,
+      rating_at INTEGER,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     )` },

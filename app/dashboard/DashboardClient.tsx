@@ -304,6 +304,10 @@ export function DashboardClient({
         window.location.href = json.url;
         return;
       }
+      if (json.mode === "not_configured") {
+        setNotice(json.error || "Payment not configured yet. Stripe integration is coming soon.");
+        return;
+      }
       if (res.ok && json.mode === "dev") {
         setNotice("Dev billing: Pro activated instantly. Add STRIPE_SECRET_KEY for live payments.");
         router.refresh();

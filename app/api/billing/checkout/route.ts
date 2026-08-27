@@ -1,7 +1,6 @@
 import { getSessionUser } from "@/lib/server-auth";
-import { activateDevSubscription, isPlan, PLANS } from "@/lib/billing";
-import { createTeam, getUserTeams } from "@/lib/teams";
-import { sendEmail } from "@/lib/email";
+import { isPlan, PLANS } from "@/lib/billing";
+import { getUserTeams } from "@/lib/teams";
 
 export async function POST(req: Request) {
   const user = await getSessionUser(req);
@@ -11,16 +10,13 @@ export async function POST(req: Request) {
   try {
     const body = (await req.json()) as { plan?: string };
     plan = typeof body.plan === "string" ? body.plan : "";
-  } catch {
-    // falls through to validation
-  }
+  } catch {}
   if (!isPlan(plan)) {
     return Response.json({ error: "Unknown plan." }, { status: 400 });
   }
 
   const isTeamsPlan = plan.startsWith("teams_");
 
-  // Check if user already has a team for teams plan
   if (isTeamsPlan) {
     const teams = await getUserTeams(user.id);
     if (teams.length >= 3) {
@@ -28,29 +24,16 @@ export async function POST(req: Request) {
     }
   }
 
-  const origin = req.headers.get("origin") || new URL(req.url).origin;
   const stripeKey = process.env.STRIPE_SECRET_KEY;
 
   if (!stripeKey) {
-    // Dev billing: no Stripe configured — activate instantly so the full
-    // subscription lifecycle (renewal, cancel) stays testable.
-    const sub = await activateDevSubscription(user.id, plan);
-
-    // Auto-create team for teams plans
-    let team = null;
-    if (isTeamsPlan) {
-      team = await createTeam(user.id, `${user.name || user.email}'s Team`);
-    }
-
-    void sendEmail({
-      to: user.email,
-      subject: `Invoala ${PLANS[plan].label} activated`,
-      text: team
-        ? `Your ${PLANS[plan].label} is active. Your team "${team.name}" has been created. Invite your team members from the dashboard!`
-        : `Your ${PLANS[plan].label} is active. Thanks for supporting Invoala!`,
+    return Response.json({
+      error: "Payment not configured yet. Stripe integration is coming soon — you'll be able to subscribe to Pro, Teams, and Lifetime plans directly.",
+      mode: "not_configured",
     });
-    return Response.json({ ok: true, mode: "dev", subscription: sub, team });
   }
+
+  const origin = req.headers.get("origin") || new URL(req.url).origin;
 
   try {
     const form = new URLSearchParams();

@@ -81,8 +81,8 @@ export const FLAG_DEFS: FlagDef[] = [
     key: "proTeaser",
     label: "Pro pricing section",
     description:
-      "Dark pricing section on the homepage — Free vs Pro ($9/mo · $79/yr) with waitlist CTA",
-    defaultValue: false,
+      "Dark pricing section on the homepage — Free vs Pro ($9/mo · $79/yr) with CTA",
+    defaultValue: true,
     group: "pro",
     status: "ready",
   },
@@ -91,7 +91,7 @@ export const FLAG_DEFS: FlagDef[] = [
     label: "Quotes & estimates",
     description:
       "Document switcher in the generator: flip any document between Invoice and Quote",
-    defaultValue: false,
+    defaultValue: true,
     group: "pro",
     status: "ready",
   },
@@ -100,7 +100,7 @@ export const FLAG_DEFS: FlagDef[] = [
     label: "Recurring billing terms",
     description:
       "Repeat-frequency selector (weekly → yearly) stamped onto invoices and previews",
-    defaultValue: false,
+    defaultValue: true,
     group: "pro",
     status: "ready",
   },
@@ -108,25 +108,25 @@ export const FLAG_DEFS: FlagDef[] = [
     key: "savedClients",
     label: "Client book",
     description:
-      "Saved client profiles + invoice history dashboard. Reserved slot — flip when the update ships.",
-    defaultValue: false,
+      "Saved client profiles + invoice history dashboard — live on all plans",
+    defaultValue: true,
     group: "pro",
-    status: "planned",
+    status: "ready",
   },
   {
     key: "multiBusinessProfiles",
     label: "Multi-business profiles",
     description:
-      "Multiple sender identities with a switcher. Reserved slot — flip when the update ships.",
-    defaultValue: false,
+      "Multiple sender identities with a switcher — live on all plans",
+    defaultValue: true,
     group: "pro",
-    status: "planned",
+    status: "ready",
   },
   {
     key: "onlinePayments",
     label: "Pay-online buttons",
     description:
-      "Stripe-powered payment links on invoices. Reserved slot — flip once Stripe keys are configured.",
+      "Stripe-powered payment links on invoices — connect Stripe keys to enable",
     defaultValue: false,
     group: "pro",
     status: "planned",

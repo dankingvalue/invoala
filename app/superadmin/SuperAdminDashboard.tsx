@@ -601,7 +601,7 @@ function FlagsTab() {
 
       <Panel>
         <SectionHead title="Announcement bar" subtitle="Empty = hidden." />
-        <textarea value={state.announcement} onChange={(e) => setState({ ...state, announcement: e.target.value })} rows={2} maxLength={300} placeholder="New: AI invoice drafting is live." className="mt-4 w-full resize-none rounded-xl border border-[#e5e7eb] px-3.5 py-3 text-[15px] outline-none focus:border-[#166534] focus:ring-[3px] focus:ring-[#166534]/20" />
+        <textarea value={state.announcement} onChange={(e) => setState({ ...state, announcement: e.target.value })} rows={2} maxLength={300} placeholder="e.g. All Pro features are now live — client book, quotes, recurring, and more." className="mt-4 w-full resize-none rounded-xl border border-[#e5e7eb] px-3.5 py-3 text-[15px] outline-none focus:border-[#166534] focus:ring-[3px] focus:ring-[#166534]/20" />
         <button type="button" onClick={() => void save(state)} disabled={saving} className="mt-4 rounded-full bg-[#166534] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#14532d] disabled:opacity-60">
           {saving ? "Saving…" : "Save changes"}
         </button>
