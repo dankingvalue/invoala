@@ -8,9 +8,7 @@ type Stats = {
   totalInvoices: number;
   invoicesMonth: number;
   activePro: number;
-  mrr: number;
   emailsSent: number;
-  recentSubs: Array<{ email: string; plan: string; status: string; provider: string }>;
 };
 
 type User = {
@@ -172,50 +170,11 @@ export function SupportDashboard() {
             <p className="text-sm text-[#6b7280]">Loading...</p>
           ) : stats ? (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                 <StatCard label="Users" value={stats.totalUsers} sub={`+${stats.newUsersWeek} this week`} />
                 <StatCard label="Documents" value={stats.totalInvoices} sub={`${stats.invoicesMonth} in 30 days`} />
                 <StatCard label="Pro subscribers" value={stats.activePro} />
-                <StatCard label="MRR" value={`$${(stats.mrr / 100).toFixed(0)}`} />
                 <StatCard label="Emails (7d)" value={stats.emailsSent} />
-              </div>
-
-              <div className="rounded-lg bg-white p-6 shadow-sm ring-1 ring-[#e5e7eb]">
-                <h3 className="mb-4 text-sm font-semibold text-[#111827]">Recent Subscriptions</h3>
-                {stats.recentSubs.length === 0 ? (
-                  <p className="text-sm text-[#6b7280]">No subscriptions yet.</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                      <thead>
-                        <tr className="border-b border-[#e5e7eb] text-[#6b7280]">
-                          <th className="pb-2 font-medium">Email</th>
-                          <th className="pb-2 font-medium">Plan</th>
-                          <th className="pb-2 font-medium">Status</th>
-                          <th className="pb-2 font-medium">Provider</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {stats.recentSubs.map((s, i) => (
-                          <tr key={i} className="border-b border-[#f3f4f6]">
-                            <td className="py-2 text-[#111827]">{s.email}</td>
-                            <td className="py-2 text-[#6b7280]">{s.plan}</td>
-                            <td className="py-2">
-                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                                s.status === "active"
-                                  ? "bg-[#dcfce7] text-[#166534]"
-                                  : "bg-[#f3f4f6] text-[#6b7280]"
-                              }`}>
-                                {s.status}
-                              </span>
-                            </td>
-                            <td className="py-2 text-[#6b7280]">{s.provider}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
               </div>
             </div>
           ) : (

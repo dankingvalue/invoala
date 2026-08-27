@@ -374,18 +374,36 @@ export function SuperAdminDashboard() {
                               </button>
                             </div>
                           ) : (
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap gap-2">
                               <button
                                 onClick={() => void handleGrantPro(u.id, "pro_monthly")}
                                 className="text-xs text-[#166534] hover:underline"
                               >
-                                Grant monthly
+                                Pro Monthly
                               </button>
                               <button
                                 onClick={() => void handleGrantPro(u.id, "pro_yearly")}
                                 className="text-xs text-[#166534] hover:underline"
                               >
-                                Grant yearly
+                                Pro Yearly
+                              </button>
+                              <button
+                                onClick={() => void handleGrantPro(u.id, "teams_monthly")}
+                                className="text-xs text-[#166534] hover:underline"
+                              >
+                                Teams Monthly
+                              </button>
+                              <button
+                                onClick={() => void handleGrantPro(u.id, "teams_yearly")}
+                                className="text-xs text-[#166534] hover:underline"
+                              >
+                                Teams Yearly
+                              </button>
+                              <button
+                                onClick={() => void handleGrantPro(u.id, "lifetime")}
+                                className="text-xs font-semibold text-[#166534] hover:underline"
+                              >
+                                Lifetime
                               </button>
                             </div>
                           )}

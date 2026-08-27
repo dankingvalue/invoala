@@ -373,19 +373,28 @@ function UsersTab({ myRole }: { myRole: string }) {
                   )}
                 </td>
                 <td className="py-3 text-right">
-                  <div className="flex justify-end gap-2 text-xs">
+                  <div className="flex flex-wrap justify-end gap-2 text-xs">
                     {!u.isPro ? (
                       <>
                         <button type="button" disabled={busy} onClick={() => void mutate(u.id, { grantPro: "pro_monthly" })} className="font-medium text-link hover:underline disabled:opacity-50">
-                          Grant monthly
+                          Pro Monthly
                         </button>
                         <button type="button" disabled={busy} onClick={() => void mutate(u.id, { grantPro: "pro_yearly" })} className="font-medium text-link hover:underline disabled:opacity-50">
-                          Grant yearly
+                          Pro Yearly
+                        </button>
+                        <button type="button" disabled={busy} onClick={() => void mutate(u.id, { grantPro: "teams_monthly" })} className="font-medium text-link hover:underline disabled:opacity-50">
+                          Teams Monthly
+                        </button>
+                        <button type="button" disabled={busy} onClick={() => void mutate(u.id, { grantPro: "teams_yearly" })} className="font-medium text-link hover:underline disabled:opacity-50">
+                          Teams Yearly
+                        </button>
+                        <button type="button" disabled={busy} onClick={() => void mutate(u.id, { grantPro: "lifetime" })} className="font-medium text-[#166534] hover:underline disabled:opacity-50">
+                          Lifetime
                         </button>
                       </>
                     ) : (
                       <button type="button" disabled={busy} onClick={() => void mutate(u.id, { revokePro: true })} className="text-subtle hover:text-ink disabled:opacity-50">
-                        Revoke Pro
+                        Revoke
                       </button>
                     )}
                     {myRole === "superadmin" ? (
