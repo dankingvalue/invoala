@@ -1,5 +1,5 @@
 import { dbGet } from "@/lib/db";
-import { rateLimit, issueToken, getSessionUser } from "@/lib/server-auth";
+import { rateLimit, issueVerifyTokens, getSessionUser } from "@/lib/server-auth";
 import { sendVerificationEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
@@ -22,8 +22,7 @@ export async function POST(req: Request) {
     return Response.json({ ok: true });
   }
 
-  const code = await issueToken(user.id, "verify", 24 * 60 * 60e3);
-  const linkToken = await issueToken(user.id, "verify", 24 * 60 * 60e3);
+  const { code, linkToken } = await issueVerifyTokens(user.id, 24 * 60 * 60e3);
   void sendVerificationEmail({ to: row.email, userId: user.id, code, linkToken });
 
   return Response.json({ ok: true });

@@ -1,8 +1,8 @@
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { dbGet, dbRun } from "@/lib/db";
-import { hashPassword, rateLimit, createSession, USER_COOKIE, verificationRequired, issueToken, validatePassword } from "@/lib/server-auth";
-import { sendEmail, sendVerificationEmail } from "@/lib/email";
+import { hashPassword, rateLimit, createSession, USER_COOKIE, verificationRequired, issueVerifyTokens, validatePassword } from "@/lib/server-auth";
+import { sendEmail, sendVerificationEmail, sendWelcomeEmail } from "@/lib/email";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -50,15 +50,10 @@ export async function POST(req: Request) {
   const { token } = await createSession(id);
 
   if (required) {
-    const code = await issueToken(id, "verify", 24 * 60 * 60e3);
-    const linkToken = await issueToken(id, "verify", 24 * 60 * 60e3);
+    const { code, linkToken } = await issueVerifyTokens(id, 24 * 60 * 60e3);
     void sendVerificationEmail({ to: email, userId: id, code, linkToken });
   } else {
-    void sendEmail({
-      to: email,
-      subject: "Welcome to Invoala",
-      text: "Your account is ready. Create your first invoice at https://invoala.com — it takes two minutes.",
-    });
+    void sendWelcomeEmail({ to: email, name });
   }
 
   const res = NextResponse.json({ ok: true, role: "user", needsVerification: required });

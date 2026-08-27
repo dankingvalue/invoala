@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { dbRun } from "@/lib/db";
-import { consumeToken, createSession, USER_COOKIE } from "@/lib/server-auth";
+import { consumeVerifyLink, createSession, USER_COOKIE } from "@/lib/server-auth";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -10,7 +10,7 @@ export async function GET(req: Request) {
     return NextResponse.redirect(new URL("/verify?error=invalid", req.url));
   }
 
-  const result = await consumeToken(token, "verify");
+  const result = await consumeVerifyLink(token);
   if (!result) {
     return NextResponse.redirect(new URL("/verify?error=expired", req.url));
   }

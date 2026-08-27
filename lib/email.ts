@@ -29,11 +29,14 @@ export async function sendEmail(opts: {
         status = "sent";
       } else {
         status = "failed";
-        error = `HTTP ${res.status}`;
+        const body = await res.text().catch(() => "");
+        error = `HTTP ${res.status}: ${body}`;
+        console.error(`[email:failed] to=${opts.to} subject="${opts.subject}" error=${error}`);
       }
     } catch (err) {
       status = "failed";
       error = err instanceof Error ? err.message : String(err);
+      console.error(`[email:error] to=${opts.to} subject="${opts.subject}" error=${error}`);
     }
   } else {
     console.log(`[email:simulated] to=${opts.to} subject="${opts.subject}"`);
@@ -118,4 +121,12 @@ export async function sendTeamInviteEmail(
   const link = `${origin()}/teams/accept/${inviteId}`;
   const text = `${inviterName} invited you to join "${teamName}" on Invoala.\n\nClick to accept the invitation:\n${link}\n\nThis link expires in 7 days.`;
   await sendEmail({ to, subject: `You're invited to join ${teamName} on Invoala`, text });
+}
+
+export async function sendWelcomeEmail(opts: {
+  to: string;
+  name: string;
+}): Promise<void> {
+  const text = `Hey ${opts.name || "there"},\n\nWelcome to Invoala! Your account is ready.\n\nCreate your first invoice in under a minute:\nhttps://invoala.com/#generate\n\nNo templates to configure. No forms to study. Just fill in the blanks and download your PDF.\n\nQuestions? Just reply to this email.\n\n— The Invoala Team`;
+  await sendEmail({ to: opts.to, subject: "Welcome to Invoala", text });
 }

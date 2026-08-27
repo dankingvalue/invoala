@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     email
   );
 
-  if (!row || (verificationRequired() && !row.email_verified)) {
+  if (!row) {
     return Response.json({ ok: true });
   }
 

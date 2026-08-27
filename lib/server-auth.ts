@@ -131,6 +131,34 @@ export async function issueToken(userId: string, type: TokenType, ttlMs: number,
   return raw;
 }
 
+export async function issueVerifyTokens(userId: string, ttlMs: number): Promise<{ code: string; linkToken: string }> {
+  const code = generateCode();
+  const linkToken = randomBytes(32).toString("hex");
+  const expiresAt = Date.now() + ttlMs;
+  const now = Date.now();
+  await dbRun("DELETE FROM tokens WHERE user_id = ? AND type = ?", userId, "verify" as TokenType);
+  await dbRun(
+    "INSERT INTO tokens (id, user_id, type, token_hash, data, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    crypto.randomUUID(), userId, "verify", hashToken(code), null, expiresAt, now
+  );
+  await dbRun(
+    "INSERT INTO tokens (id, user_id, type, token_hash, data, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    crypto.randomUUID(), userId, "verify_link", hashToken(linkToken), null, expiresAt, now
+  );
+  return { code, linkToken };
+}
+
+export async function consumeVerifyLink(raw: string): Promise<{ userId: string } | null> {
+  const row = await dbGet<{ id: string; user_id: string; expires_at: number }>(
+    "SELECT id, user_id, expires_at FROM tokens WHERE token_hash = ? AND type = 'verify_link'",
+    hashToken(raw)
+  );
+  if (!row || row.expires_at < Date.now()) return null;
+  await dbRun("DELETE FROM tokens WHERE id = ?", row.id);
+  await dbRun("DELETE FROM tokens WHERE user_id = ? AND type = 'verify'", row.user_id);
+  return { userId: row.user_id };
+}
+
 export async function consumeToken(raw: string, type: TokenType): Promise<{ userId: string; data?: string } | null> {
   const row = await dbGet<{ id: string; user_id: string; data: string | null; expires_at: number }>(
     "SELECT id, user_id, data, expires_at FROM tokens WHERE token_hash = ? AND type = ?",
