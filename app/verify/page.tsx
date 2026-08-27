@@ -43,17 +43,11 @@ function VerifyForm() {
     }
   }
 
-  const [resendEmail, setResendEmail] = useState("");
-
   async function resend() {
     setResending(true);
     setResendMsg("");
     try {
-      const res = await fetch("/api/auth/resend", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: resendEmail }),
-      });
+      const res = await fetch("/api/auth/resend", { method: "POST" });
       const json = (await res.json()) as { ok?: boolean; error?: string };
       setResendMsg(res.ok ? "Code sent. Check your inbox." : json.error || "Failed to resend.");
     } catch {
@@ -109,19 +103,10 @@ function VerifyForm() {
         )}
 
         <div className="mt-6 border-t border-hairline pt-5">
-          <div className="mb-3">
-            <input
-              type="email"
-              value={resendEmail}
-              onChange={(e) => setResendEmail(e.target.value)}
-              placeholder="your@email.com"
-              className="w-full rounded-xl border border-hairline bg-white px-3.5 py-2.5 text-[14px] text-ink outline-none transition placeholder:text-[#86868b] focus:border-accent focus:ring-[3px] focus:ring-accent/20"
-            />
-          </div>
           <button
             type="button"
             onClick={() => void resend()}
-            disabled={resending || !resendEmail}
+            disabled={resending}
             className="text-sm text-link hover:underline disabled:opacity-50"
           >
             {resending ? "Sending…" : "Resend code"}
