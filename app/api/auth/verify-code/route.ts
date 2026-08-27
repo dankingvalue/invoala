@@ -1,6 +1,5 @@
-import { dbGet, dbRun } from "@/lib/db";
+import { dbRun } from "@/lib/db";
 import { consumeToken, getSessionUser } from "@/lib/server-auth";
-import { sendWelcomeEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   const user = await getSessionUser(req);
@@ -24,8 +23,6 @@ export async function POST(req: Request) {
   }
 
   await dbRun("UPDATE users SET email_verified = 1 WHERE id = ?", user.id);
-
-  await sendWelcomeEmail({ to: user.email, name: user.name });
 
   return Response.json({ ok: true });
 }

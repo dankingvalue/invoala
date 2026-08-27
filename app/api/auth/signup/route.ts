@@ -52,6 +52,7 @@ export async function POST(req: Request) {
   if (required) {
     const { code, linkToken } = await issueVerifyTokens(id, 24 * 60 * 60e3);
     await sendVerificationEmail({ to: email, userId: id, code, linkToken });
+    await sendWelcomeEmail({ to: email, name });
   } else {
     await sendWelcomeEmail({ to: email, name });
   }
