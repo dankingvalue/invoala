@@ -15,28 +15,33 @@ export async function sendEmail(opts: {
   let error: string | undefined;
 
   if (apiKey) {
-    try {
-      const res = await fetch(RESEND_ENDPOINT, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ from: fromHeader, to: [opts.to], subject: opts.subject, text: opts.text }),
-        signal: AbortSignal.timeout(15000),
-      });
-      if (res.ok) {
-        status = "sent";
-      } else {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const res = await fetch(RESEND_ENDPOINT, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ from: fromHeader, to: [opts.to], subject: opts.subject, text: opts.text }),
+          signal: AbortSignal.timeout(30000),
+        });
+        if (res.ok) {
+          status = "sent";
+          break;
+        } else {
+          status = "failed";
+          const body = await res.text().catch(() => "");
+          error = `HTTP ${res.status}: ${body}`;
+          console.error(`[email:failed] attempt=${attempt} to=${opts.to} subject="${opts.subject}" error=${error}`);
+          if (res.status >= 400 && res.status < 500) break;
+        }
+      } catch (err) {
         status = "failed";
-        const body = await res.text().catch(() => "");
-        error = `HTTP ${res.status}: ${body}`;
-        console.error(`[email:failed] to=${opts.to} subject="${opts.subject}" error=${error}`);
+        error = err instanceof Error ? err.message : String(err);
+        console.error(`[email:error] attempt=${attempt} to=${opts.to} subject="${opts.subject}" error=${error}`);
+        if (attempt < 3) await new Promise(r => setTimeout(r, 1000 * attempt));
       }
-    } catch (err) {
-      status = "failed";
-      error = err instanceof Error ? err.message : String(err);
-      console.error(`[email:error] to=${opts.to} subject="${opts.subject}" error=${error}`);
     }
   } else {
     console.log(`[email:simulated] to=${opts.to} subject="${opts.subject}"`);
