@@ -28,6 +28,12 @@ async function ensureSchema(): Promise<void> {
 
   const db = getDb();
 
+  // Drop old tables if they exist (schema changed during development)
+  const tables = ["messages", "conversations", "team_invites", "team_members", "teams", "subscriptions", "invoices", "clients", "email_log", "tokens", "sessions", "users"];
+  for (const table of tables) {
+    await db.execute(`DROP TABLE IF EXISTS ${table}`);
+  }
+
   await db.batch([
     { sql: `CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
@@ -35,6 +41,10 @@ async function ensureSchema(): Promise<void> {
       password_hash TEXT NOT NULL,
       name TEXT NOT NULL DEFAULT '',
       role TEXT NOT NULL DEFAULT 'user',
+      timezone TEXT NOT NULL DEFAULT '',
+      email_verified INTEGER NOT NULL DEFAULT 0,
+      pending_email TEXT,
+      google_id TEXT,
       created_at INTEGER NOT NULL
     )` },
     { sql: `CREATE TABLE IF NOT EXISTS sessions (
