@@ -2,7 +2,6 @@
 
 import { Suspense, FormEvent, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 
 function VerifyForm() {
   const router = useRouter();
@@ -44,11 +43,17 @@ function VerifyForm() {
     }
   }
 
+  const [resendEmail, setResendEmail] = useState("");
+
   async function resend() {
     setResending(true);
     setResendMsg("");
     try {
-      const res = await fetch("/api/auth/resend", { method: "POST" });
+      const res = await fetch("/api/auth/resend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: resendEmail }),
+      });
       const json = (await res.json()) as { ok?: boolean; error?: string };
       setResendMsg(res.ok ? "Code sent. Check your inbox." : json.error || "Failed to resend.");
     } catch {
@@ -104,10 +109,19 @@ function VerifyForm() {
         )}
 
         <div className="mt-6 border-t border-hairline pt-5">
+          <div className="mb-3">
+            <input
+              type="email"
+              value={resendEmail}
+              onChange={(e) => setResendEmail(e.target.value)}
+              placeholder="your@email.com"
+              className="w-full rounded-xl border border-hairline bg-white px-3.5 py-2.5 text-[14px] text-ink outline-none transition placeholder:text-[#86868b] focus:border-accent focus:ring-[3px] focus:ring-accent/20"
+            />
+          </div>
           <button
             type="button"
             onClick={() => void resend()}
-            disabled={resending}
+            disabled={resending || !resendEmail}
             className="text-sm text-link hover:underline disabled:opacity-50"
           >
             {resending ? "Sending…" : "Resend code"}
@@ -115,9 +129,16 @@ function VerifyForm() {
           {resendMsg ? <p className="mt-2 text-xs text-subtle">{resendMsg}</p> : null}
         </div>
 
-        <Link href="/login" className="mt-4 block text-sm text-subtle hover:text-ink">
+        <button
+          type="button"
+          onClick={async () => {
+            await fetch("/api/auth/logout", { method: "POST" });
+            window.location.href = "/login";
+          }}
+          className="mt-4 block text-sm text-subtle hover:text-ink"
+        >
           Back to sign in
-        </Link>
+        </button>
       </div>
     </div>
   );
