@@ -41,9 +41,10 @@ export async function POST(req: Request) {
   const id = randomUUID();
   const isAdmin = process.env.ADMIN_EMAIL && email === process.env.ADMIN_EMAIL.toLowerCase();
   const role = isAdmin ? "superadmin" : "user";
+  const verified = isAdmin ? 1 : (required ? 0 : 1);
   await dbRun(
     "INSERT INTO users (id, email, password_hash, name, role, email_verified, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-    id, email, hashPassword(password), name, role, required ? 0 : 1, Date.now()
+    id, email, hashPassword(password), name, role, verified, Date.now()
   );
 
   const { token } = await createSession(id);
