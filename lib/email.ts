@@ -66,7 +66,7 @@ export function verifyStripeSignature(payload: string, header: string | null): b
 }
 
 function origin(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  return process.env.SITE_URL || "https://invoala.com";
 }
 
 export async function sendVerificationEmail(opts: {
