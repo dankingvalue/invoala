@@ -1,5 +1,6 @@
 import { getSessionUser } from "@/lib/server-auth";
 import { dbGet, dbAll } from "@/lib/db";
+import { redactEmail } from "@/lib/redact";
 
 export async function GET(req: Request) {
   const user = await getSessionUser(req);
@@ -11,6 +12,8 @@ export async function GET(req: Request) {
   const q = (url.searchParams.get("q") || "").trim().toLowerCase();
   const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
   const pageSize = 50;
+
+  const isSupport = user.role === "support";
 
   const where = q ? "WHERE u.email LIKE ?" : "";
   const like = `%${q}%`;
@@ -42,6 +45,7 @@ export async function GET(req: Request) {
     pageSize,
     users: rows.map((r) => ({
       ...r,
+      email: isSupport && !q ? redactEmail(r.email) : r.email,
       cancel_at_period_end: !!r.cancel_at_period_end,
       isPro:
         ["admin", "superadmin"].includes(r.role) ||

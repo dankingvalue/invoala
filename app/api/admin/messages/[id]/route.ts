@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { getSessionUser } from "@/lib/server-auth";
 import { dbGet, dbAll, dbRun } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
+import { redactEmail } from "@/lib/redact";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser(_req);
@@ -40,7 +41,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     id
   );
 
-  return Response.json({ conversation, messages });
+  const isSupport = user.role === "support";
+
+  return Response.json({
+    conversation: {
+      ...conversation,
+      user_email: isSupport ? redactEmail(conversation.user_email) : conversation.user_email,
+    },
+    messages,
+  });
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {

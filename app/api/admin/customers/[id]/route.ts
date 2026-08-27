@@ -1,5 +1,6 @@
 import { getSessionUser } from "@/lib/server-auth";
 import { dbGet, dbAll } from "@/lib/db";
+import { redactEmail } from "@/lib/redact";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser(req);
@@ -58,8 +59,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     id
   );
 
+  const isSupport = user.role === "support";
+
   return Response.json({
-    user: target,
+    user: {
+      ...target,
+      email: isSupport ? redactEmail(target.email) : target.email,
+    },
     subscription: sub || null,
     invoices,
     conversations,

@@ -1,5 +1,6 @@
 import { getSessionUser } from "@/lib/server-auth";
 import { dbAll } from "@/lib/db";
+import { redactEmail } from "@/lib/redact";
 
 type InvoiceRow = {
   id: string;
@@ -22,6 +23,8 @@ export async function GET(req: Request) {
   if (!user || !["superadmin", "admin", "support"].includes(user.role)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const isSupport = user.role === "support";
 
   const url = new URL(req.url);
   const q = url.searchParams.get("q") || "";
@@ -63,5 +66,13 @@ export async function GET(req: Request) {
     offset
   );
 
-  return Response.json({ invoices, total, page, pageSize });
+  return Response.json({
+    invoices: invoices.map((inv) => ({
+      ...inv,
+      user_email: isSupport ? redactEmail(inv.user_email) : inv.user_email,
+    })),
+    total,
+    page,
+    pageSize,
+  });
 }

@@ -136,13 +136,13 @@ function CustomersTab() {
       {viewUser && <CustomerSlideOut userId={viewUser} onClose={() => setViewUser(null)} />}
 
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <SectionHead title={`Customers (${users.length.toLocaleString()})`} />
+        <SectionHead title={`Customers (${users.length.toLocaleString()})`} subtitle="Emails are redacted for privacy. Search to reveal full details." />
         <input
           type="text"
-          placeholder="Search by email…"
+          placeholder="Search email to reveal…"
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          className="w-56 rounded-full border border-[#e5e7eb] px-4 py-2 text-sm focus:border-[#166534] focus:outline-none focus:ring-1 focus:ring-[#166534]"
+          className="w-64 rounded-full border border-[#e5e7eb] px-4 py-2 text-sm focus:border-[#166534] focus:outline-none focus:ring-1 focus:ring-[#166534]"
         />
       </div>
 
@@ -151,7 +151,11 @@ function CustomersTab() {
       ) : users.length === 0 ? (
         <p className="py-6 text-sm text-[#6b7280] text-center">No customers found.</p>
       ) : (
-        <div className="mt-4 overflow-x-auto">
+        <>
+        {!search && (
+          <p className="mt-3 text-xs text-[#6b7280]">Emails are redacted. Type a search query to reveal full customer details.</p>
+        )}
+        <div className="mt-3 overflow-x-auto">
           <table className="w-full min-w-[600px] text-left text-sm">
             <thead>
               <tr className="border-b border-[#e5e7eb] text-[#6b7280]">
@@ -186,6 +190,7 @@ function CustomersTab() {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       <div className="mt-4 flex items-center justify-between text-sm text-[#6b7280]">
