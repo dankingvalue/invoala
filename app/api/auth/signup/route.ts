@@ -40,9 +40,11 @@ export async function POST(req: Request) {
 
   const required = verificationRequired();
   const id = randomUUID();
+  const isAdmin = process.env.ADMIN_EMAIL && email === process.env.ADMIN_EMAIL.toLowerCase();
+  const role = isAdmin ? "superadmin" : "user";
   db.prepare(
-    "INSERT INTO users (id, email, password_hash, name, role, email_verified, created_at) VALUES (?, ?, ?, ?, 'user', ?, ?)",
-  ).run(id, email, hashPassword(password), name, required ? 0 : 1, Date.now());
+    "INSERT INTO users (id, email, password_hash, name, role, email_verified, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+  ).run(id, email, hashPassword(password), name, role, required ? 0 : 1, Date.now());
 
   const { token } = createSession(id);
 

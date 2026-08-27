@@ -62,9 +62,11 @@ export async function GET(req: Request) {
       }
     } else {
       userId = randomUUID();
+      const isAdmin = process.env.ADMIN_EMAIL && profile.email === process.env.ADMIN_EMAIL.toLowerCase();
+      const role = isAdmin ? "superadmin" : "user";
       db.prepare(
-        "INSERT INTO users (id, email, password_hash, name, role, email_verified, google_id, created_at) VALUES (?, ?, '', ?, 'user', 1, ?, ?)",
-      ).run(userId, profile.email, profile.name || profile.email.split("@")[0], profile.id, Date.now());
+        "INSERT INTO users (id, email, password_hash, name, role, email_verified, google_id, created_at) VALUES (?, ?, '', ?, ?, 1, ?, ?)",
+      ).run(userId, profile.email, role, profile.name || profile.email.split("@")[0], profile.id, Date.now());
     }
 
     const { token } = createSession(userId);

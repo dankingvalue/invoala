@@ -18,7 +18,6 @@ function createDb(): Database.Database {
   db.pragma("foreign_keys = ON");
   migrate(db);
   ensureSchema(db);
-  seedSuperAdmin(db);
   return db;
 }
 
@@ -161,17 +160,6 @@ function migrate(db: Database.Database) {
     const invoiceNames = new Set(invoiceCols.map((c) => c.name));
     if (!invoiceNames.has("team_id")) db.exec("ALTER TABLE invoices ADD COLUMN team_id TEXT");
   }
-}
-
-function seedSuperAdmin(db: Database.Database) {
-  const email = process.env.ADMIN_EMAIL;
-  const password = process.env.ADMIN_PASSWORD;
-  if (!email || !password) return;
-  const existing = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
-  if (existing) return;
-  db.prepare(
-    "INSERT INTO users (id, email, password_hash, role, email_verified, created_at) VALUES (?, ?, ?, 'superadmin', 1, ?)",
-  ).run(crypto.randomUUID(), email, hashPassword(password), Date.now());
 }
 
 export function getDb(): Database.Database {
