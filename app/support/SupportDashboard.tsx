@@ -153,7 +153,7 @@ function CustomersTab() {
       ) : (
         <>
         {!search && (
-          <p className="mt-3 text-xs text-[#6b7280]">Emails are redacted. Type a search query to reveal full customer details.</p>
+          <p className="mt-3 text-xs text-[#6b7280]">Emails are redacted. Type 3+ characters to reveal matching customer details.</p>
         )}
         <div className="mt-3 overflow-x-auto">
           <table className="w-full min-w-[600px] text-left text-sm">

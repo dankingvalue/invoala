@@ -45,7 +45,7 @@ export async function GET(req: Request) {
     pageSize,
     users: rows.map((r) => ({
       ...r,
-      email: isSupport && !q ? redactEmail(r.email) : r.email,
+      email: isSupport && (!q || q.length < 3 || !r.email.toLowerCase().includes(q)) ? redactEmail(r.email) : r.email,
       cancel_at_period_end: !!r.cancel_at_period_end,
       isPro:
         ["admin", "superadmin"].includes(r.role) ||
