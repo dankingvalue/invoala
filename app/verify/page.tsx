@@ -75,7 +75,7 @@ function VerifyForm() {
         </p>
 
         {message ? (
-          <p className="mt-4 text-sm text-subtle">{message}</p>
+          <p className={`mt-4 text-sm ${status === "error" ? "text-red-600 font-medium" : "text-subtle"}`}>{message}</p>
         ) : null}
 
         {status === "done" ? (

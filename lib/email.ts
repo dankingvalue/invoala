@@ -10,6 +10,7 @@ export async function sendEmail(opts: {
 }): Promise<{ status: "sent" | "simulated" | "failed"; error?: string }> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM || "Invoala <noreply@invoala.com>";
+  const fromHeader = from.includes("<") ? from : `Invoala <${from}>`;
   let status: "sent" | "simulated" | "failed" = "simulated";
   let error: string | undefined;
 
@@ -21,7 +22,7 @@ export async function sendEmail(opts: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ from, to: [opts.to], subject: opts.subject, text: opts.text }),
+        body: JSON.stringify({ from: fromHeader, to: [opts.to], subject: opts.subject, text: opts.text }),
         signal: AbortSignal.timeout(15000),
       });
       if (res.ok) {
