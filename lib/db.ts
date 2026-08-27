@@ -20,45 +20,9 @@ function getDb(): Client {
 
 export { getDb };
 
-// Helper: run a query and return rows
-export async function dbAll<T = Record<string, unknown>>(sql: string, ...args: unknown[]): Promise<T[]> {
-  const db = getDb();
-  const result = await db.execute({ sql, args: args as (string | number | null)[] });
-  return result.rows as T[];
-}
-
-// Helper: run a query and return first row
-export async function dbGet<T = Record<string, unknown>>(sql: string, ...args: unknown[]): Promise<T | undefined> {
-  const rows = await dbAll(sql, ...args);
-  return rows[0] as T | undefined;
-}
-
-// Helper: run a query and return { changes, lastInsertRowid }
-export async function dbRun(sql: string, ...args: unknown[]): Promise<{ changes: number; lastInsertRowid: bigint }> {
-  const db = getDb();
-  const result = await db.execute({ sql, args: args as (string | number | null)[] });
-  return { changes: Number(result.rowsAffected), lastInsertRowid: result.lastInsertRowid ?? BigInt(0) };
-}
-
-// Helper: execute raw SQL (DDL, etc.)
-export async function dbExec(sql: string): Promise<void> {
-  const db = getDb();
-  await db.execute(sql);
-}
-
-// Helper: batch execute multiple statements
-export async function dbBatch(statements: Array<{ sql: string; args?: (string | number | null)[] }>): Promise<void> {
-  const db = getDb();
-  await db.batch(statements.map((s) => ({
-    sql: s.sql,
-    args: (s.args || []) as (string | number | null)[],
-  })));
-}
-
-// Initialize schema (called on first request)
 let schemaInitialized = false;
 
-export async function ensureSchema(): Promise<void> {
+async function ensureSchema(): Promise<void> {
   if (schemaInitialized) return;
   schemaInitialized = true;
 
@@ -188,4 +152,29 @@ export async function ensureSchema(): Promise<void> {
     )` },
     { sql: `CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id, created_at)` },
   ]);
+}
+
+export async function dbAll<T = Record<string, unknown>>(sql: string, ...args: unknown[]): Promise<T[]> {
+  await ensureSchema();
+  const db = getDb();
+  const result = await db.execute({ sql, args: args as (string | number | null)[] });
+  return result.rows as T[];
+}
+
+export async function dbGet<T = Record<string, unknown>>(sql: string, ...args: unknown[]): Promise<T | undefined> {
+  const rows = await dbAll<T>(sql, ...args);
+  return rows[0] as T | undefined;
+}
+
+export async function dbRun(sql: string, ...args: unknown[]): Promise<{ changes: number; lastInsertRowid: bigint }> {
+  await ensureSchema();
+  const db = getDb();
+  const result = await db.execute({ sql, args: args as (string | number | null)[] });
+  return { changes: Number(result.rowsAffected), lastInsertRowid: result.lastInsertRowid ?? BigInt(0) };
+}
+
+export async function dbExec(sql: string): Promise<void> {
+  await ensureSchema();
+  const db = getDb();
+  await db.execute(sql);
 }
