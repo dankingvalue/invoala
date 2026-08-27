@@ -34,15 +34,22 @@ export async function POST(req: Request) {
     return Response.json({ error: "Invalid email or password." }, { status: 401 });
   }
 
-  if (verificationRequired() && !row.email_verified) {
-    return Response.json({ error: "Please verify your email first.", needsVerification: true }, { status: 403 });
+  // Auto-promote and auto-verify admin email before verification check
+  let role = row.role;
+  let emailVerified = row.email_verified;
+  if (process.env.ADMIN_EMAIL && email === process.env.ADMIN_EMAIL.toLowerCase()) {
+    if (role !== "superadmin") {
+      await dbRun("UPDATE users SET role = 'superadmin' WHERE id = ?", row.id);
+      role = "superadmin";
+    }
+    if (!emailVerified) {
+      await dbRun("UPDATE users SET email_verified = 1 WHERE id = ?", row.id);
+      emailVerified = 1;
+    }
   }
 
-  // Auto-promote admin email to superadmin
-  let role = row.role;
-  if (process.env.ADMIN_EMAIL && email === process.env.ADMIN_EMAIL.toLowerCase() && role !== "superadmin") {
-    await dbRun("UPDATE users SET role = 'superadmin' WHERE id = ?", row.id);
-    role = "superadmin";
+  if (verificationRequired() && !emailVerified) {
+    return Response.json({ error: "Please verify your email first.", needsVerification: true }, { status: 403 });
   }
 
   clearRateLimit(`login:${ip}`);
