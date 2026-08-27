@@ -1,13 +1,13 @@
-import { randomUUID } from "crypto";
 import { getSessionUser } from "@/lib/server-auth";
 import { dbAll } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
+import { logAudit } from "@/lib/audit";
 
 const MAX_BATCH = 1000;
 
 export async function POST(req: Request) {
   const admin = await getSessionUser(req);
-  if (!admin || !["superadmin", "admin", "support"].includes(admin.role)) {
+  if (!admin || !["superadmin", "admin"].includes(admin.role)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
   for (const to of recipients) {
     const result = await sendEmail({
       to,
-      subject: audience === "one" ? subject : `${subject}`,
+      subject,
       text,
     });
     if (result.status === "sent") sent += 1;
@@ -76,7 +76,14 @@ export async function POST(req: Request) {
     else failed += 1;
   }
 
-  void randomUUID;
+  await logAudit({
+    action: "send_broadcast",
+    targetId: undefined,
+    targetType: "email",
+    details: { audience, subject, total: recipients.length, sent, simulated, failed },
+    req,
+  });
+
   return Response.json({
     ok: true,
     recipients: recipients.length,

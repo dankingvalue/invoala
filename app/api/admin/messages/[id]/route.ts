@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { getSessionUser } from "@/lib/server-auth";
 import { dbGet, dbAll, dbRun } from "@/lib/db";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser(_req);
@@ -55,26 +56,32 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const now = Date.now();
 
-  // Add support message
   await dbRun(
     `INSERT INTO messages (id, conversation_id, sender_type, sender_id, content, created_at)
     VALUES (?, ?, 'support', ?, ?, ?)`,
     randomUUID(), id, user.id, content, now
   );
 
-  // Update status to human support if it was escalated
   if (conversation.status === "escalated") {
     await dbRun("UPDATE conversations SET status = 'support', updated_at = ? WHERE id = ?", now, id);
   } else {
     await dbRun("UPDATE conversations SET updated_at = ? WHERE id = ?", now, id);
   }
 
+  await logAudit({
+    action: "conversation_reply",
+    targetId: id,
+    targetType: "conversation",
+    details: { contentPreview: content.slice(0, 200) },
+    req,
+  });
+
   return Response.json({ ok: true });
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser(req);
-  if (!user || !["superadmin", "admin"].includes(user.role)) {
+  if (!user || !["superadmin", "admin", "support"].includes(user.role)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -89,7 +96,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return Response.json({ error: "Invalid status." }, { status: 400 });
   }
 
+  const old = await dbGet<{ status: string }>("SELECT status FROM conversations WHERE id = ?", id);
+
   await dbRun("UPDATE conversations SET status = ?, updated_at = ? WHERE id = ?", status, Date.now(), id);
+
+  await logAudit({
+    action: "conversation_status",
+    targetId: id,
+    targetType: "conversation",
+    details: { from: old?.status, to: status },
+    req,
+  });
 
   return Response.json({ ok: true });
 }

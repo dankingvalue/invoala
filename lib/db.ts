@@ -155,6 +155,21 @@ async function ensureSchema(): Promise<void> {
       created_at INTEGER NOT NULL
     )` },
     { sql: `CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id, created_at)` },
+    { sql: `CREATE TABLE IF NOT EXISTS audit_logs (
+      id TEXT PRIMARY KEY,
+      actor_id TEXT NOT NULL,
+      actor_email TEXT NOT NULL,
+      actor_role TEXT NOT NULL,
+      action TEXT NOT NULL,
+      target_id TEXT,
+      target_type TEXT,
+      details TEXT,
+      ip_address TEXT,
+      created_at INTEGER NOT NULL
+    )` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit_logs(actor_id)` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_audit_target ON audit_logs(target_id)` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at)` },
   ]);
 }
 
