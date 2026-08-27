@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { dbGet } from "@/lib/db";
+import { dbGet, dbRun } from "@/lib/db";
 import {
   clearRateLimit,
   createSession,
@@ -38,9 +38,16 @@ export async function POST(req: Request) {
     return Response.json({ error: "Please verify your email first.", needsVerification: true }, { status: 403 });
   }
 
+  // Auto-promote admin email to superadmin
+  let role = row.role;
+  if (process.env.ADMIN_EMAIL && email === process.env.ADMIN_EMAIL.toLowerCase() && role !== "superadmin") {
+    await dbRun("UPDATE users SET role = 'superadmin' WHERE id = ?", row.id);
+    role = "superadmin";
+  }
+
   clearRateLimit(`login:${ip}`);
   const { token } = await createSession(row.id);
-  const res = NextResponse.json({ ok: true, role: row.role });
+  const res = NextResponse.json({ ok: true, role });
   res.cookies.set(USER_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
