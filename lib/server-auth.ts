@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomInt, scryptSync, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
-import { getDb } from "@/lib/db";
+import { dbGet, dbRun } from "@/lib/db";
 
 export const USER_COOKIE = "invoala_session";
 export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -42,40 +42,38 @@ function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
-export function createSession(userId: string): { token: string; expiresAt: number } {
+export async function createSession(userId: string): Promise<{ token: string; expiresAt: number }> {
   const token = randomBytes(32).toString("hex");
   const expiresAt = Date.now() + SESSION_TTL_MS;
-  getDb()
-    .prepare("INSERT INTO sessions (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)")
-    .run(hashToken(token), userId, expiresAt, Date.now());
+  await dbRun(
+    "INSERT INTO sessions (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)",
+    hashToken(token), userId, expiresAt, Date.now()
+  );
   return { token, expiresAt };
 }
 
-export function destroySession(token: string | undefined): void {
+export async function destroySession(token: string | undefined): Promise<void> {
   if (!token) return;
-  getDb().prepare("DELETE FROM sessions WHERE token_hash = ?").run(hashToken(token));
+  await dbRun("DELETE FROM sessions WHERE token_hash = ?", hashToken(token));
 }
 
-export function destroyAllSessions(userId: string): void {
-  getDb().prepare("DELETE FROM sessions WHERE user_id = ?").run(userId);
+export async function destroyAllSessions(userId: string): Promise<void> {
+  await dbRun("DELETE FROM sessions WHERE user_id = ?", userId);
 }
 
-export function getUserByToken(token: string | undefined): SessionUser | null {
+export async function getUserByToken(token: string | undefined): Promise<SessionUser | null> {
   if (!token) return null;
-  const row = getDb()
-    .prepare(
-      `SELECT u.id, u.email, u.name, u.role, u.email_verified, u.timezone, s.expires_at
-       FROM sessions s JOIN users u ON u.id = s.user_id
-       WHERE s.token_hash = ?`,
-    )
-    .get(hashToken(token)) as
-    | { id: string; email: string; name: string; role: string; email_verified: number; timezone: string; expires_at: number }
-    | undefined;
+  const row = await dbGet<{ id: string; email: string; name: string; role: string; email_verified: number; timezone: string; expires_at: number }>(
+    `SELECT u.id, u.email, u.name, u.role, u.email_verified, u.timezone, s.expires_at
+     FROM sessions s JOIN users u ON u.id = s.user_id
+     WHERE s.token_hash = ?`,
+    hashToken(token)
+  );
   if (!row || row.expires_at < Date.now()) return null;
   return { id: row.id, email: row.email, name: row.name, role: row.role, email_verified: row.email_verified, timezone: row.timezone };
 }
 
-export function getSessionUser(req: Request): SessionUser | null {
+export async function getSessionUser(req: Request): Promise<SessionUser | null> {
   const match = req.headers.get("cookie")?.match(new RegExp(`${USER_COOKIE}=([^;]+)`));
   return getUserByToken(match?.[1]);
 }
@@ -123,27 +121,27 @@ export function clearRateLimit(key: string): void {
 
 export type TokenType = "verify" | "magic" | "reset" | "email_change";
 
-export function issueToken(userId: string, type: TokenType, ttlMs: number, data?: string): string {
+export async function issueToken(userId: string, type: TokenType, ttlMs: number, data?: string): Promise<string> {
   const raw = type === "verify" ? generateCode() : randomBytes(32).toString("hex");
-  const db = getDb();
-  db.prepare("DELETE FROM tokens WHERE user_id = ? AND type = ?").run(userId, type);
-  db.prepare(
+  await dbRun("DELETE FROM tokens WHERE user_id = ? AND type = ?", userId, type);
+  await dbRun(
     "INSERT INTO tokens (id, user_id, type, token_hash, data, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-  ).run(crypto.randomUUID(), userId, type, hashToken(raw), data ?? null, Date.now() + ttlMs, Date.now());
+    crypto.randomUUID(), userId, type, hashToken(raw), data ?? null, Date.now() + ttlMs, Date.now()
+  );
   return raw;
 }
 
-export function consumeToken(raw: string, type: TokenType): { userId: string; data?: string } | null {
-  const db = getDb();
-  const row = db
-    .prepare("SELECT id, user_id, data, expires_at FROM tokens WHERE token_hash = ? AND type = ?")
-    .get(hashToken(raw), type) as { id: string; user_id: string; data: string | null; expires_at: number } | undefined;
+export async function consumeToken(raw: string, type: TokenType): Promise<{ userId: string; data?: string } | null> {
+  const row = await dbGet<{ id: string; user_id: string; data: string | null; expires_at: number }>(
+    "SELECT id, user_id, data, expires_at FROM tokens WHERE token_hash = ? AND type = ?",
+    hashToken(raw), type
+  );
   if (!row || row.expires_at < Date.now()) return null;
-  db.prepare("DELETE FROM tokens WHERE id = ?").run(row.id);
+  await dbRun("DELETE FROM tokens WHERE id = ?", row.id);
   return { userId: row.user_id, data: row.data ?? undefined };
 }
 
-export function consumeTokenByCode(code: string, type: TokenType): { userId: string; data?: string } | null {
+export async function consumeTokenByCode(code: string, type: TokenType): Promise<{ userId: string; data?: string } | null> {
   return consumeToken(code, type);
 }
 

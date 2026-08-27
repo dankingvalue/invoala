@@ -1,5 +1,5 @@
 import { randomUUID, createHash } from "crypto";
-import { getDb } from "@/lib/db";
+import { dbGet, dbAll, dbRun } from "@/lib/db";
 
 export type Team = {
   id: string;
@@ -32,107 +32,104 @@ export type TeamInvite = {
   created_at: number;
 };
 
-export function createTeam(ownerId: string, name: string): Team {
-  const db = getDb();
+export async function createTeam(ownerId: string, name: string): Promise<Team> {
   const now = Date.now();
   const id = randomUUID();
 
-  db.prepare(
+  await dbRun(
     `INSERT INTO teams (id, name, owner_id, plan, created_at, updated_at)
-     VALUES (?, ?, ?, 'teams_monthly', ?, ?)`
-  ).run(id, name, ownerId, now, now);
+     VALUES (?, ?, ?, 'teams_monthly', ?, ?)`,
+    id, name, ownerId, now, now
+  );
 
   // Add owner as admin member
-  db.prepare(
+  await dbRun(
     `INSERT INTO team_members (id, team_id, user_id, role, invited_by, joined_at)
-     VALUES (?, ?, ?, 'admin', ?, ?)`
-  ).run(randomUUID(), id, ownerId, ownerId, now);
+     VALUES (?, ?, ?, 'admin', ?, ?)`,
+    randomUUID(), id, ownerId, ownerId, now
+  );
 
   return { id, name, owner_id: ownerId, plan: "teams_monthly", created_at: now, updated_at: now };
 }
 
-export function getTeam(teamId: string): Team | null {
-  const db = getDb();
-  return db.prepare("SELECT * FROM teams WHERE id = ?").get(teamId) as Team | null;
+export async function getTeam(teamId: string): Promise<Team | null> {
+  return (await dbGet<Team>("SELECT * FROM teams WHERE id = ?", teamId)) ?? null;
 }
 
-export function getUserTeams(userId: string): Team[] {
-  const db = getDb();
-  return db.prepare(
+export async function getUserTeams(userId: string): Promise<Team[]> {
+  return await dbAll<Team>(
     `SELECT t.* FROM teams t
      INNER JOIN team_members tm ON t.id = tm.team_id
      WHERE tm.user_id = ?
-     ORDER BY t.name COLLATE NOCASE`
-  ).all(userId) as Team[];
+     ORDER BY t.name COLLATE NOCASE`,
+    userId
+  );
 }
 
-export function getTeamMembers(teamId: string): TeamMember[] {
-  const db = getDb();
-  return db.prepare(
+export async function getTeamMembers(teamId: string): Promise<TeamMember[]> {
+  return await dbAll<TeamMember>(
     `SELECT tm.*, u.name, u.email
      FROM team_members tm
      INNER JOIN users u ON tm.user_id = u.id
      WHERE tm.team_id = ?
-     ORDER BY tm.role DESC, u.name COLLATE NOCASE`
-  ).all(teamId) as TeamMember[];
+     ORDER BY tm.role DESC, u.name COLLATE NOCASE`,
+    teamId
+  );
 }
 
-export function getTeamMemberCount(teamId: string): number {
-  const db = getDb();
-  const row = db.prepare("SELECT COUNT(*) as count FROM team_members WHERE team_id = ?").get(teamId) as { count: number };
-  return row.count;
+export async function getTeamMemberCount(teamId: string): Promise<number> {
+  const row = await dbGet<{ count: number }>("SELECT COUNT(*) as count FROM team_members WHERE team_id = ?", teamId);
+  return row?.count ?? 0;
 }
 
-export function isTeamMember(teamId: string, userId: string): boolean {
-  const db = getDb();
-  const row = db.prepare("SELECT id FROM team_members WHERE team_id = ? AND user_id = ?").get(teamId, userId);
+export async function isTeamMember(teamId: string, userId: string): Promise<boolean> {
+  const row = await dbGet("SELECT id FROM team_members WHERE team_id = ? AND user_id = ?", teamId, userId);
   return !!row;
 }
 
-export function getTeamMemberRole(teamId: string, userId: string): string | null {
-  const db = getDb();
-  const row = db.prepare("SELECT role FROM team_members WHERE team_id = ? AND user_id = ?").get(teamId, userId) as { role: string } | undefined;
+export async function getTeamMemberRole(teamId: string, userId: string): Promise<string | null> {
+  const row = await dbGet<{ role: string }>("SELECT role FROM team_members WHERE team_id = ? AND user_id = ?", teamId, userId);
   return row?.role ?? null;
 }
 
-export function isTeamAdmin(teamId: string, userId: string): boolean {
-  const role = getTeamMemberRole(teamId, userId);
+export async function isTeamAdmin(teamId: string, userId: string): Promise<boolean> {
+  const role = await getTeamMemberRole(teamId, userId);
   return role === "admin" || role === "owner";
 }
 
-export function isTeamOwner(teamId: string, userId: string): boolean {
-  const team = getTeam(teamId);
+export async function isTeamOwner(teamId: string, userId: string): Promise<boolean> {
+  const team = await getTeam(teamId);
   return team?.owner_id === userId;
 }
 
-export function inviteToTeam(
+export async function inviteToTeam(
   teamId: string,
   email: string,
   role: string,
   invitedBy: string
-): TeamInvite | null {
-  const db = getDb();
+): Promise<TeamInvite | null> {
   const now = Date.now();
 
   // Check team exists
-  const team = getTeam(teamId);
+  const team = await getTeam(teamId);
   if (!team) return null;
 
   // Check inviter is admin
-  if (!isTeamAdmin(teamId, invitedBy)) return null;
+  if (!(await isTeamAdmin(teamId, invitedBy))) return null;
 
   // Check member count limit (5 for teams plan)
-  const count = getTeamMemberCount(teamId);
+  const count = await getTeamMemberCount(teamId);
   if (count >= 5) return null;
 
   // Check if already a member
-  const existingUser = db.prepare("SELECT id FROM users WHERE email = ?").get(email) as { id: string } | undefined;
-  if (existingUser && isTeamMember(teamId, existingUser.id)) return null;
+  const existingUser = await dbGet<{ id: string }>("SELECT id FROM users WHERE email = ?", email);
+  if (existingUser && await isTeamMember(teamId, existingUser.id)) return null;
 
   // Check for existing invite
-  const existingInvite = db.prepare(
-    "SELECT id FROM team_invites WHERE team_id = ? AND email = ? AND expires_at > ?"
-  ).get(teamId, email, now);
+  const existingInvite = await dbGet(
+    "SELECT id FROM team_invites WHERE team_id = ? AND email = ? AND expires_at > ?",
+    teamId, email, now
+  );
   if (existingInvite) return null;
 
   const id = randomUUID();
@@ -140,12 +137,13 @@ export function inviteToTeam(
   const tokenHash = createHash("sha256").update(token).digest("hex");
   const expiresAt = now + 7 * 24 * 60 * 60 * 1000; // 7 days
 
-  db.prepare(
+  await dbRun(
     `INSERT INTO team_invites (id, team_id, email, role, invited_by, token_hash, expires_at, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(id, teamId, email, role, invitedBy, tokenHash, expiresAt, now);
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    id, teamId, email, role, invitedBy, tokenHash, expiresAt, now
+  );
 
-  const inviter = db.prepare("SELECT name FROM users WHERE id = ?").get(invitedBy) as { name: string };
+  const inviter = await dbGet<{ name: string }>("SELECT name FROM users WHERE id = ?", invitedBy);
 
   return {
     id,
@@ -160,126 +158,122 @@ export function inviteToTeam(
   };
 }
 
-export function getTeamInvites(teamId: string): Array<{ email: string; role: string; created_at: number }> {
-  const db = getDb();
-  return db.prepare(
-    "SELECT email, role, created_at FROM team_invites WHERE team_id = ? AND expires_at > ?"
-  ).all(teamId, Date.now()) as Array<{ email: string; role: string; created_at: number }>;
+export async function getTeamInvites(teamId: string): Promise<Array<{ email: string; role: string; created_at: number }>> {
+  return await dbAll(
+    "SELECT email, role, created_at FROM team_invites WHERE team_id = ? AND expires_at > ?",
+    teamId, Date.now()
+  );
 }
 
-export function getUserInvites(userId: string): TeamInvite[] {
-  const db = getDb();
-  const user = db.prepare("SELECT email FROM users WHERE id = ?").get(userId) as { email: string } | undefined;
+export async function getUserInvites(userId: string): Promise<TeamInvite[]> {
+  const user = await dbGet<{ email: string }>("SELECT email FROM users WHERE id = ?", userId);
   if (!user) return [];
 
-  return db.prepare(
+  return await dbAll<TeamInvite>(
     `SELECT ti.*, t.name as team_name, u.name as inviter_name
      FROM team_invites ti
      INNER JOIN teams t ON ti.team_id = t.id
      INNER JOIN users u ON ti.invited_by = u.id
      WHERE ti.email = ? AND ti.expires_at > ?
-     ORDER BY ti.created_at DESC`
-  ).all(user.email, Date.now()) as TeamInvite[];
+     ORDER BY ti.created_at DESC`,
+    user.email, Date.now()
+  );
 }
 
-export function acceptInvite(inviteId: string, userId: string): boolean {
-  const db = getDb();
+export async function acceptInvite(inviteId: string, userId: string): Promise<boolean> {
   const now = Date.now();
 
-  const invite = db.prepare(
-    "SELECT * FROM team_invites WHERE id = ? AND expires_at > ?"
-  ).get(inviteId, now) as { team_id: string; email: string; role: string; invited_by: string } | undefined;
+  const invite = await dbGet<{ team_id: string; email: string; role: string; invited_by: string }>(
+    "SELECT * FROM team_invites WHERE id = ? AND expires_at > ?",
+    inviteId, now
+  );
 
   if (!invite) return false;
 
   // Verify email matches
-  const user = db.prepare("SELECT email FROM users WHERE id = ?").get(userId) as { email: string };
+  const user = await dbGet<{ email: string }>("SELECT email FROM users WHERE id = ?", userId);
   if (!user || user.email.toLowerCase() !== invite.email.toLowerCase()) return false;
 
   // Check not already a member
-  if (isTeamMember(invite.team_id, userId)) {
-    db.prepare("DELETE FROM team_invites WHERE id = ?").run(inviteId);
+  if (await isTeamMember(invite.team_id, userId)) {
+    await dbRun("DELETE FROM team_invites WHERE id = ?", inviteId);
     return true;
   }
 
   // Check member count
-  const count = getTeamMemberCount(invite.team_id);
+  const count = await getTeamMemberCount(invite.team_id);
   if (count >= 5) return false;
 
   // Add member
-  db.prepare(
+  await dbRun(
     `INSERT INTO team_members (id, team_id, user_id, role, invited_by, joined_at)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  ).run(randomUUID(), invite.team_id, userId, invite.role, invite.invited_by, now);
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    randomUUID(), invite.team_id, userId, invite.role, invite.invited_by, now
+  );
 
   // Delete invite
-  db.prepare("DELETE FROM team_invites WHERE id = ?").run(inviteId);
+  await dbRun("DELETE FROM team_invites WHERE id = ?", inviteId);
 
   return true;
 }
 
-export function removeMember(teamId: string, userId: string): boolean {
-  const db = getDb();
-
+export async function removeMember(teamId: string, userId: string): Promise<boolean> {
   // Can't remove owner
-  if (isTeamOwner(teamId, userId)) return false;
+  if (await isTeamOwner(teamId, userId)) return false;
 
-  const result = db.prepare(
-    "DELETE FROM team_members WHERE team_id = ? AND user_id = ?"
-  ).run(teamId, userId);
+  const { changes } = await dbRun(
+    "DELETE FROM team_members WHERE team_id = ? AND user_id = ?",
+    teamId, userId
+  );
 
-  return result.changes > 0;
+  return changes > 0;
 }
 
-export function leaveTeam(teamId: string, userId: string): boolean {
-  const db = getDb();
-
+export async function leaveTeam(teamId: string, userId: string): Promise<boolean> {
   // Owner must transfer ownership first
-  if (isTeamOwner(teamId, userId)) return false;
+  if (await isTeamOwner(teamId, userId)) return false;
 
-  const result = db.prepare(
-    "DELETE FROM team_members WHERE team_id = ? AND user_id = ?"
-  ).run(teamId, userId);
+  const { changes } = await dbRun(
+    "DELETE FROM team_members WHERE team_id = ? AND user_id = ?",
+    teamId, userId
+  );
 
-  return result.changes > 0;
+  return changes > 0;
 }
 
-export function deleteTeam(teamId: string, userId: string): boolean {
-  const db = getDb();
-
+export async function deleteTeam(teamId: string, userId: string): Promise<boolean> {
   // Only owner can delete
-  if (!isTeamOwner(teamId, userId)) return false;
+  if (!(await isTeamOwner(teamId, userId))) return false;
 
-  db.prepare("DELETE FROM team_invites WHERE team_id = ?").run(teamId);
-  db.prepare("DELETE FROM team_members WHERE team_id = ?").run(teamId);
-  db.prepare("DELETE FROM teams WHERE id = ?").run(teamId);
+  await dbRun("DELETE FROM team_invites WHERE team_id = ?", teamId);
+  await dbRun("DELETE FROM team_members WHERE team_id = ?", teamId);
+  await dbRun("DELETE FROM teams WHERE id = ?", teamId);
 
   return true;
 }
 
-export function updateTeamMemberRole(teamId: string, userId: string, role: string): boolean {
-  const db = getDb();
-
+export async function updateTeamMemberRole(teamId: string, userId: string, role: string): Promise<boolean> {
   // Can't change owner role
-  if (isTeamOwner(teamId, userId)) return false;
+  if (await isTeamOwner(teamId, userId)) return false;
 
-  const result = db.prepare(
-    "UPDATE team_members SET role = ? WHERE team_id = ? AND user_id = ?"
-  ).run(role, teamId, userId);
+  const { changes } = await dbRun(
+    "UPDATE team_members SET role = ? WHERE team_id = ? AND user_id = ?",
+    role, teamId, userId
+  );
 
-  return result.changes > 0;
+  return changes > 0;
 }
 
-export function getTeamClients(teamId: string): Array<{ id: string; name: string; email: string; address: string }> {
-  const db = getDb();
-  return db.prepare(
-    "SELECT id, name, email, address FROM clients WHERE team_id = ? ORDER BY name COLLATE NOCASE"
-  ).all(teamId) as Array<{ id: string; name: string; email: string; address: string }>;
+export async function getTeamClients(teamId: string): Promise<Array<{ id: string; name: string; email: string; address: string }>> {
+  return await dbAll(
+    "SELECT id, name, email, address FROM clients WHERE team_id = ? ORDER BY name COLLATE NOCASE",
+    teamId
+  );
 }
 
-export function getTeamInvoices(teamId: string): Array<{ id: string; number: string; status: string; total: number; currency: string; client_name: string; created_at: number; updated_at: number }> {
-  const db = getDb();
-  return db.prepare(
-    "SELECT id, number, status, total, currency, client_name, created_at, updated_at FROM invoices WHERE team_id = ? ORDER BY updated_at DESC"
-  ).all(teamId) as Array<{ id: string; number: string; status: string; total: number; currency: string; client_name: string; created_at: number; updated_at: number }>;
+export async function getTeamInvoices(teamId: string): Promise<Array<{ id: string; number: string; status: string; total: number; currency: string; client_name: string; created_at: number; updated_at: number }>> {
+  return await dbAll(
+    "SELECT id, number, status, total, currency, client_name, created_at, updated_at FROM invoices WHERE team_id = ? ORDER BY updated_at DESC",
+    teamId
+  );
 }

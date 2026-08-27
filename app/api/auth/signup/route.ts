@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { dbGet, dbRun } from "@/lib/db";
 import { hashPassword, rateLimit, createSession, USER_COOKIE, verificationRequired, issueToken, validatePassword } from "@/lib/server-auth";
 import { sendEmail, sendVerificationEmail } from "@/lib/email";
 
@@ -32,8 +32,7 @@ export async function POST(req: Request) {
     return Response.json({ error: pwError }, { status: 400 });
   }
 
-  const db = getDb();
-  const exists = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
+  const exists = await dbGet("SELECT id FROM users WHERE email = ?", email);
   if (exists) {
     return Response.json({ error: "An account with this email already exists." }, { status: 409 });
   }
@@ -42,15 +41,16 @@ export async function POST(req: Request) {
   const id = randomUUID();
   const isAdmin = process.env.ADMIN_EMAIL && email === process.env.ADMIN_EMAIL.toLowerCase();
   const role = isAdmin ? "superadmin" : "user";
-  db.prepare(
+  await dbRun(
     "INSERT INTO users (id, email, password_hash, name, role, email_verified, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-  ).run(id, email, hashPassword(password), name, role, required ? 0 : 1, Date.now());
+    id, email, hashPassword(password), name, role, required ? 0 : 1, Date.now()
+  );
 
-  const { token } = createSession(id);
+  const { token } = await createSession(id);
 
   if (required) {
-    const code = issueToken(id, "verify", 24 * 60 * 60e3);
-    const linkToken = issueToken(id, "verify", 24 * 60 * 60e3);
+    const code = await issueToken(id, "verify", 24 * 60 * 60e3);
+    const linkToken = await issueToken(id, "verify", 24 * 60 * 60e3);
     void sendVerificationEmail({ to: email, userId: id, code, linkToken });
   } else {
     void sendEmail({

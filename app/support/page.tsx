@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 
 export default async function SupportPage() {
   const store = await cookies();
-  const user = getUserByToken(store.get(USER_COOKIE)?.value);
+  const user = await getUserByToken(store.get(USER_COOKIE)?.value);
   if (!user) redirect("/login");
   if (user.role !== "support") redirect(user.role === "user" ? "/dashboard" : "/admin");
 

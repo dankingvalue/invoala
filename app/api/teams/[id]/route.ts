@@ -5,17 +5,17 @@ export async function DELETE(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = getSessionUser(req);
+  const user = await getSessionUser(req);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const team = getTeam(id);
+  const team = await getTeam(id);
   if (!team) return Response.json({ error: "Team not found." }, { status: 404 });
 
   const body = await req.json().catch(() => ({})) as { action?: string };
 
   if (body.action === "leave") {
-    const left = leaveTeam(id, user.id);
+    const left = await leaveTeam(id, user.id);
     if (!left) {
       return Response.json({ error: "Cannot leave. Owner must transfer ownership first." }, { status: 400 });
     }
@@ -23,7 +23,7 @@ export async function DELETE(
   }
 
   // Delete team
-  const deleted = deleteTeam(id, user.id);
+  const deleted = await deleteTeam(id, user.id);
   if (!deleted) {
     return Response.json({ error: "Only the team owner can delete the team." }, { status: 403 });
   }

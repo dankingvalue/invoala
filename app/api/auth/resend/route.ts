@@ -1,9 +1,9 @@
-import { getDb } from "@/lib/db";
+import { dbGet } from "@/lib/db";
 import { rateLimit, issueToken, getSessionUser } from "@/lib/server-auth";
 import { sendVerificationEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
-  const user = getSessionUser(req);
+  const user = await getSessionUser(req);
   if (!user) {
     return Response.json({ error: "Not signed in." }, { status: 401 });
   }
@@ -13,17 +13,17 @@ export async function POST(req: Request) {
     return Response.json({ error: "Too many requests. Try again later." }, { status: 429 });
   }
 
-  const db = getDb();
-  const row = db.prepare("SELECT email, email_verified FROM users WHERE id = ?").get(user.id) as
-    | { email: string; email_verified: number }
-    | undefined;
+  const row = await dbGet<{ email: string; email_verified: number }>(
+    "SELECT email, email_verified FROM users WHERE id = ?",
+    user.id
+  );
 
   if (!row || row.email_verified) {
     return Response.json({ ok: true });
   }
 
-  const code = issueToken(user.id, "verify", 24 * 60 * 60e3);
-  const linkToken = issueToken(user.id, "verify", 24 * 60 * 60e3);
+  const code = await issueToken(user.id, "verify", 24 * 60 * 60e3);
+  const linkToken = await issueToken(user.id, "verify", 24 * 60 * 60e3);
   void sendVerificationEmail({ to: row.email, userId: user.id, code, linkToken });
 
   return Response.json({ ok: true });

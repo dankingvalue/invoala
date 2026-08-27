@@ -1,8 +1,8 @@
-import { getDb } from "@/lib/db";
+import { dbRun } from "@/lib/db";
 import { getSessionUser } from "@/lib/server-auth";
 
 export async function PUT(req: Request) {
-  const user = getSessionUser(req);
+  const user = await getSessionUser(req);
   if (!user) {
     return Response.json({ error: "Not signed in." }, { status: 401 });
   }
@@ -15,8 +15,7 @@ export async function PUT(req: Request) {
     timezone = typeof body.timezone === "string" ? body.timezone.trim().slice(0, 50) : "";
   } catch {}
 
-  const db = getDb();
-  db.prepare("UPDATE users SET name = ?, timezone = ? WHERE id = ?").run(name, timezone, user.id);
+  await dbRun("UPDATE users SET name = ?, timezone = ? WHERE id = ?", name, timezone, user.id);
 
   return Response.json({ ok: true });
 }

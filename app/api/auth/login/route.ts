@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { dbGet } from "@/lib/db";
 import {
   clearRateLimit,
   createSession,
@@ -25,9 +25,10 @@ export async function POST(req: Request) {
     // falls through to failure
   }
 
-  const row = getDb()
-    .prepare("SELECT id, password_hash, role, email_verified FROM users WHERE email = ?")
-    .get(email) as { id: string; password_hash: string; role: string; email_verified: number } | undefined;
+  const row = await dbGet<{ id: string; password_hash: string; role: string; email_verified: number }>(
+    "SELECT id, password_hash, role, email_verified FROM users WHERE email = ?",
+    email
+  );
 
   if (!row || !verifyPassword(password, row.password_hash)) {
     return Response.json({ error: "Invalid email or password." }, { status: 401 });
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
   }
 
   clearRateLimit(`login:${ip}`);
-  const { token } = createSession(row.id);
+  const { token } = await createSession(row.id);
   const res = NextResponse.json({ ok: true, role: row.role });
   res.cookies.set(USER_COOKIE, token, {
     httpOnly: true,

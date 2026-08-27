@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { getDb } from "@/lib/db";
+import { dbGet, dbRun } from "@/lib/db";
 import { createSession, USER_COOKIE } from "@/lib/server-auth";
 
 export async function GET(req: Request) {
@@ -45,31 +45,31 @@ export async function GET(req: Request) {
     if (!userinfoRes.ok) throw new Error("userinfo failed");
     const profile = (await userinfoRes.json()) as { id: string; email: string; name: string };
 
-    const db = getDb();
-    const existing = db.prepare("SELECT id, email_verified FROM users WHERE google_id = ? OR email = ?").get(
-      profile.id,
-      profile.email,
-    ) as { id: string; email_verified: number } | undefined;
+    const existing = await dbGet<{ id: string; email_verified: number }>(
+      "SELECT id, email_verified FROM users WHERE google_id = ? OR email = ?",
+      profile.id, profile.email
+    );
 
     let userId: string;
     if (existing) {
       userId = existing.id;
       if (!existing.email_verified) {
-        db.prepare("UPDATE users SET email_verified = 1, google_id = ? WHERE id = ?").run(profile.id, userId);
+        await dbRun("UPDATE users SET email_verified = 1, google_id = ? WHERE id = ?", profile.id, userId);
       }
-      if (!db.prepare("SELECT google_id FROM users WHERE id = ? AND google_id IS NOT NULL").get(userId)) {
-        db.prepare("UPDATE users SET google_id = ? WHERE id = ?").run(profile.id, userId);
+      if (!(await dbGet("SELECT google_id FROM users WHERE id = ? AND google_id IS NOT NULL", userId))) {
+        await dbRun("UPDATE users SET google_id = ? WHERE id = ?", profile.id, userId);
       }
     } else {
       userId = randomUUID();
       const isAdmin = process.env.ADMIN_EMAIL && profile.email === process.env.ADMIN_EMAIL.toLowerCase();
       const role = isAdmin ? "superadmin" : "user";
-      db.prepare(
+      await dbRun(
         "INSERT INTO users (id, email, password_hash, name, role, email_verified, google_id, created_at) VALUES (?, ?, '', ?, ?, 1, ?, ?)",
-      ).run(userId, profile.email, role, profile.name || profile.email.split("@")[0], profile.id, Date.now());
+        userId, profile.email, role, profile.name || profile.email.split("@")[0], profile.id, Date.now()
+      );
     }
 
-    const { token } = createSession(userId);
+    const { token } = await createSession(userId);
     const res = NextResponse.redirect(new URL("/dashboard", req.url));
     res.cookies.set(USER_COOKIE, token, {
       httpOnly: true,

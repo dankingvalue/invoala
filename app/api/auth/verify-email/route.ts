@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { dbRun } from "@/lib/db";
 import { consumeToken, createSession, USER_COOKIE } from "@/lib/server-auth";
 
 export async function GET(req: Request) {
@@ -10,15 +10,14 @@ export async function GET(req: Request) {
     return NextResponse.redirect(new URL("/verify?error=invalid", req.url));
   }
 
-  const result = consumeToken(token, "verify");
+  const result = await consumeToken(token, "verify");
   if (!result) {
     return NextResponse.redirect(new URL("/verify?error=expired", req.url));
   }
 
-  const db = getDb();
-  db.prepare("UPDATE users SET email_verified = 1 WHERE id = ?").run(result.userId);
+  await dbRun("UPDATE users SET email_verified = 1 WHERE id = ?", result.userId);
 
-  const { token: sessionToken } = createSession(result.userId);
+  const { token: sessionToken } = await createSession(result.userId);
   const res = NextResponse.redirect(new URL("/dashboard?verified=1", req.url));
   res.cookies.set(USER_COOKIE, sessionToken, {
     httpOnly: true,

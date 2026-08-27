@@ -1,12 +1,12 @@
 import { randomUUID } from "crypto";
 import { getSessionUser } from "@/lib/server-auth";
-import { getDb } from "@/lib/db";
+import { dbAll } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 
 const MAX_BATCH = 1000;
 
 export async function POST(req: Request) {
-  const admin = getSessionUser(req);
+  const admin = await getSessionUser(req);
   if (!admin || !["superadmin", "admin", "support"].includes(admin.role)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -37,7 +37,6 @@ export async function POST(req: Request) {
     return Response.json({ error: "Message is required (max 10,000 chars)." }, { status: 400 });
   }
 
-  const db = getDb();
   let recipients: string[] = [];
 
   if (audience === "one") {
@@ -53,9 +52,9 @@ export async function POST(req: Request) {
     if (!["all", "pro", "free"].includes(audience)) {
       return Response.json({ error: "Unknown audience." }, { status: 400 });
     }
-    const rows = db
-      .prepare(`SELECT u.email FROM users u ${filter} LIMIT ${MAX_BATCH}`)
-      .all() as Array<{ email: string }>;
+    const rows = await dbAll<{ email: string }>(
+      `SELECT u.email FROM users u ${filter} LIMIT ${MAX_BATCH}`
+    );
     recipients = rows.map((r) => r.email);
   }
 

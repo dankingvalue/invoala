@@ -1,4 +1,4 @@
-import { getDb } from "@/lib/db";
+import { dbGet } from "@/lib/db";
 import { rateLimit, issueToken } from "@/lib/server-auth";
 import { sendPasswordResetEmail } from "@/lib/email";
 
@@ -20,11 +20,10 @@ export async function POST(req: Request) {
     return Response.json({ ok: true });
   }
 
-  const db = getDb();
-  const row = db.prepare("SELECT id FROM users WHERE email = ?").get(email) as { id: string } | undefined;
+  const row = await dbGet<{ id: string }>("SELECT id FROM users WHERE email = ?", email);
 
   if (row) {
-    const token = issueToken(row.id, "reset", 60 * 60e3);
+    const token = await issueToken(row.id, "reset", 60 * 60e3);
     void sendPasswordResetEmail({ to: email, token });
   }
 

@@ -1,4 +1,4 @@
-import { getDb } from "@/lib/db";
+import { dbGet } from "@/lib/db";
 import { rateLimit, issueToken, verificationRequired } from "@/lib/server-auth";
 import { sendMagicLinkEmail } from "@/lib/email";
 
@@ -20,16 +20,16 @@ export async function POST(req: Request) {
     return Response.json({ error: "Please enter a valid email address." }, { status: 400 });
   }
 
-  const db = getDb();
-  const row = db.prepare("SELECT id, email_verified FROM users WHERE email = ?").get(email) as
-    | { id: string; email_verified: number }
-    | undefined;
+  const row = await dbGet<{ id: string; email_verified: number }>(
+    "SELECT id, email_verified FROM users WHERE email = ?",
+    email
+  );
 
   if (!row || (verificationRequired() && !row.email_verified)) {
     return Response.json({ ok: true });
   }
 
-  const token = issueToken(row.id, "magic", 15 * 60e3);
+  const token = await issueToken(row.id, "magic", 15 * 60e3);
   void sendMagicLinkEmail({ to: email, token });
 
   return Response.json({ ok: true });

@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
   const store = await cookies();
-  const user = getUserByToken(store.get(USER_COOKIE)?.value);
+  const user = await getUserByToken(store.get(USER_COOKIE)?.value);
   if (!user) redirect("/login");
   if (!["superadmin", "admin"].includes(user.role)) {
     if (user.role === "support") redirect("/support");

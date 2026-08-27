@@ -24,10 +24,10 @@ export default async function DashboardPage({
   if (!user) redirect("/login");
 
   const params = await searchParams;
-  const invoices = listInvoices(user.id);
-  const clients = listClients(user.id);
-  const subscription = getSubscription(user.id);
-  const pro = isUserPro(user.id, user.role);
+  const invoices = await listInvoices(user.id);
+  const clients = await listClients(user.id);
+  const subscription = await getSubscription(user.id);
+  const pro = await isUserPro(user.id, user.role);
 
   return (
     <div className="min-h-screen bg-[#f3f4f6]">

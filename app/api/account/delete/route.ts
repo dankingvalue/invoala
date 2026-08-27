@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { dbRun } from "@/lib/db";
 import { getSessionUser, destroyAllSessions } from "@/lib/server-auth";
 
 export async function POST(req: Request) {
-  const user = getSessionUser(req);
+  const user = await getSessionUser(req);
   if (!user) {
     return Response.json({ error: "Not signed in." }, { status: 401 });
   }
@@ -18,9 +18,8 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Type DELETE to confirm.' }, { status: 400 });
   }
 
-  const db = getDb();
-  db.prepare("DELETE FROM users WHERE id = ?").run(user.id);
-  destroyAllSessions(user.id);
+  await dbRun("DELETE FROM users WHERE id = ?", user.id);
+  await destroyAllSessions(user.id);
 
   const res = NextResponse.json({ ok: true });
   res.cookies.delete("invoala_session");

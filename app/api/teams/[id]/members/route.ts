@@ -6,15 +6,15 @@ export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = getSessionUser(req);
+  const user = await getSessionUser(req);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const team = getTeam(id);
+  const team = await getTeam(id);
   if (!team) return Response.json({ error: "Team not found." }, { status: 404 });
 
-  const members = getTeamMembers(id);
-  const count = getTeamMemberCount(id);
+  const members = await getTeamMembers(id);
+  const count = await getTeamMemberCount(id);
 
   return Response.json({ members, count, maxMembers: 5 });
 }
@@ -23,14 +23,14 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = getSessionUser(req);
+  const user = await getSessionUser(req);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const team = getTeam(id);
+  const team = await getTeam(id);
   if (!team) return Response.json({ error: "Team not found." }, { status: 404 });
 
-  if (!isTeamAdmin(id, user.id)) {
+  if (!(await isTeamAdmin(id, user.id))) {
     return Response.json({ error: "Only team admins can invite members." }, { status: 403 });
   }
 
@@ -52,12 +52,12 @@ export async function POST(
     return Response.json({ error: "Invalid role." }, { status: 400 });
   }
 
-  const count = getTeamMemberCount(id);
+  const count = await getTeamMemberCount(id);
   if (count >= 5) {
     return Response.json({ error: "Team is full (max 5 members)." }, { status: 400 });
   }
 
-  const invite = inviteToTeam(id, email, role, user.id);
+  const invite = await inviteToTeam(id, email, role, user.id);
   if (!invite) {
     return Response.json({ error: "Could not create invite. User may already be a member." }, { status: 400 });
   }
@@ -72,14 +72,14 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = getSessionUser(req);
+  const user = await getSessionUser(req);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const team = getTeam(id);
+  const team = await getTeam(id);
   if (!team) return Response.json({ error: "Team not found." }, { status: 404 });
 
-  if (!isTeamAdmin(id, user.id)) {
+  if (!(await isTeamAdmin(id, user.id))) {
     return Response.json({ error: "Only team admins can update members." }, { status: 403 });
   }
 
@@ -101,7 +101,7 @@ export async function PATCH(
     return Response.json({ error: "Invalid role." }, { status: 400 });
   }
 
-  const updated = updateTeamMemberRole(id, userId, role);
+  const updated = await updateTeamMemberRole(id, userId, role);
   if (!updated) {
     return Response.json({ error: "Could not update member." }, { status: 400 });
   }
@@ -113,14 +113,14 @@ export async function DELETE(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = getSessionUser(req);
+  const user = await getSessionUser(req);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const team = getTeam(id);
+  const team = await getTeam(id);
   if (!team) return Response.json({ error: "Team not found." }, { status: 404 });
 
-  if (!isTeamAdmin(id, user.id)) {
+  if (!(await isTeamAdmin(id, user.id))) {
     return Response.json({ error: "Only team admins can remove members." }, { status: 403 });
   }
 
@@ -136,7 +136,7 @@ export async function DELETE(
     return Response.json({ error: "userId is required." }, { status: 400 });
   }
 
-  const removed = removeMember(id, userId);
+  const removed = await removeMember(id, userId);
   if (!removed) {
     return Response.json({ error: "Could not remove member. Owner cannot be removed." }, { status: 400 });
   }

@@ -1,4 +1,4 @@
-import { getDb } from "@/lib/db";
+import { dbRun } from "@/lib/db";
 import { consumeToken, hashPassword, destroyAllSessions, validatePassword } from "@/lib/server-auth";
 
 export async function POST(req: Request) {
@@ -18,14 +18,13 @@ export async function POST(req: Request) {
     return Response.json({ error: pwError }, { status: 400 });
   }
 
-  const result = consumeToken(token, "reset");
+  const result = await consumeToken(token, "reset");
   if (!result) {
     return Response.json({ error: "This link has expired or is invalid." }, { status: 400 });
   }
 
-  const db = getDb();
-  db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hashPassword(password), result.userId);
-  destroyAllSessions(result.userId);
+  await dbRun("UPDATE users SET password_hash = ? WHERE id = ?", hashPassword(password), result.userId);
+  await destroyAllSessions(result.userId);
 
   return Response.json({ ok: true });
 }

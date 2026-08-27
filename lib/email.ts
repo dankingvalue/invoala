@@ -1,5 +1,5 @@
 import { createHmac, randomUUID, timingSafeEqual } from "crypto";
-import { getDb } from "@/lib/db";
+import { dbRun } from "@/lib/db";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
@@ -39,11 +39,10 @@ export async function sendEmail(opts: {
   }
 
   try {
-    getDb()
-      .prepare(
-        "INSERT INTO email_log (id, to_email, subject, provider, status, error, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      )
-      .run(randomUUID(), opts.to, opts.subject, apiKey ? "resend" : "console", status, error ?? null, Date.now());
+    await dbRun(
+      "INSERT INTO email_log (id, to_email, subject, provider, status, error, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      randomUUID(), opts.to, opts.subject, apiKey ? "resend" : "console", status, error ?? null, Date.now()
+    );
   } catch {
     // logging must never break the request
   }

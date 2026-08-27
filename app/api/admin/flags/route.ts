@@ -4,13 +4,13 @@ import { getFlags, sanitizeFlagsInput, setFlags } from "@/lib/flags.server";
 const ADMIN_ROLES = ["superadmin", "admin", "support"];
 
 export async function GET(req: Request) {
-  const user = getSessionUser(req);
+  const user = await getSessionUser(req);
   if (!hasAdminRole(user)) return Response.json({ error: "Unauthorized" }, { status: 401 });
   return Response.json(await getFlags());
 }
 
 export async function PUT(req: Request) {
-  const user = getSessionUser(req);
+  const user = await getSessionUser(req);
   if (!hasAdminRole(user)) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: unknown;
@@ -30,6 +30,6 @@ export async function PUT(req: Request) {
   return Response.json({ ok: true, ...state });
 }
 
-function hasAdminRole(user: ReturnType<typeof getSessionUser>): boolean {
+function hasAdminRole(user: { role: string } | null): boolean {
   return !!user && ADMIN_ROLES.includes(user.role);
 }

@@ -13,13 +13,13 @@ function isValidInvoice(v: unknown): v is Invoice {
 }
 
 export async function GET(req: Request) {
-  const user = getSessionUser(req);
+  const user = await getSessionUser(req);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  return Response.json({ invoices: listInvoices(user.id) });
+  return Response.json({ invoices: await listInvoices(user.id) });
 }
 
 export async function PUT(req: Request) {
-  const user = getSessionUser(req);
+  const user = await getSessionUser(req);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: {
@@ -38,7 +38,7 @@ export async function PUT(req: Request) {
       return Response.json({ error: "Invalid status." }, { status: 400 });
     }
     try {
-      upsertInvoice(user.id, {} as Invoice, { id: body.id, status: body.status });
+      await upsertInvoice(user.id, {} as Invoice, { id: body.id, status: body.status });
       return Response.json({ ok: true, id: body.id });
     } catch {
       return Response.json({ error: "Invoice not found." }, { status: 404 });
@@ -50,7 +50,7 @@ export async function PUT(req: Request) {
   }
 
   try {
-    const result = upsertInvoice(user.id, body.invoice, { id: body.id });
+    const result = await upsertInvoice(user.id, body.invoice, { id: body.id });
     return Response.json({ ok: true, ...result });
   } catch (err) {
     if (err instanceof Error && err.message === "not-found") {

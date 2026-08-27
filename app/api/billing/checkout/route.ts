@@ -4,7 +4,7 @@ import { createTeam, getUserTeams } from "@/lib/teams";
 import { sendEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
-  const user = getSessionUser(req);
+  const user = await getSessionUser(req);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   let plan = "";
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
   // Check if user already has a team for teams plan
   if (isTeamsPlan) {
-    const teams = getUserTeams(user.id);
+    const teams = await getUserTeams(user.id);
     if (teams.length >= 3) {
       return Response.json({ error: "Maximum 3 teams per user." }, { status: 400 });
     }
@@ -34,12 +34,12 @@ export async function POST(req: Request) {
   if (!stripeKey) {
     // Dev billing: no Stripe configured — activate instantly so the full
     // subscription lifecycle (renewal, cancel) stays testable.
-    const sub = activateDevSubscription(user.id, plan);
+    const sub = await activateDevSubscription(user.id, plan);
 
     // Auto-create team for teams plans
     let team = null;
     if (isTeamsPlan) {
-      team = createTeam(user.id, `${user.name || user.email}'s Team`);
+      team = await createTeam(user.id, `${user.name || user.email}'s Team`);
     }
 
     void sendEmail({

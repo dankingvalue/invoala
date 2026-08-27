@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     const userId = String(object.client_reference_id || metadata.userId || "");
     const plan = metadata.plan;
     if (userId && isPlan(plan)) {
-      activateStripeSubscription({
+      await activateStripeSubscription({
         userId,
         plan,
         customerId: typeof object.customer === "string" ? object.customer : null,
@@ -33,12 +33,12 @@ export async function POST(req: Request) {
 
       // Auto-create team for teams plans
       if (plan.startsWith("teams_") && metadata.createTeam === "true") {
-        const existingTeams = getUserTeams(userId);
+        const existingTeams = await getUserTeams(userId);
         if (existingTeams.length < 3) {
-          const { getDb } = await import("@/lib/db");
-          const user = getDb().prepare("SELECT name, email FROM users WHERE id = ?").get(userId) as { name: string; email: string } | undefined;
+          const { dbGet } = await import("@/lib/db");
+          const user = await dbGet<{ name: string; email: string }>("SELECT name, email FROM users WHERE id = ?", userId);
           if (user) {
-            createTeam(userId, `${user.name || user.email}'s Team`);
+            await createTeam(userId, `${user.name || user.email}'s Team`);
           }
         }
       }
@@ -49,16 +49,18 @@ export async function POST(req: Request) {
     const subscriptionId =
       typeof object.subscription === "string" ? object.subscription : null;
     if (subscriptionId) {
-      const { getDb } = await import("@/lib/db");
+      const { dbGet, dbRun } = await import("@/lib/db");
       const lines = (object.lines as { data?: Array<{ price?: unknown }> })?.data ?? [];
       const periodEnd = (object.period_end as number | undefined) ?? undefined;
-      const row = getDb()
-        .prepare("SELECT id FROM subscriptions WHERE stripe_subscription_id = ?")
-        .get(subscriptionId) as { id: string } | undefined;
+      const row = await dbGet<{ id: string }>(
+        "SELECT id FROM subscriptions WHERE stripe_subscription_id = ?",
+        subscriptionId
+      );
       if (row && periodEnd) {
-        getDb()
-          .prepare("UPDATE subscriptions SET status='active', current_period_end=?, updated_at=? WHERE id=?")
-          .run(periodEnd * 1000, Date.now(), row.id);
+        await dbRun(
+          "UPDATE subscriptions SET status='active', current_period_end=?, updated_at=? WHERE id=?",
+          periodEnd * 1000, Date.now(), row.id
+        );
       }
       void lines;
     }
@@ -67,10 +69,11 @@ export async function POST(req: Request) {
   if (event.type === "customer.subscription.deleted") {
     const subscriptionId = typeof object.id === "string" ? object.id : "";
     if (subscriptionId) {
-      const { getDb } = await import("@/lib/db");
-      getDb()
-        .prepare("UPDATE subscriptions SET status='canceled', updated_at=? WHERE stripe_subscription_id=?")
-        .run(Date.now(), subscriptionId);
+      const { dbRun } = await import("@/lib/db");
+      await dbRun(
+        "UPDATE subscriptions SET status='canceled', updated_at=? WHERE stripe_subscription_id=?",
+        Date.now(), subscriptionId
+      );
     }
   }
 
