@@ -49,7 +49,17 @@ export async function POST(req: Request) {
   }
 
   if (verificationRequired() && !emailVerified) {
-    return Response.json({ error: "Please verify your email first.", needsVerification: true }, { status: 403 });
+    clearRateLimit(`login:${ip}`);
+    const { token } = await createSession(row.id);
+    const res = NextResponse.json({ error: "Please verify your email first.", needsVerification: true }, { status: 403 });
+    res.cookies.set(USER_COOKIE, token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 30 * 24 * 60 * 60,
+    });
+    return res;
   }
 
   clearRateLimit(`login:${ip}`);
