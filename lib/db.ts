@@ -132,6 +132,25 @@ function ensureSchema(db: Database.Database) {
     );
     CREATE INDEX IF NOT EXISTS idx_tokens_hash ON tokens(token_hash);
     CREATE INDEX IF NOT EXISTS idx_tokens_user ON tokens(user_id);
+    CREATE TABLE IF NOT EXISTS conversations (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      status TEXT NOT NULL DEFAULT 'ai',
+      subject TEXT NOT NULL DEFAULT '',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id);
+    CREATE INDEX IF NOT EXISTS idx_conversations_status ON conversations(status);
+    CREATE TABLE IF NOT EXISTS messages (
+      id TEXT PRIMARY KEY,
+      conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+      sender_type TEXT NOT NULL,
+      sender_id TEXT,
+      content TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id, created_at);
   `);
 }
 
@@ -159,6 +178,30 @@ function migrate(db: Database.Database) {
     const invoiceCols = db.pragma("table_info(invoices)") as Array<{ name: string }>;
     const invoiceNames = new Set(invoiceCols.map((c) => c.name));
     if (!invoiceNames.has("team_id")) db.exec("ALTER TABLE invoices ADD COLUMN team_id TEXT");
+  }
+
+  if (!tableNames.has("conversations")) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS conversations (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status TEXT NOT NULL DEFAULT 'ai',
+        subject TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id);
+      CREATE INDEX IF NOT EXISTS idx_conversations_status ON conversations(status);
+      CREATE TABLE IF NOT EXISTS messages (
+        id TEXT PRIMARY KEY,
+        conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+        sender_type TEXT NOT NULL,
+        sender_id TEXT,
+        content TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id, created_at);
+    `);
   }
 }
 

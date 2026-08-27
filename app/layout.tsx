@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { LiveChat } from "@/components/LiveChat";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://invoala.com"),
@@ -42,7 +43,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="min-h-full bg-white text-ink">{children}</body>
+      <body className="min-h-full bg-white text-ink">
+        {children}
+        <LiveChat />
+      </body>
     </html>
   );
 }

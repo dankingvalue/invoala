@@ -22,7 +22,7 @@ type Props = {
   initialTab?: string;
 };
 
-type Tab = "general" | "documents" | "clients" | "teams" | "billing" | "security";
+type Tab = "general" | "documents" | "clients" | "teams" | "billing" | "security" | "messages";
 
 const STATUS_STYLES: Record<string, string> = {
   draft: "bg-fog text-subtle",
@@ -139,6 +139,15 @@ const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
         <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </svg>
+    ),
+  },
+  {
+    key: "messages",
+    label: "Messages",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
       </svg>
     ),
   },
@@ -1192,8 +1201,94 @@ export function DashboardClient({
               </section>
             </div>
           )}
+
+          {tab === "messages" && (
+            <UserMessagesTab />
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function UserMessagesTab() {
+  const [conversations, setConversations] = useState<Array<{
+    id: string;
+    status: string;
+    subject: string;
+    last_message: string;
+    last_sender: string;
+    unread_count: number;
+    updated_at: number;
+  }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/conversations")
+      .then((r) => r.json())
+      .then((d) => { setConversations(d.conversations || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return <p className="text-[13px] text-[#6b7280]">Loading messages...</p>;
+  }
+
+  if (conversations.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#f0fdf4]">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#166534" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+        </div>
+        <p className="text-[14px] font-medium text-ink">No messages yet</p>
+        <p className="mt-1 text-[13px] text-[#6b7280]">
+          Use the chat button in the bottom-right corner to start a conversation.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {conversations.map((conv) => (
+        <div
+          key={conv.id}
+          className="rounded-lg border border-[#e5e7eb] p-4"
+        >
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <p className="text-[14px] font-medium text-ink">{conv.subject}</p>
+                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                  conv.status === "escalated"
+                    ? "bg-[#fef3c7] text-[#92400e]"
+                    : conv.status === "support"
+                      ? "bg-[#dbeafe] text-[#1e40af]"
+                      : conv.status === "resolved"
+                        ? "bg-[#dcfce7] text-[#166534]"
+                        : "bg-[#f3f4f6] text-[#6b7280]"
+                }`}>
+                  {conv.status === "ai" ? "AI Support" : conv.status === "escalated" ? "Waiting for support" : conv.status === "support" ? "Human Support" : "Resolved"}
+                </span>
+                {conv.unread_count > 0 && (
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#166534] text-[10px] font-bold text-white">
+                    {conv.unread_count}
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 line-clamp-2 text-[13px] text-[#6b7280]">
+                {conv.last_sender === "user" ? "You: " : conv.last_sender === "support" ? "Support: " : "AI: "}
+                {conv.last_message}
+              </p>
+            </div>
+            <p className="text-[12px] text-[#6b7280]">
+              {new Date(conv.updated_at).toLocaleDateString()}
+            </p>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
