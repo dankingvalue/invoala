@@ -24,7 +24,7 @@ export async function POST(req: Request) {
 
   if (row) {
     const token = await issueToken(row.id, "reset", 60 * 60e3);
-    void sendPasswordResetEmail({ to: email, token });
+    await sendPasswordResetEmail({ to: email, token });
   }
 
   return Response.json({ ok: true });

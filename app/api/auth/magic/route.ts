@@ -30,7 +30,7 @@ export async function POST(req: Request) {
   }
 
   const token = await issueToken(row.id, "magic", 15 * 60e3);
-  void sendMagicLinkEmail({ to: email, token });
+  await sendMagicLinkEmail({ to: email, token });
 
   return Response.json({ ok: true });
 }

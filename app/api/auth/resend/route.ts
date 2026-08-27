@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   }
 
   const { code, linkToken } = await issueVerifyTokens(user.id, 24 * 60 * 60e3);
-  void sendVerificationEmail({ to: row.email, userId: user.id, code, linkToken });
+  await sendVerificationEmail({ to: row.email, userId: user.id, code, linkToken });
 
   return Response.json({ ok: true });
 }

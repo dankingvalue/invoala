@@ -51,9 +51,9 @@ export async function POST(req: Request) {
 
   if (required) {
     const { code, linkToken } = await issueVerifyTokens(id, 24 * 60 * 60e3);
-    void sendVerificationEmail({ to: email, userId: id, code, linkToken });
+    await sendVerificationEmail({ to: email, userId: id, code, linkToken });
   } else {
-    void sendWelcomeEmail({ to: email, name });
+    await sendWelcomeEmail({ to: email, name });
   }
 
   const res = NextResponse.json({ ok: true, role: "user", needsVerification: required });
