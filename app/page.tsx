@@ -129,7 +129,7 @@ export default async function Home() {
         </Reveal>
         <Reveal delay={100}>
           <p className="mx-auto mt-6 max-w-[640px] text-[19px] font-medium leading-relaxed text-subtle md:text-[21px]">
-            The free invoice generator for freelancers. Build a beautiful
+            Voilà — now invoices are simple to make. Build a beautiful
             invoice and download a polished PDF in seconds.
           </p>
         </Reveal>
