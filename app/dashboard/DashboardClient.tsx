@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import type { InvoiceRow, ClientRow } from "@/lib/data";
 import type { Subscription } from "@/lib/billing";
-import { formatMoney } from "@/lib/invoice";
+import { formatMoney, type Invoice, type LineItem } from "@/lib/invoice";
 
 type Props = {
   userId: string;
@@ -266,6 +266,23 @@ export function DashboardClient({
       localStorage.setItem("invoala.edit", JSON.stringify({ id: row.id, invoice: row.data }));
     } catch {}
     router.push("/#generate");
+  }
+
+  function makeReceipt(row: InvoiceRow) {
+    const data = row.data as Partial<Invoice> & { items?: LineItem[] };
+    const receipt = {
+      ...(typeof row.data === "object" && row.data ? row.data : {}),
+      docType: "receipt",
+      invoiceNumber: `RCPT-${String(row.number || "").replace(/^INV-?/i, "") || row.number || "001"}`,
+      issueDate: new Date().toISOString().slice(0, 10),
+      dueDate: new Date().toISOString().slice(0, 10),
+      notes: `Receipt for payment of invoice #${row.number || ""}. Thanks for your business!`,
+      items: Array.isArray(data.items) ? data.items : [],
+    };
+    try {
+      localStorage.setItem("invoala.edit", JSON.stringify({ invoice: receipt }));
+    } catch {}
+    router.push("/receipt-generator");
   }
 
   async function shareInvoice(row: InvoiceRow) {
@@ -708,6 +725,16 @@ export function DashboardClient({
                               >
                                 {NEXT_STATUS[row.status]}
                               </button>
+                              {row.status === "paid" ? (
+                                <button
+                                  type="button"
+                                  onClick={() => makeReceipt(row)}
+                                  className="text-[#166534] hover:underline"
+                                  title="Generate a receipt for this payment"
+                                >
+                                  Receipt
+                                </button>
+                              ) : null}
                               <button
                                 type="button"
                                 onClick={() => editInvoice(row)}
