@@ -1,7 +1,9 @@
 import {
   computeTotals,
+  docTitle,
   formatDate,
   formatMoney,
+  themeColor,
   type Invoice,
 } from "@/lib/invoice";
 
@@ -17,12 +19,15 @@ export function InvoicePreview({
   invoice: Invoice;
   innerRef?: React.RefObject<HTMLDivElement | null>;
 }) {
-  const { subtotal, taxAmount, total, discountAmount } = computeTotals(invoice);
+  const { subtotal, taxAmount, total, discountAmount, shipping } = computeTotals(invoice);
   const businessName = invoice.businessName.trim() || "Your Company";
   const clientName = invoice.clientName.trim() || "Client Name";
-  const isQuote = invoice.docType === "quote";
-  const docTitle = isQuote ? "Quote" : "Invoice";
-  const dueLabel = isQuote ? "Valid until" : "Due";
+  const accent = themeColor(invoice.theme);
+  const isQuote = invoice.docType === "quote" || invoice.docType === "estimate";
+  const isReceipt = invoice.docType === "receipt";
+  const docTitleText = docTitle(invoice.docType);
+  const dueLabel = isQuote ? "Valid until" : isReceipt ? "Received" : "Due";
+  const metaLabel = isReceipt ? "Receipt #" : `${docTitleText} #`;
 
   return (
     <div
@@ -53,20 +58,25 @@ export function InvoicePreview({
         <div className="shrink-0 text-right">
           <p
             className="text-[28px] font-semibold uppercase leading-none tracking-tight"
-            style={{ color: ink }}
+            style={{ color: accent }}
           >
-            {docTitle}
+            {docTitleText}
           </p>
+          {isReceipt && total > 0 ? (
+            <p className="mt-2 inline-block rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white" style={{ background: accent }}>
+              Paid
+            </p>
+          ) : null}
           <table className="mt-4 text-xs" style={{ color: subtle }}>
             <tbody>
               <tr>
-                <td className="pr-4 pb-1 text-right">Invoice #</td>
+                <td className="pr-4 pb-1 text-right">{metaLabel}</td>
                 <td className="pb-1 font-medium" style={{ color: ink }}>
                   {invoice.invoiceNumber || "—"}
                 </td>
               </tr>
               <tr>
-                <td className="pr-4 pb-1 text-right">Issued</td>
+                <td className="pr-4 pb-1 text-right">{isReceipt ? "Date paid" : "Issued"}</td>
                 <td className="pb-1 font-medium" style={{ color: ink }}>
                   {formatDate(invoice.issueDate) || "—"}
                 </td>
@@ -74,7 +84,7 @@ export function InvoicePreview({
               <tr>
                 <td className="pr-4 text-right">{dueLabel}</td>
                 <td className="font-medium" style={{ color: ink }}>
-                  {formatDate(invoice.dueDate) || "—"}
+                  {isReceipt ? formatDate(invoice.dueDate) || formatDate(invoice.issueDate) || "—" : formatDate(invoice.dueDate) || "—"}
                 </td>
               </tr>
             </tbody>
@@ -84,7 +94,7 @@ export function InvoicePreview({
 
       <div className="mt-10">
         <p className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: faint }}>
-          Billed to
+          {isReceipt ? "Received from" : "Billed to"}
         </p>
         <p className="mt-1.5 text-sm font-semibold" style={{ color: ink }}>
           {clientName}
@@ -102,7 +112,7 @@ export function InvoicePreview({
 
       <table className="mt-10 w-full text-left text-xs">
         <thead>
-          <tr className="border-b" style={{ borderColor: subtle }}>
+          <tr className="border-b" style={{ borderColor: accent }}>
             <th className="pb-2 font-semibold uppercase tracking-wider" style={{ color: subtle }}>
               Description
             </th>
@@ -158,6 +168,16 @@ export function InvoicePreview({
                 </td>
               </tr>
             ) : null}
+            {shipping > 0 ? (
+              <tr>
+                <td className="pb-1.5" style={{ color: subtle }}>
+                  Shipping
+                </td>
+                <td className="pb-1.5 text-right tabular-nums" style={{ color: ink }}>
+                  {formatMoney(shipping, invoice.currency)}
+                </td>
+              </tr>
+            ) : null}
             <tr>
               <td className="pb-1.5" style={{ color: subtle }}>
                 Tax ({invoice.taxRate}%)
@@ -186,6 +206,45 @@ export function InvoicePreview({
           >
             {invoice.recurring.charAt(0).toUpperCase() + invoice.recurring.slice(1)}
           </p>
+        </div>
+      ) : null}
+
+      {(invoice.customFields ?? []).filter((f) => f.label.trim() || f.value.trim()).length > 0 ? (
+        <div className="mt-8 grid grid-cols-2 gap-x-6 gap-y-2 border-t pt-5" style={{ borderColor: hairline }}>
+          {(invoice.customFields ?? [])
+            .filter((f) => f.label.trim() || f.value.trim())
+            .map((f) => (
+              <div key={f.id}>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: faint }}>
+                  {f.label.trim() || "Field"}
+                </p>
+                <p className="mt-0.5 text-xs whitespace-pre-line" style={{ color: ink }}>
+                  {f.value.trim() || "—"}
+                </p>
+              </div>
+            ))}
+        </div>
+      ) : null}
+
+      {invoice.paymentInstructions ? (
+        <div className="mt-8 border-t pt-5" style={{ borderColor: hairline }}>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: faint }}>
+            How to pay
+          </p>
+          <p className="mt-1.5 whitespace-pre-line text-xs leading-relaxed" style={{ color: subtle }}>
+            {invoice.paymentInstructions}
+          </p>
+          {invoice.paymentLink ? (
+            <a
+              href={invoice.paymentLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-block rounded-full px-5 py-2 text-xs font-semibold text-white"
+              style={{ background: accent }}
+            >
+              Pay online
+            </a>
+          ) : null}
         </div>
       ) : null}
 

@@ -3,7 +3,10 @@
 import { useState, type ChangeEvent } from "react";
 import {
   CURRENCIES,
+  DOC_TYPES,
+  newId,
   RECURRING_OPTIONS,
+  THEMES,
   type Invoice,
   type LineItem,
 } from "@/lib/invoice";
@@ -85,19 +88,19 @@ export function InvoiceForm({
       {showQuoteMode ? (
         <section>
           <h3 className="mb-3 text-lg font-semibold tracking-tight text-ink">Document type</h3>
-          <div className="inline-flex rounded-full bg-fog p-1">
-            {(["invoice", "quote"] as const).map((t) => (
+          <div className="flex flex-wrap gap-1 rounded-full bg-fog p-1 sm:inline-flex">
+            {DOC_TYPES.map((t) => (
               <button
-                key={t}
+                key={t.value}
                 type="button"
-                onClick={() => onChange({ docType: t })}
-                className={`rounded-full px-5 py-2 text-sm font-medium capitalize transition ${
-                  invoice.docType === t
+                onClick={() => onChange({ docType: t.value })}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                  invoice.docType === t.value
                     ? "bg-white text-ink shadow-sm"
                     : "text-subtle hover:text-ink"
                 }`}
               >
-                {t}
+                {t.label}
               </button>
             ))}
           </div>
@@ -336,9 +339,21 @@ export function InvoiceForm({
               onChange={(e) => onChange({ discount: Number(e.target.value) || 0 })}
             />
           </Field>
+          <Field label="Shipping" id="inv-shipping">
+            <input
+              id="inv-shipping"
+              type="number"
+              min={0}
+              step="0.01"
+              className={inputCls}
+              value={invoice.shipping}
+              onChange={(e) => onChange({ shipping: Number(e.target.value) || 0 })}
+              placeholder="0.00"
+            />
+          </Field>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Issue date" id="inv-issue-date">
+          <Field label={invoice.docType === "receipt" ? "Date paid" : "Issue date"} id="inv-issue-date">
             <input
               id="inv-issue-date"
               type="date"
@@ -347,7 +362,7 @@ export function InvoiceForm({
               onChange={(e) => onChange({ issueDate: e.target.value })}
             />
           </Field>
-          <Field label="Due date" id="inv-due-date">
+          <Field label={invoice.docType === "quote" || invoice.docType === "estimate" ? "Valid until" : "Due date"} id="inv-due-date">
             <input
               id="inv-due-date"
               type="date"
@@ -377,6 +392,119 @@ export function InvoiceForm({
           </Field>
         </section>
       ) : null}
+
+      <section className="grid gap-6 sm:grid-cols-2">
+        <Field label="Theme">
+          <div className="flex items-center gap-2 rounded-xl border border-hairline bg-white px-3.5 py-2.5">
+            {THEMES.map((t) => (
+              <button
+                key={t.value}
+                type="button"
+                onClick={() => onChange({ theme: t.value })}
+                title={t.label}
+                aria-label={t.label}
+                className={`h-7 w-7 rounded-full transition ${
+                  invoice.theme === t.value
+                    ? "ring-2 ring-offset-2 ring-[#166534]"
+                    : "opacity-60 hover:opacity-100"
+                }`}
+                style={{ background: t.color }}
+              />
+            ))}
+          </div>
+        </Field>
+        <Field label="Payment link (optional)" id="inv-payment-link">
+          <input
+            id="inv-payment-link"
+            type="url"
+            className={inputCls}
+            value={invoice.paymentLink}
+            onChange={(e) => onChange({ paymentLink: e.target.value })}
+            placeholder="https://pay.example.com/…"
+          />
+        </Field>
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold tracking-tight text-ink">Custom fields</h3>
+          <button
+            type="button"
+            onClick={() =>
+              onChange({
+                customFields: [
+                  ...invoice.customFields,
+                  { id: newId(), label: "", value: "" },
+                ],
+              })
+            }
+            className="text-sm font-medium text-link transition-opacity hover:opacity-70"
+          >
+            + Add field
+          </button>
+        </div>
+        {invoice.customFields.length === 0 ? (
+          <p className="text-sm text-subtle">
+            Add purchase order numbers, project references, or any extra detail that
+            appears on the invoice.
+          </p>
+        ) : (
+          invoice.customFields.map((f) => (
+            <div key={f.id} className="grid grid-cols-[1fr_1fr_28px] items-start gap-3">
+              <input
+                className={inputCls}
+                value={f.label}
+                onChange={(e) =>
+                  onChange({
+                    customFields: invoice.customFields.map((cf) =>
+                      cf.id === f.id ? { ...cf, label: e.target.value } : cf
+                    ),
+                  })
+                }
+                placeholder="Field name (e.g. Purchase order #)"
+                aria-label="Custom field name"
+              />
+              <input
+                className={inputCls}
+                value={f.value}
+                onChange={(e) =>
+                  onChange({
+                    customFields: invoice.customFields.map((cf) =>
+                      cf.id === f.id ? { ...cf, value: e.target.value } : cf
+                    ),
+                  })
+                }
+                placeholder="Value"
+                aria-label="Custom field value"
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  onChange({
+                    customFields: invoice.customFields.filter((cf) => cf.id !== f.id),
+                  })
+                }
+                aria-label="Remove custom field"
+                className="mt-2 flex h-7 w-7 items-center justify-center rounded-full text-lg leading-none text-subtle transition hover:bg-fog hover:text-ink"
+              >
+                &times;
+              </button>
+            </div>
+          ))
+        )}
+      </section>
+
+      <section>
+        <Field label="Payment instructions" id="inv-payment-instructions">
+          <textarea
+            id="inv-payment-instructions"
+            className={`${inputCls} min-h-[72px] resize-none`}
+            value={invoice.paymentInstructions}
+            onChange={(e) => onChange({ paymentInstructions: e.target.value })}
+            placeholder={"Bank transfer:\nAccount name: Studio Nova LLC\nIBAN: …"}
+          />
+        </Field>
+      </section>
 
       <section className="grid gap-6 sm:grid-cols-[1fr_auto]">
         <Field label="Notes & payment terms" id="inv-notes">

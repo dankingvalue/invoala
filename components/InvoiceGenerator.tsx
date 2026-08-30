@@ -208,6 +208,18 @@ export function InvoiceGenerator({
     setSendingEmail(false);
   }
 
+  function convertToInvoice() {
+    if (invoice.docType === "invoice") return;
+    const due = new Date();
+    due.setDate(due.getDate() + 14);
+    setInvoice((inv) => ({
+      ...inv,
+      docType: "invoice",
+      dueDate: due.toISOString().slice(0, 10),
+    }));
+    trackEvent("quote_converted_to_invoice", { from: invoice.docType });
+  }
+
   async function captureInvoiceCanvas(): Promise<HTMLCanvasElement | null> {
     const el = previewRef.current;
     if (!el) return null;
@@ -421,6 +433,20 @@ export function InvoiceGenerator({
               {saveNote ? <span className="text-xs text-subtle">{saveNote}</span> : null}
             </div>
           ) : null}
+          {(invoice.docType === "quote" || invoice.docType === "estimate") && (
+            <div className="mt-3 flex items-center justify-between rounded-xl bg-[#f0fdf4] px-4 py-3">
+              <p className="text-[13px] text-[#166534]">
+                {invoice.docType === "quote" ? "Quote accepted?" : "Estimate approved?"} Turn it into an invoice and set a due date.
+              </p>
+              <button
+                type="button"
+                onClick={convertToInvoice}
+                className="shrink-0 rounded-full bg-[#14532d] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0f3d22]"
+              >
+                Convert to invoice
+              </button>
+            </div>
+          )}
           {!user?.isPro ? (
             <p className="mt-3 text-center text-xs text-subtle">
               Free · No watermark · No credit card required

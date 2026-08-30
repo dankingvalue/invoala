@@ -5,6 +5,39 @@ export type LineItem = {
   rate: number;
 };
 
+export type CustomField = {
+  id: string;
+  label: string;
+  value: string;
+};
+
+export type DocType = "invoice" | "quote" | "estimate" | "receipt";
+
+export type InvoiceTheme = "green" | "navy" | "black" | "amber";
+
+export const THEMES: { value: InvoiceTheme; label: string; color: string }[] = [
+  { value: "green", label: "Forest green", color: "#166534" },
+  { value: "navy", label: "Navy", color: "#1e3a8a" },
+  { value: "black", label: "Charcoal", color: "#111827" },
+  { value: "amber", label: "Amber", color: "#b45309" },
+];
+
+export function themeColor(theme: InvoiceTheme | string | undefined): string {
+  const found = THEMES.find((t) => t.value === theme);
+  return found?.color ?? THEMES[0].color;
+}
+
+export const DOC_TYPES: { value: DocType; label: string }[] = [
+  { value: "invoice", label: "Invoice" },
+  { value: "quote", label: "Quote" },
+  { value: "estimate", label: "Estimate" },
+  { value: "receipt", label: "Receipt" },
+];
+
+export function docTitle(docType: DocType | string): string {
+  return DOC_TYPES.find((d) => d.value === docType)?.label ?? "Invoice";
+}
+
 export type Invoice = {
   businessName: string;
   businessEmail: string;
@@ -20,9 +53,14 @@ export type Invoice = {
   items: LineItem[];
   taxRate: number;
   discount: number;
+  shipping: number;
   notes: string;
-  docType: "invoice" | "quote";
+  docType: DocType;
   recurring: string;
+  customFields: CustomField[];
+  paymentInstructions: string;
+  paymentLink: string;
+  theme: InvoiceTheme;
 };
 
 export const RECURRING_OPTIONS = [
@@ -191,6 +229,8 @@ export const CURRENCIES = [
 
 const DRAFT_KEY = "invoala.draft.v1";
 const RECURRING_VALUES = new Set(["", "weekly", "biweekly", "monthly", "quarterly", "yearly"]);
+const DOC_TYPE_VALUES = new Set(["invoice", "quote", "estimate", "receipt"]);
+const THEME_VALUES = new Set(["green", "navy", "black", "amber"]);
 
 export function newId(): string {
   return Math.random().toString(36).slice(2, 10);
@@ -218,9 +258,14 @@ export function createDefaultInvoice(): Invoice {
     items: [{ id: newId(), description: "", quantity: 1, rate: 0 }],
     taxRate: 0,
     discount: 0,
+    shipping: 0,
     notes: "Payment due within 14 days. Thank you for your business!",
     docType: "invoice",
     recurring: "",
+    customFields: [],
+    paymentInstructions: "",
+    paymentLink: "",
+    theme: "green",
   };
 }
 
@@ -246,10 +291,33 @@ export function loadDraft(): Invoice | null {
       items: items.length > 0 ? items : base.items,
       logoDataUrl: typeof parsed.logoDataUrl === "string" ? parsed.logoDataUrl : null,
       taxRate: typeof parsed.taxRate === "number" ? parsed.taxRate : base.taxRate,
-      docType: parsed.docType === "quote" ? "quote" : "invoice",
+      discount: typeof parsed.discount === "number" ? parsed.discount : base.discount,
+      shipping: typeof parsed.shipping === "number" ? parsed.shipping : 0,
+      docType: DOC_TYPE_VALUES.has(String(parsed.docType))
+        ? (String(parsed.docType) as Invoice["docType"])
+        : "invoice",
       recurring: RECURRING_VALUES.has(String(parsed.recurring))
         ? String(parsed.recurring)
         : "",
+      customFields: Array.isArray(parsed.customFields)
+        ? parsed.customFields
+            .filter(
+              (f) =>
+                f && typeof f === "object" &&
+                typeof (f as CustomField).label === "string" &&
+                typeof (f as CustomField).value === "string"
+            )
+            .map((f) => ({
+              id: typeof (f as CustomField).id === "string" ? (f as CustomField).id : newId(),
+              label: (f as CustomField).label,
+              value: (f as CustomField).value,
+            }))
+        : [],
+      paymentInstructions: typeof parsed.paymentInstructions === "string" ? parsed.paymentInstructions : "",
+      paymentLink: typeof parsed.paymentLink === "string" ? parsed.paymentLink : "",
+      theme: THEME_VALUES.has(String(parsed.theme))
+        ? (String(parsed.theme) as InvoiceTheme)
+        : "green",
     };
   } catch {
     return null;
@@ -268,6 +336,7 @@ export function saveDraft(invoice: Invoice): void {
 export function computeTotals(invoice: Invoice): {
   subtotal: number;
   discountAmount: number;
+  shipping: number;
   taxAmount: number;
   total: number;
 } {
@@ -276,10 +345,11 @@ export function computeTotals(invoice: Invoice): {
     0,
   );
   const discountAmount = subtotal * ((Number(invoice.discount) || 0) / 100);
-  const afterDiscount = subtotal - discountAmount;
+  const shipping = Number(invoice.shipping) || 0;
+  const afterDiscount = subtotal - discountAmount + shipping;
   const taxAmount = afterDiscount * ((Number(invoice.taxRate) || 0) / 100);
   const total = afterDiscount + taxAmount;
-  return { subtotal, taxAmount, total, discountAmount };
+  return { subtotal, taxAmount, total, discountAmount, shipping };
 }
 
 export function formatMoney(amount: number, currency: string): string {
