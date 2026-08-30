@@ -176,6 +176,7 @@ export function DashboardClient({
   const [notice, setNotice] = useState("");
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
+  const [clientTeamId, setClientTeamId] = useState("");
 
   const [profileName, setProfileName] = useState(initialName);
   const [profileTimezone, setProfileTimezone] = useState(initialTimezone);
@@ -199,6 +200,7 @@ export function DashboardClient({
   const [teamInvites, setTeamInvites] = useState<Array<{ id: string; team_name: string; inviter_name: string; email: string }>>([]);
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [teamMembers, setTeamMembers] = useState<Array<{ id: string; user_id: string; role: string; name: string; email: string }>>([]);
+  const [teamPendingInvites, setTeamPendingInvites] = useState<Array<{ id: string; email: string; role: string; created_at: number }>>([]);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("member");
   const [teamStatus, setTeamStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
@@ -215,7 +217,7 @@ export function DashboardClient({
 
   // Fetch teams data when teams tab is selected
   useEffect(() => {
-    if (tab !== "teams") return;
+    if (tab !== "teams" && tab !== "clients") return;
     fetch("/api/teams")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
@@ -234,6 +236,7 @@ export function DashboardClient({
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.members) setTeamMembers(data.members);
+        if (data?.invites) setTeamPendingInvites(data.invites);
       })
       .catch(() => {});
   }, [selectedTeam]);
@@ -292,7 +295,7 @@ export function DashboardClient({
     const res = await fetch("/api/clients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: clientName, email: clientEmail }),
+      body: JSON.stringify({ name: clientName, email: clientEmail, teamId: clientTeamId || null }),
     }).catch(() => null);
     setBusy(false);
     if (res?.ok) {
@@ -302,7 +305,25 @@ export function DashboardClient({
       );
       setClientName("");
       setClientEmail("");
+      setClientTeamId("");
     }
+  }
+
+  async function shareClient(id: string, teamId: string | null) {
+    setBusy(true);
+    const res = await fetch(`/api/clients/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teamId }),
+    }).catch(() => null);
+    if (res?.ok) {
+      const json = (await res.json()) as { ok?: boolean };
+      if (json.ok) {
+        const data = await fetch("/api/clients").then((r) => (r.ok ? r.json() : null));
+        if (data?.clients) setClients(data.clients);
+      }
+    }
+    setBusy(false);
   }
 
   async function removeClient(id: string) {
@@ -732,6 +753,21 @@ export function DashboardClient({
                   type="email"
                   className="min-w-[180px] flex-1 rounded-lg border border-[#e5e7eb] px-3.5 py-2.5 text-[14px] outline-none focus:border-[#166534] focus:ring-2 focus:ring-[#166534]/15"
                 />
+                {teams.length > 0 && (
+                  <select
+                    value={clientTeamId}
+                    onChange={(e) => setClientTeamId(e.target.value)}
+                    className="rounded-lg border border-[#e5e7eb] px-3 py-2.5 text-[13px] outline-none focus:border-[#166534]"
+                    title="Save this client to your personal book or share it with a team"
+                  >
+                    <option value="">Personal</option>
+                    {teams.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <button
                   type="submit"
                   disabled={busy}
@@ -751,17 +787,48 @@ export function DashboardClient({
                       }`}
                     >
                       <div>
-                        <p className="text-[14px] font-medium text-ink">{c.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-[14px] font-medium text-ink">{c.name}</p>
+                          {c.team_id && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[#dcfce7] px-2 py-0.5 text-[11px] font-medium text-[#166534]" title={`Shared with team: ${c.team_name || ""}`}>
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                                <circle cx="9" cy="7" r="4" />
+                                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                              </svg>
+                              {c.team_name || "Team"}
+                            </span>
+                          )}
+                        </div>
                         {c.email ? <p className="text-[12px] text-[#6b7280]">{c.email}</p> : null}
                       </div>
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => void removeClient(c.id)}
-                        className="text-[12px] text-[#d70015] hover:underline disabled:opacity-50"
-                      >
-                        Remove
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {teams.length > 0 && (
+                          <select
+                            value={c.team_id || ""}
+                            disabled={busy}
+                            onChange={(e) => void shareClient(c.id, e.target.value || null)}
+                            className="rounded-lg border border-[#e5e7eb] bg-white px-2 py-1 text-[12px] outline-none focus:border-[#166534]"
+                            title="Share this client with a team"
+                          >
+                            <option value="">Personal</option>
+                            {teams.map((t) => (
+                              <option key={t.id} value={t.id}>
+                                {t.name}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void removeClient(c.id)}
+                          className="text-[12px] text-[#d70015] hover:underline disabled:opacity-50"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -792,28 +859,49 @@ export function DashboardClient({
                             Invited by {invite.inviter_name}
                           </p>
                         </div>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            setTeamStatus("loading");
-                            const res = await fetch(`/api/teams/${invite.id}/invite`, { method: "POST" });
-                            if (res.ok) {
-                              setTeamInvites((prev) => prev.filter((i) => i.id !== invite.id));
-                              setTeamStatus("done");
-                              setTeamMsg("Joined team!");
-                              // Refresh teams list
-                              const data = await fetch("/api/teams").then((r) => r.json());
-                              if (data?.teams) setTeams(data.teams);
-                            } else {
-                              setTeamStatus("error");
-                              setTeamMsg("Could not accept invite.");
-                            }
-                          }}
-                          disabled={teamStatus === "loading"}
-                          className="rounded-lg bg-[#14532d] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0f3d22] disabled:opacity-50"
-                        >
-                          Accept
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              setTeamStatus("loading");
+                              const res = await fetch(`/api/teams/${invite.id}/invite`, { method: "DELETE" });
+                              if (res.ok) {
+                                setTeamInvites((prev) => prev.filter((i) => i.id !== invite.id));
+                                setTeamStatus("done");
+                                setTeamMsg("Invitation declined.");
+                              } else {
+                                setTeamStatus("error");
+                                setTeamMsg("Could not decline invite.");
+                              }
+                            }}
+                            disabled={teamStatus === "loading"}
+                            className="rounded-lg border border-[#e5e7eb] px-4 py-2 text-[13px] font-medium text-[#6b7280] transition hover:bg-[#f3f4f6] disabled:opacity-50"
+                          >
+                            Decline
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              setTeamStatus("loading");
+                              const res = await fetch(`/api/teams/${invite.id}/invite`, { method: "POST" });
+                              if (res.ok) {
+                                setTeamInvites((prev) => prev.filter((i) => i.id !== invite.id));
+                                setTeamStatus("done");
+                                setTeamMsg("Joined team!");
+                                // Refresh teams list
+                                const data = await fetch("/api/teams").then((r) => r.json());
+                                if (data?.teams) setTeams(data.teams);
+                              } else {
+                                setTeamStatus("error");
+                                setTeamMsg("Could not accept invite.");
+                              }
+                            }}
+                            disabled={teamStatus === "loading"}
+                            className="rounded-lg bg-[#14532d] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0f3d22] disabled:opacity-50"
+                          >
+                            Accept
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -968,9 +1056,16 @@ export function DashboardClient({
                             body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
                           });
                           if (res.ok) {
+                            const json = await res.json();
                             setInviteEmail("");
                             setTeamStatus("done");
                             setTeamMsg("Invitation sent!");
+                            if (json.invite) {
+                              setTeamPendingInvites((prev) => [
+                                { id: json.invite.id, email: inviteEmail, role: inviteRole, created_at: Date.now() },
+                                ...prev,
+                              ]);
+                            }
                           } else {
                             const json = await res.json();
                             setTeamStatus("error");
@@ -987,6 +1082,48 @@ export function DashboardClient({
 
                   {/* Members list */}
                   <div className="mt-4 space-y-2">
+                    {teamPendingInvites.length > 0 && (
+                      <div className="mb-4">
+                        <p className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-[#6b7280]">
+                          Pending invites
+                        </p>
+                        <div className="space-y-2">
+                          {teamPendingInvites.map((invite) => (
+                            <div
+                              key={invite.id}
+                              className="flex items-center justify-between gap-3 rounded-lg bg-[#fef9e7] px-4 py-2.5"
+                            >
+                              <div>
+                                <p className="text-[13px] font-medium text-ink">{invite.email}</p>
+                                <p className="text-[11px] text-[#92600a]">
+                                  {invite.role} · Invited {new Date(invite.created_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                              {isTeamAdminLocal(selectedTeam, userId) && (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    setTeamStatus("loading");
+                                    const res = await fetch(`/api/teams/${selectedTeam}/members`, {
+                                      method: "DELETE",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ inviteId: invite.id }),
+                                    });
+                                    if (res.ok) {
+                                      setTeamPendingInvites((prev) => prev.filter((i) => i.id !== invite.id));
+                                      setTeamStatus("done");
+                                    }
+                                  }}
+                                  className="text-[12px] text-[#d70015] hover:underline"
+                                >
+                                  Cancel invite
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     {teamMembers.map((member) => (
                       <div
                         key={member.user_id}
@@ -1003,11 +1140,39 @@ export function DashboardClient({
                         </div>
                         <div className="flex items-center gap-2">
                           <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                            member.role === "admin" ? "bg-[#166534] text-white" : "bg-[#e5e7eb] text-[#6b7280]"
+                            teams.find((t) => t.id === selectedTeam)?.owner_id === member.user_id
+                              ? "bg-[#111827] text-white"
+                              : member.role === "admin" ? "bg-[#166534] text-white" : "bg-[#e5e7eb] text-[#6b7280]"
                           }`}>
-                            {member.role}
+                            {teams.find((t) => t.id === selectedTeam)?.owner_id === member.user_id ? "Owner" : member.role}
                           </span>
-                          {member.role !== "admin" && isTeamAdminLocal(selectedTeam, userId) && (
+                          {isTeamAdminLocal(selectedTeam, userId) &&
+                            teams.find((t) => t.id === selectedTeam)?.owner_id !== member.user_id && (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const nextRole = member.role === "admin" ? "member" : "admin";
+                                setTeamStatus("loading");
+                                const res = await fetch(`/api/teams/${selectedTeam}/members`, {
+                                  method: "PATCH",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ userId: member.user_id, role: nextRole }),
+                                });
+                                if (res.ok) {
+                                  setTeamMembers((prev) =>
+                                    prev.map((m) => (m.user_id === member.user_id ? { ...m, role: nextRole } : m))
+                                  );
+                                  setTeamStatus("done");
+                                }
+                              }}
+                              disabled={teamStatus === "loading"}
+                              className="text-[12px] text-[#166534] hover:underline disabled:opacity-50"
+                            >
+                              {member.role === "admin" ? "Make member" : "Make admin"}
+                            </button>
+                          )}
+                          {teams.find((t) => t.id === selectedTeam)?.owner_id !== member.user_id &&
+                            isTeamAdminLocal(selectedTeam, userId) && (
                             <button
                               type="button"
                               onClick={async () => {
@@ -1306,10 +1471,10 @@ function UserMessagesTab() {
       {conversations.map((conv) => (
         <div
           key={conv.id}
-          className="rounded-lg border border-[#e5e7eb] p-4"
+          className="rounded-lg border border-[#e5e7eb] p-4 transition hover:border-[#166534]/40 hover:bg-[#fafaf9]"
         >
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <p className="text-[14px] font-medium text-ink">{conv.subject}</p>
                 <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
@@ -1334,9 +1499,22 @@ function UserMessagesTab() {
                 {conv.last_message}
               </p>
             </div>
-            <p className="text-[12px] text-[#6b7280]">
-              {new Date(conv.updated_at).toLocaleDateString()}
-            </p>
+            <div className="flex shrink-0 flex-col items-end gap-2">
+              <p className="text-[12px] text-[#6b7280]">
+                {new Date(conv.updated_at).toLocaleDateString()}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  window.dispatchEvent(
+                    new CustomEvent("invoala:open-chat", { detail: { conversationId: conv.id } })
+                  );
+                }}
+                className="rounded-lg border border-[#e5e7eb] px-3 py-1.5 text-[12px] font-medium text-[#166534] transition hover:bg-[#f0fdf4]"
+              >
+                Open chat
+              </button>
+            </div>
           </div>
         </div>
       ))}
