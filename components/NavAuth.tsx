@@ -26,10 +26,10 @@ export function NavAuthActions({ role }: { role: string }) {
   }
 
   return (
-    <div className="hidden items-center gap-3 sm:flex">
+    <div className="hidden items-center gap-3 md:flex">
       <Link
         href="/#pricing"
-        className="hidden items-center gap-2 rounded-[6px] bg-[#14532d] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0f3d22] sm:flex"
+        className="hidden items-center gap-2 rounded-[6px] bg-[#14532d] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0f3d22] md:flex"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
@@ -142,7 +142,7 @@ export function MobileMenuButton({ role }: { role: string }) {
   }
 
   return (
-    <div className="relative sm:hidden" ref={menuRef}>
+    <div className="relative md:hidden" ref={menuRef}>
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -175,6 +175,13 @@ export function MobileMenuButton({ role }: { role: string }) {
             FAQ
           </Link>
           <div className="my-1 border-t border-[#e5e7eb]" />
+          <Link href="/dashboard?tab=general" onClick={() => setOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium text-ink transition hover:bg-fog">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+            My account
+          </Link>
           <Link href="/dashboard?tab=documents" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-[13px] text-ink transition hover:bg-fog">
             Documents
           </Link>
