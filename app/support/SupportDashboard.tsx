@@ -89,13 +89,19 @@ export function SupportDashboard() {
 
 function OverviewTab() {
   const [stats, setStats] = useState<Stats | null>(null);
+  const [openChats, setOpenChats] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/admin/stats")
-      .then((r) => r.json())
-      .then((d) => { setStats(d); setLoading(false); })
-      .catch(() => setLoading(false));
+    Promise.all([
+      fetch("/api/admin/stats").then((r) => r.json()),
+      fetch("/api/admin/messages?status=support").then((r) => r.json()),
+      fetch("/api/admin/messages?status=escalated").then((r) => r.json()),
+    ]).then(([s, support, escalated]) => {
+      setStats(s);
+      setOpenChats((support.total || 0) + (escalated.total || 0));
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
   if (loading) return <Panel><p className="text-sm text-[#6b7280]">Loading…</p></Panel>;
@@ -104,6 +110,7 @@ function OverviewTab() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        <StatCard label="Open Chats" value={openChats.toLocaleString()} sub="Awaiting response" />
         <StatCard label="Users" value={stats.users.toLocaleString()} sub={`+${stats.newUsers7d} this week`} />
         <StatCard label="Documents" value={stats.invoices.toLocaleString()} sub={`${stats.invoices30d} in 30 days`} />
         <StatCard label="Pro Subscribers" value={stats.activeSubs.toLocaleString()} />
@@ -122,7 +129,6 @@ function CustomersTab() {
   const [viewUser, setViewUser] = useState<string | null>(null);
 
   useEffect(() => {
-    setLoading(true);
     const params = new URLSearchParams({ page: String(page) });
     if (search) params.set("q", search);
     fetch(`/api/admin/users?${params}`)
@@ -223,12 +229,13 @@ function MessagesTab() {
   const [convTotalPages, setConvTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestion, setSuggestion] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
   useEffect(() => {
-    setLoading(true);
     const params = new URLSearchParams({ page: String(convPage), status: statusFilter });
     fetch(`/api/admin/messages?${params}`)
       .then((r) => r.json())
@@ -253,8 +260,24 @@ function MessagesTab() {
       body: JSON.stringify({ content: reply }),
     });
     const data = await res.json();
-    if (data.ok) { setReply(""); loadConversation(selectedConv); }
+    if (data.ok) { setReply(""); setSuggestion(""); loadConversation(selectedConv); }
     setSendingMsg(false);
+  };
+
+  const getSuggestion = async () => {
+    if (!selectedConv) return;
+    setSuggesting(true);
+    setSuggestion("");
+    try {
+      const res = await fetch("/api/ai/suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId: selectedConv.id }),
+      });
+      const data = await res.json();
+      if (data.ok && data.suggestion) setSuggestion(data.suggestion);
+    } catch {}
+    setSuggesting(false);
   };
 
   const updateStatus = async (convId: string, status: string) => {
@@ -273,7 +296,7 @@ function MessagesTab() {
   if (selectedConv) {
     return (
       <Panel>
-        <div className="flex h-[600px] flex-col">
+        <div className="flex max-h-[calc(100vh-120px)] flex-col">
           <div className="flex items-center justify-between border-b border-[#e5e7eb] px-4 py-3">
             <div>
               <p className="text-sm font-semibold">{selectedConv.user_name || selectedConv.user_email}</p>
@@ -304,8 +327,22 @@ function MessagesTab() {
               <div ref={messagesEndRef} />
             </div>
           </div>
+          {suggestion && (
+            <div className="border-t border-[#e5e7eb] bg-[#f0fdf4] px-4 py-3">
+              <div className="flex items-start justify-between gap-2">
+                <p className="flex-1 whitespace-pre-wrap text-sm text-[#166534]">{suggestion}</p>
+                <div className="flex shrink-0 gap-1">
+                  <button type="button" onClick={() => { setReply(suggestion); setSuggestion(""); }} className="rounded px-2 py-1 text-xs font-medium text-[#166534] hover:bg-[#dcfce7]">Use this</button>
+                  <button type="button" onClick={() => setSuggestion("")} className="rounded px-2 py-1 text-xs text-[#6b7280] hover:bg-[#f3f4f6]">Dismiss</button>
+                </div>
+              </div>
+            </div>
+          )}
           <form onSubmit={sendReply} className="border-t border-[#e5e7eb] p-4">
             <div className="flex gap-2">
+              <button type="button" onClick={() => void getSuggestion()} disabled={suggesting} className="shrink-0 rounded-lg border border-[#e5e7eb] px-3 py-2 text-sm text-[#6b7280] hover:bg-[#f3f4f6] disabled:opacity-50" title="AI suggest reply">
+                {suggesting ? "…" : "✨"}
+              </button>
               <input type="text" value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Type a reply…" disabled={sendingMsg} className="flex-1 rounded-lg border border-[#e5e7eb] px-3 py-2 text-sm focus:border-[#166534] focus:outline-none focus:ring-1 focus:ring-[#166534] disabled:opacity-50" />
               <button type="submit" disabled={sendingMsg || !reply.trim()} className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white hover:bg-[#14532d] disabled:opacity-50">{sendingMsg ? "Sending…" : "Send"}</button>
             </div>

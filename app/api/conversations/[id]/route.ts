@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { getSessionUser } from "@/lib/server-auth";
 import { dbGet, dbAll, dbRun } from "@/lib/db";
+import { generateAiResponse, sendToTelegram } from "@/lib/ai";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser(_req);
@@ -32,6 +33,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
      ORDER BY m.created_at ASC`,
     id
   );
+
+  // Auto-close: if last support message was 10+ min ago and no user reply since, resolve
+  if (conversation.status === "support" || conversation.status === "escalated") {
+    const lastSupportMsg = [...messages].reverse().find(
+      (m) => m.sender_type === "support" || m.sender_type === "system"
+    );
+    const lastUserMsg = [...messages].reverse().find((m) => m.sender_type === "user");
+    if (lastSupportMsg && (!lastUserMsg || lastUserMsg.created_at < lastSupportMsg.created_at)) {
+      const elapsed = Date.now() - lastSupportMsg.created_at;
+      if (elapsed > 10 * 60 * 1000) {
+        await dbRun("UPDATE conversations SET status = 'resolved', updated_at = ? WHERE id = ?", Date.now(), id);
+        conversation.status = "resolved";
+      }
+    }
+  }
 
   // Mark as read
   await dbRun("UPDATE conversations SET updated_at = ? WHERE id = ?", Date.now(), id);
@@ -104,76 +120,4 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   return Response.json({ ok: true });
-}
-
-async function generateAiResponse(message: string): Promise<{ message: string; escalate: boolean }> {
-  const lowerMessage = message.toLowerCase();
-
-  if (lowerMessage.includes("price") || lowerMessage.includes("cost") || lowerMessage.includes("plan")) {
-    return {
-      message: "We offer 4 plans:\n\n• Free - Basic invoicing\n• Pro Monthly - $9/mo\n• Pro Yearly - $79/yr (save 27%)\n• Teams Monthly - $29/mo\n• Teams Yearly - $249/yr\n• Lifetime - $499 (one-time)\n\nAll paid plans include unlimited invoices, AI-powered drafting, and priority support.",
-      escalate: false
-    };
-  }
-
-  if (lowerMessage.includes("how") && (lowerMessage.includes("invoice") || lowerMessage.includes("create"))) {
-    return {
-      message: "Creating an invoice is easy:\n\n1. Go to the homepage and click 'Create invoice'\n2. Fill in your business details and client info\n3. Add line items with quantities and rates\n4. Preview your invoice in real-time\n5. Download as PDF or print directly\n\nYou can also use our AI feature - just describe your invoice in plain English!",
-      escalate: false
-    };
-  }
-
-  if (lowerMessage.includes("ai") || lowerMessage.includes("describe")) {
-    return {
-      message: "Our AI invoice drafting feature lets you create invoices from natural language. Just describe your work:\n\n• 'I designed a logo for Acme Corp for $500'\n• 'Monthly consulting for TechCo, 10 hours at $150/hr'\n• 'Website development for StartupXYZ, $2,500'\n\nThe AI will extract client details, line items, and amounts automatically!",
-      escalate: false
-    };
-  }
-
-  if (lowerMessage.includes("team")) {
-    return {
-      message: "Teams plans allow collaboration:\n\n• Invite members via email\n• Assign roles (admin or member)\n• Share invoices and clients\n• Max 5 members per team\n\nTeams plans start at $29/mo or $249/yr.",
-      escalate: false
-    };
-  }
-
-  if (lowerMessage.includes("cancel") || lowerMessage.includes("refund")) {
-    return {
-      message: "To cancel your subscription:\n\n1. Go to Dashboard → Billing\n2. Click 'Cancel plan'\n3. Your access continues until the billing period ends\n\nFor refund requests, I'll connect you with our support team.",
-      escalate: lowerMessage.includes("refund")
-    };
-  }
-
-  if (lowerMessage.includes("bug") || lowerMessage.includes("error") || lowerMessage.includes("broken") || lowerMessage.includes("not working")) {
-    return {
-      message: "I'm sorry you're experiencing issues. I've escalated this to our support team who will help you directly.",
-      escalate: true
-    };
-  }
-
-  return {
-    message: "I've connected you with our support team. A team member will review your message and respond shortly.",
-    escalate: true
-  };
-}
-
-async function sendToTelegram(userEmail: string, message: string, conversationId: string) {
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
-
-  if (!botToken || !chatId) return;
-
-  const text = `🔔 New support request\n\nFrom: ${userEmail}\nConversation: ${conversationId}\n\nMessage:\n${message}`;
-
-  try {
-    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        parse_mode: "HTML"
-      })
-    });
-  } catch {}
 }

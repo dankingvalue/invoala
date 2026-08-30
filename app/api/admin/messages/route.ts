@@ -17,8 +17,10 @@ export async function GET(req: Request) {
   const isSupport = user.role === "support";
 
   let where = "";
+  let statusParam: string | null = null;
   if (status !== "all") {
-    where = `WHERE c.status = '${status}'`;
+    where = "WHERE c.status = ?";
+    statusParam = status;
   }
 
   const conversations = await dbAll<{
@@ -38,9 +40,14 @@ export async function GET(req: Request) {
     ${where}
     ORDER BY c.updated_at DESC
     LIMIT ? OFFSET ?
-  `, limit, offset);
+  `, ...(statusParam !== null ? [statusParam, limit, offset] : [limit, offset]));
 
-  const total = await dbGet<{ count: number }>(`SELECT COUNT(*) as count FROM conversations c ${where}`);
+  const total = await dbGet<{ count: number }>(
+    statusParam !== null
+      ? `SELECT COUNT(*) as count FROM conversations c WHERE c.status = ?`
+      : `SELECT COUNT(*) as count FROM conversations c`,
+    ...(statusParam !== null ? [statusParam] : [])
+  );
 
   return Response.json({
     conversations: conversations.map((c) => ({

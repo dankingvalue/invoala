@@ -3,6 +3,7 @@ import { getSessionUser } from "@/lib/server-auth";
 import { dbGet, dbAll, dbRun } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { redactEmail } from "@/lib/redact";
+import { createNotification } from "@/lib/notifications";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser(_req);
@@ -90,6 +91,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     await dbRun("UPDATE conversations SET status = 'support', updated_at = ? WHERE id = ?", now, id);
   } else {
     await dbRun("UPDATE conversations SET updated_at = ? WHERE id = ?", now, id);
+  }
+
+  // Notify the conversation owner
+  const convOwner = await dbGet<{ user_id: string }>("SELECT user_id FROM conversations WHERE id = ?", id);
+  if (convOwner) {
+    await createNotification({
+      userId: convOwner.user_id,
+      type: "support_reply",
+      title: "New support reply",
+      body: content.slice(0, 200),
+      meta: { conversationId: id },
+    });
   }
 
   await logAudit({
