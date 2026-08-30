@@ -19,6 +19,7 @@ export type Invoice = {
   currency: string;
   items: LineItem[];
   taxRate: number;
+  discount: number;
   notes: string;
   docType: "invoice" | "quote";
   recurring: string;
@@ -216,6 +217,7 @@ export function createDefaultInvoice(): Invoice {
     currency: "USD",
     items: [{ id: newId(), description: "", quantity: 1, rate: 0 }],
     taxRate: 0,
+    discount: 0,
     notes: "Payment due within 14 days. Thank you for your business!",
     docType: "invoice",
     recurring: "",
@@ -265,6 +267,7 @@ export function saveDraft(invoice: Invoice): void {
 
 export function computeTotals(invoice: Invoice): {
   subtotal: number;
+  discountAmount: number;
   taxAmount: number;
   total: number;
 } {
@@ -272,9 +275,11 @@ export function computeTotals(invoice: Invoice): {
     (sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.rate) || 0),
     0,
   );
-  const taxAmount = subtotal * ((Number(invoice.taxRate) || 0) / 100);
-  const total = subtotal + taxAmount;
-  return { subtotal, taxAmount, total };
+  const discountAmount = subtotal * ((Number(invoice.discount) || 0) / 100);
+  const afterDiscount = subtotal - discountAmount;
+  const taxAmount = afterDiscount * ((Number(invoice.taxRate) || 0) / 100);
+  const total = afterDiscount + taxAmount;
+  return { subtotal, taxAmount, total, discountAmount };
 }
 
 export function formatMoney(amount: number, currency: string): string {

@@ -13,6 +13,7 @@ import { InvoiceForm } from "@/components/InvoiceForm";
 import { InvoicePreview } from "@/components/InvoicePreview";
 import { AiComposer } from "@/components/AiComposer";
 import type { ParsedInvoice } from "@/lib/parseInvoice";
+import { trackEvent } from "@/lib/analytics";
 import type { ClientRow } from "@/lib/data";
 
 export function InvoiceGenerator({
@@ -21,6 +22,7 @@ export function InvoiceGenerator({
   allowLogo = true,
   quoteMode = false,
   recurringTerms = false,
+  preset = null,
   user = null,
 }: {
   ai?: boolean;
@@ -28,6 +30,7 @@ export function InvoiceGenerator({
   allowLogo?: boolean;
   quoteMode?: boolean;
   recurringTerms?: boolean;
+  preset?: Partial<Invoice> | null;
   user?: { email: string } | null;
 }) {
   const [invoice, setInvoice] = useState<Invoice>(() => createDefaultInvoice());
@@ -36,10 +39,18 @@ export function InvoiceGenerator({
   const [savedId, setSavedId] = useState<string | null>(null);
   const [saveNote, setSaveNote] = useState("");
   const [clients, setClients] = useState<ClientRow[]>([]);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailNote, setEmailNote] = useState("");
   const previewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const base = loadDraft() ?? createDefaultInvoice();
+    trackEvent("invoice_started");
+  }, []);
+
+  useEffect(() => {
+    const base = preset
+      ? { ...createDefaultInvoice(), ...preset }
+      : (loadDraft() ?? createDefaultInvoice());
     const editRaw =
       typeof window !== "undefined" ? window.localStorage.getItem("invoala.edit") : null;
     let next = base;
@@ -62,7 +73,7 @@ export function InvoiceGenerator({
     setInvoice(next);
      
     setHydrated(true);
-  }, []);
+  }, [preset]);
 
   useEffect(() => {
     if (!user) return;
@@ -75,10 +86,10 @@ export function InvoiceGenerator({
   }, [user]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || preset) return;
     const t = setTimeout(() => saveDraft(invoice), 400);
     return () => clearTimeout(t);
-  }, [invoice, hydrated]);
+  }, [invoice, hydrated, preset]);
 
   function update(patch: Partial<Invoice>) {
     setInvoice((inv) => ({ ...inv, ...patch }));
@@ -150,6 +161,7 @@ export function InvoiceGenerator({
       const json = (await res.json()) as { ok?: boolean; id?: string; error?: string };
       if (res.ok && json.ok && json.id) {
         setSavedId(json.id);
+        trackEvent("invoice_saved_to_account", { invoiceNumber: invoice.invoiceNumber });
         setSaveNote("Saved to your dashboard ✓");
       } else {
         setSaveNote(json.error || "Could not save.");
@@ -158,6 +170,42 @@ export function InvoiceGenerator({
       setSaveNote("Network error while saving.");
     }
     setTimeout(() => setSaveNote(""), 4000);
+  }
+
+  async function emailInvoice() {
+    if (!user) return;
+    const toEmail = prompt("Send invoice to (client email):");
+    if (!toEmail || !toEmail.includes("@")) return;
+    setSendingEmail(true);
+    setEmailNote("");
+    try {
+      let id = savedId;
+      if (!id) {
+        const saveRes = await fetch("/api/invoices", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ invoice }),
+        });
+        const saveJson = (await saveRes.json()) as { id?: string };
+        if (saveJson.id) {
+          id = saveJson.id;
+          setSavedId(id);
+        }
+      }
+      if (!id) { setEmailNote("Save invoice first."); return; }
+      const res = await fetch(`/api/invoices/${id}/email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: toEmail }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (json.ok) trackEvent("invoice_emailed", { invoiceNumber: invoice.invoiceNumber });
+      setEmailNote(json.ok ? "Invoice sent!" : json.error || "Failed to send.");
+    } catch {
+      setEmailNote("Network error.");
+    }
+    setTimeout(() => setEmailNote(""), 4000);
+    setSendingEmail(false);
   }
 
   async function downloadPdf() {
@@ -217,6 +265,8 @@ export function InvoiceGenerator({
       }
       const name = (invoice.invoiceNumber || "invoice").replace(/[^\w.-]+/g, "-");
       pdf.save(`${name}.pdf`);
+      trackEvent("invoice_downloaded", { invoiceNumber: invoice.invoiceNumber, currency: invoice.currency, amount: invoice.items.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.rate) || 0), 0) });
+      trackEvent("invoice_completed", { invoiceNumber: invoice.invoiceNumber });
     } catch (err) {
       console.error(err);
       alert("Something went wrong generating the PDF. Please try again.");
@@ -250,7 +300,7 @@ export function InvoiceGenerator({
             </div>
           </div>
 
-          <div className="mt-5 flex gap-3">
+          <div className="mt-5 flex flex-wrap gap-3">
             <button
               type="button"
               onClick={downloadPdf}
@@ -268,7 +318,41 @@ export function InvoiceGenerator({
                 Print
               </button>
             ) : null}
+            {user ? (
+              <button
+                type="button"
+                onClick={() => void emailInvoice()}
+                disabled={sendingEmail}
+                className="rounded-full bg-[#e8e8ed] px-6 py-3.5 text-[17px] font-medium text-ink transition hover:bg-[#dcdce1] active:scale-[0.99] disabled:pointer-events-none disabled:opacity-60"
+              >
+                {sendingEmail ? "Sending…" : "Email"}
+              </button>
+            ) : null}
+            {user && savedId ? (
+              <button
+                type="button"
+                onClick={async () => {
+                  let url = "";
+                  try {
+                    const res = await fetch(`/api/invoices/${savedId}/share`, { method: "POST" });
+                    const json = (await res.json()) as { url?: string };
+                    url = json.url || "";
+                  } catch {}
+                  if (!url) return;
+                  const text = `Invoice #${invoice.invoiceNumber || ""} — ${invoice.clientName || "Invoala"}`;
+                  if (navigator.share) {
+                    try { await navigator.share({ title: text, text, url }); } catch {}
+                  } else {
+                    try { await navigator.clipboard.writeText(url); } catch { window.open(url, "_blank"); }
+                  }
+                }}
+                className="rounded-full bg-[#e8e8ed] px-6 py-3.5 text-[17px] font-medium text-ink transition hover:bg-[#dcdce1] active:scale-[0.99]"
+              >
+                Share
+              </button>
+            ) : null}
           </div>
+          {emailNote ? <p className="mt-2 text-center text-xs text-[#166534]">{emailNote}</p> : null}
           {user ? (
             <div className="mt-3 flex items-center justify-between">
               <button

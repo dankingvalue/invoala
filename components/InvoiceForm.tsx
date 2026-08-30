@@ -10,18 +10,20 @@ import {
 import type { ClientRow } from "@/lib/data";
 
 const inputCls =
-  "w-full rounded-xl border border-hairline bg-white px-3.5 py-2.5 text-[15px] text-ink outline-none transition placeholder:text-[#86868b] focus:border-accent focus:ring-[3px] focus:ring-accent/20";
+  "w-full rounded-xl border border-hairline bg-white px-3.5 py-2.5 text-[15px] text-ink outline-none transition placeholder:text-[#6b7280] focus:border-accent focus:ring-[3px] focus:ring-accent/20";
 
 function Field({
   label,
+  id,
   children,
 }: {
   label: string;
+  id?: string;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <label className="mb-1.5 block text-[13px] font-medium text-subtle">
+      <label htmlFor={id} className="mb-1.5 block text-[13px] font-medium text-subtle">
         {label}
       </label>
       {children}
@@ -105,16 +107,18 @@ export function InvoiceForm({
       <section className="grid gap-6 sm:grid-cols-2">
         <div className="space-y-4">
           <h3 className="text-lg font-semibold tracking-tight text-ink">From</h3>
-          <Field label="Business name">
+          <Field label="Business name" id="inv-business-name">
             <input
+              id="inv-business-name"
               className={inputCls}
               value={invoice.businessName}
               onChange={(e) => onChange({ businessName: e.target.value })}
               placeholder="Studio Nova LLC"
             />
           </Field>
-          <Field label="Email">
+          <Field label="Email" id="inv-business-email">
             <input
+              id="inv-business-email"
               type="email"
               className={inputCls}
               value={invoice.businessEmail}
@@ -122,8 +126,9 @@ export function InvoiceForm({
               placeholder="billing@studionova.com"
             />
           </Field>
-          <Field label="Address">
+          <Field label="Address" id="inv-business-address">
             <textarea
+              id="inv-business-address"
               className={`${inputCls} min-h-[72px] resize-none`}
               value={invoice.businessAddress}
               onChange={(e) => onChange({ businessAddress: e.target.value })}
@@ -163,8 +168,9 @@ export function InvoiceForm({
           <h3 className="text-lg font-semibold tracking-tight text-ink">Bill to</h3>
 
           {clients.length > 0 ? (
-            <Field label="Saved clients">
+            <Field label="Saved clients" id="inv-client-select">
               <select
+                id="inv-client-select"
                 className={inputCls}
                 value={selectedClientId}
                 onChange={(e) => selectClient(e.target.value)}
@@ -179,8 +185,9 @@ export function InvoiceForm({
             </Field>
           ) : null}
 
-          <Field label="Client name">
+          <Field label="Client name" id="inv-client-name">
             <input
+              id="inv-client-name"
               className={inputCls}
               value={invoice.clientName}
               onChange={(e) => {
@@ -190,8 +197,9 @@ export function InvoiceForm({
               placeholder="Acme Inc."
             />
           </Field>
-          <Field label="Email">
+          <Field label="Email" id="inv-client-email">
             <input
+              id="inv-client-email"
               type="email"
               className={inputCls}
               value={invoice.clientEmail}
@@ -202,8 +210,9 @@ export function InvoiceForm({
               placeholder="ap@acme.com"
             />
           </Field>
-          <Field label="Address">
+          <Field label="Address" id="inv-client-address">
             <textarea
+              id="inv-client-address"
               className={`${inputCls} min-h-[72px] resize-none`}
               value={invoice.clientAddress}
               onChange={(e) => {
@@ -247,6 +256,7 @@ export function InvoiceForm({
                 value={item.description}
                 onChange={(e) => onItemChange(item.id, { description: e.target.value })}
                 placeholder="Description of service or product"
+                aria-label="Description"
               />
               <input
                 type="number"
@@ -289,8 +299,9 @@ export function InvoiceForm({
 
       <section className="grid gap-6 sm:grid-cols-2">
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Currency">
+          <Field label="Currency" id="inv-currency">
             <select
+              id="inv-currency"
               className={inputCls}
               value={invoice.currency}
               onChange={(e) => onChange({ currency: e.target.value })}
@@ -302,8 +313,9 @@ export function InvoiceForm({
               ))}
             </select>
           </Field>
-          <Field label="Tax %">
+          <Field label="Tax %" id="inv-tax">
             <input
+              id="inv-tax"
               type="number"
               min={0}
               step="0.01"
@@ -312,18 +324,32 @@ export function InvoiceForm({
               onChange={(e) => onChange({ taxRate: Number(e.target.value) || 0 })}
             />
           </Field>
+          <Field label="Discount %" id="inv-discount">
+            <input
+              id="inv-discount"
+              type="number"
+              min={0}
+              max={100}
+              step="0.01"
+              className={inputCls}
+              value={invoice.discount}
+              onChange={(e) => onChange({ discount: Number(e.target.value) || 0 })}
+            />
+          </Field>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Issue date">
+          <Field label="Issue date" id="inv-issue-date">
             <input
+              id="inv-issue-date"
               type="date"
               className={inputCls}
               value={invoice.issueDate}
               onChange={(e) => onChange({ issueDate: e.target.value })}
             />
           </Field>
-          <Field label="Due date">
+          <Field label="Due date" id="inv-due-date">
             <input
+              id="inv-due-date"
               type="date"
               className={inputCls}
               value={invoice.dueDate}
@@ -335,8 +361,9 @@ export function InvoiceForm({
 
       {showRecurring ? (
         <section>
-          <Field label="Billing frequency">
+          <Field label="Billing frequency" id="inv-recurring">
             <select
+              id="inv-recurring"
               className={inputCls}
               value={invoice.recurring}
               onChange={(e) => onChange({ recurring: e.target.value })}
@@ -352,8 +379,9 @@ export function InvoiceForm({
       ) : null}
 
       <section className="grid gap-6 sm:grid-cols-[1fr_auto]">
-        <Field label="Notes & payment terms">
+        <Field label="Notes & payment terms" id="inv-notes">
           <textarea
+            id="inv-notes"
             className={`${inputCls} min-h-[88px] resize-none`}
             value={invoice.notes}
             onChange={(e) => onChange({ notes: e.target.value })}

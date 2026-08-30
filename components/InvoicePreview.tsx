@@ -17,7 +17,7 @@ export function InvoicePreview({
   invoice: Invoice;
   innerRef?: React.RefObject<HTMLDivElement | null>;
 }) {
-  const { subtotal, taxAmount, total } = computeTotals(invoice);
+  const { subtotal, taxAmount, total, discountAmount } = computeTotals(invoice);
   const businessName = invoice.businessName.trim() || "Your Company";
   const clientName = invoice.clientName.trim() || "Client Name";
   const isQuote = invoice.docType === "quote";
@@ -148,6 +148,16 @@ export function InvoicePreview({
                 {formatMoney(subtotal, invoice.currency)}
               </td>
             </tr>
+            {discountAmount > 0 ? (
+              <tr>
+                <td className="pb-1.5" style={{ color: subtle }}>
+                  Discount ({invoice.discount}%)
+                </td>
+                <td className="pb-1.5 text-right tabular-nums" style={{ color: ink }}>
+                  &minus;{formatMoney(discountAmount, invoice.currency)}
+                </td>
+              </tr>
+            ) : null}
             <tr>
               <td className="pb-1.5" style={{ color: subtle }}>
                 Tax ({invoice.taxRate}%)

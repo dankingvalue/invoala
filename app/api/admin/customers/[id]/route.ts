@@ -42,9 +42,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     client_name: string;
     total: number;
     currency: string;
+    data: string;
     created_at: number;
   }>(
-    "SELECT id, number, status, client_name, total, currency, created_at FROM invoices WHERE user_id = ? ORDER BY created_at DESC LIMIT 10",
+    "SELECT id, number, status, client_name, total, currency, data, created_at FROM invoices WHERE user_id = ? ORDER BY created_at DESC LIMIT 10",
     id
   );
 
