@@ -1,5 +1,5 @@
 import { getSessionUser } from "@/lib/server-auth";
-import { getTeam, getTeamMembers, getTeamMemberCount, inviteToTeam, removeMember, updateTeamMemberRole, isTeamAdmin } from "@/lib/teams";
+import { getTeam, getTeamMembers, getTeamMemberCount, getTeamInvites, cancelTeamInvite, inviteToTeam, removeMember, updateTeamMemberRole, isTeamAdmin } from "@/lib/teams";
 import { sendTeamInviteEmail } from "@/lib/email";
 
 export async function GET(
@@ -15,8 +15,9 @@ export async function GET(
 
   const members = await getTeamMembers(id);
   const count = await getTeamMemberCount(id);
+  const invites = await getTeamInvites(id);
 
-  return Response.json({ members, count, maxMembers: 5 });
+  return Response.json({ members, count, maxMembers: 5, invites });
 }
 
 export async function POST(
@@ -125,11 +126,21 @@ export async function DELETE(
   }
 
   let userId = "";
+  let inviteId = "";
   try {
-    const body = (await req.json()) as { userId?: string };
+    const body = (await req.json()) as { userId?: string; inviteId?: string };
     userId = typeof body.userId === "string" ? body.userId : "";
+    inviteId = typeof body.inviteId === "string" ? body.inviteId : "";
   } catch {
     // falls through
+  }
+
+  if (inviteId) {
+    const cancelled = await cancelTeamInvite(inviteId, id);
+    if (!cancelled) {
+      return Response.json({ error: "Invite not found." }, { status: 404 });
+    }
+    return Response.json({ ok: true });
   }
 
   if (!userId) {

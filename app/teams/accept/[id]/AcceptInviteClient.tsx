@@ -7,6 +7,7 @@ import Link from "next/link";
 export function AcceptInviteClient({ inviteId }: { inviteId: string }) {
   const router = useRouter();
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [declined, setDeclined] = useState(false);
   const [error, setError] = useState("");
 
   async function accept() {
@@ -30,6 +31,26 @@ export function AcceptInviteClient({ inviteId }: { inviteId: string }) {
     }
   }
 
+  async function decline() {
+    setStatus("loading");
+    setError("");
+    try {
+      const res = await fetch(`/api/teams/${inviteId}/invite`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (res.ok && json.ok) {
+        setDeclined(true);
+      } else {
+        setError(json.error || "Could not decline invite.");
+        setStatus("error");
+      }
+    } catch {
+      setError("Network error.");
+      setStatus("error");
+    }
+  }
+
   if (status === "done") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f3f4f6] px-6">
@@ -43,6 +64,30 @@ export function AcceptInviteClient({ inviteId }: { inviteId: string }) {
           <p className="mt-2 text-[14px] text-[#6b7280]">
             Redirecting you to the dashboard…
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (declined) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f3f4f6] px-6">
+        <div className="rounded-2xl bg-white p-10 text-center shadow-sm ring-1 ring-black/5">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#f3f4f6]">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </div>
+          <h1 className="text-[20px] font-bold text-ink">Invitation declined</h1>
+          <p className="mt-2 text-[14px] text-[#6b7280]">
+            You declined this team invitation.
+          </p>
+          <Link
+            href="/dashboard"
+            className="mt-6 inline-block rounded-lg bg-[#14532d] px-6 py-3 text-[15px] font-semibold text-white transition hover:bg-[#0f3d22]"
+          >
+            Go to dashboard
+          </Link>
         </div>
       </div>
     );
@@ -78,6 +123,14 @@ export function AcceptInviteClient({ inviteId }: { inviteId: string }) {
             className="rounded-lg bg-[#14532d] px-6 py-3 text-[15px] font-semibold text-white transition hover:bg-[#0f3d22] disabled:opacity-50"
           >
             {status === "loading" ? "Accepting…" : "Accept invitation"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void decline()}
+            disabled={status === "loading"}
+            className="rounded-lg border border-[#e5e7eb] px-6 py-3 text-[15px] font-medium text-[#6b7280] transition hover:bg-[#f3f4f6] disabled:opacity-50"
+          >
+            Decline
           </button>
           <Link
             href="/dashboard"

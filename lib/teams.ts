@@ -158,11 +158,19 @@ export async function inviteToTeam(
   };
 }
 
-export async function getTeamInvites(teamId: string): Promise<Array<{ email: string; role: string; created_at: number }>> {
+export async function getTeamInvites(teamId: string): Promise<Array<{ id: string; email: string; role: string; created_at: number }>> {
   return await dbAll(
-    "SELECT email, role, created_at FROM team_invites WHERE team_id = ? AND expires_at > ?",
+    "SELECT id, email, role, created_at FROM team_invites WHERE team_id = ? AND expires_at > ? ORDER BY created_at DESC",
     teamId, Date.now()
   );
+}
+
+export async function cancelTeamInvite(inviteId: string, teamId: string): Promise<boolean> {
+  const { changes } = await dbRun(
+    "DELETE FROM team_invites WHERE id = ? AND team_id = ?",
+    inviteId, teamId
+  );
+  return changes > 0;
 }
 
 export async function getUserInvites(userId: string): Promise<TeamInvite[]> {
@@ -214,6 +222,20 @@ export async function acceptInvite(inviteId: string, userId: string): Promise<bo
   // Delete invite
   await dbRun("DELETE FROM team_invites WHERE id = ?", inviteId);
 
+  return true;
+}
+
+export async function declineInvite(inviteId: string, userId: string): Promise<boolean> {
+  const invite = await dbGet<{ email: string }>(
+    "SELECT email FROM team_invites WHERE id = ? AND expires_at > ?",
+    inviteId, Date.now()
+  );
+  if (!invite) return false;
+
+  const user = await dbGet<{ email: string }>("SELECT email FROM users WHERE id = ?", userId);
+  if (!user || user.email.toLowerCase() !== invite.email.toLowerCase()) return false;
+
+  await dbRun("DELETE FROM team_invites WHERE id = ?", inviteId);
   return true;
 }
 
