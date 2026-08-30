@@ -38,6 +38,26 @@ export function LiveChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Open a specific conversation when another part of the app requests it
+  // (e.g. clicking a support request in the dashboard).
+  useEffect(() => {
+    function openChat(e: Event) {
+      const detail = (e as CustomEvent<{ conversationId?: string }>).detail;
+      if (!detail?.conversationId) return;
+      setIsOpen(true);
+      fetch(`/api/conversations/${detail.conversationId}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: { conversation?: Conversation; messages?: Message[] } | null) => {
+          if (!data?.conversation) return;
+          setConversation(data.conversation);
+          setMessages(data.messages || []);
+        })
+        .catch(() => {});
+    }
+    window.addEventListener("invoala:open-chat", openChat);
+    return () => window.removeEventListener("invoala:open-chat", openChat);
+  }, []);
+
   // Auto-close warning: check if last support message was 5+ min ago
   useEffect(() => {
     if (!conversation || conversation.status === "resolved" || conversation.status === "ai") return;

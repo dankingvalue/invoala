@@ -90,6 +90,10 @@ export function SupportDashboard() {
 function OverviewTab() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [openChats, setOpenChats] = useState(0);
+  const [metrics, setMetrics] = useState<{
+    avgRating: number; ratingsCount: number; firstReplyMinutes: number;
+    resolutionMinutes: number; recentRatings: Array<{ rating: number; comment: string; at: number; email: string }>;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -97,9 +101,11 @@ function OverviewTab() {
       fetch("/api/admin/stats").then((r) => r.json()),
       fetch("/api/admin/messages?status=support").then((r) => r.json()),
       fetch("/api/admin/messages?status=escalated").then((r) => r.json()),
-    ]).then(([s, support, escalated]) => {
+      fetch("/api/admin/support-metrics").then((r) => r.json()),
+    ]).then(([s, support, escalated, m]) => {
       setStats(s);
       setOpenChats((support.total || 0) + (escalated.total || 0));
+      setMetrics(m);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -116,6 +122,65 @@ function OverviewTab() {
         <StatCard label="Pro Subscribers" value={stats.activeSubs.toLocaleString()} />
         <StatCard label="Emails (7d)" value={stats.emailsSent7d.toLocaleString()} />
       </div>
+
+      {metrics && (
+        <>
+          <div>
+            <h3 className="text-[16px] font-bold text-ink">Support performance (30 days)</h3>
+            <div className="mt-3 grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <StatCard
+                label="Avg Rating"
+                value={metrics.ratingsCount > 0 ? `${metrics.avgRating.toFixed(1)} / 5` : "—"}
+                sub={`${metrics.ratingsCount} rating${metrics.ratingsCount === 1 ? "" : "s"}`}
+              />
+              <StatCard
+                label="Avg First Reply"
+                value={metrics.firstReplyMinutes > 0 ? `${metrics.firstReplyMinutes} min` : "—"}
+                sub="User message → staff reply"
+              />
+              <StatCard
+                label="Avg Resolution"
+                value={metrics.resolutionMinutes > 0 ? `${Math.round(metrics.resolutionMinutes / 60 * 10) / 10} hr` : "—"}
+                sub="Open → resolved"
+              />
+              <StatCard label="Open Chats" value={openChats.toLocaleString()} sub="Need attention" />
+            </div>
+          </div>
+
+          <Panel>
+            <SectionHead title="Recent ratings" subtitle="Latest feedback from users, newest first." />
+            {metrics.recentRatings.length === 0 ? (
+              <p className="py-4 text-sm text-[#6b7280]">No ratings yet.</p>
+            ) : (
+              <div className="mt-3 space-y-2">
+                {metrics.recentRatings.map((r, i) => (
+                  <div
+                    key={`${r.at}-${i}`}
+                    className="flex items-start justify-between gap-4 rounded-lg bg-[#f9fafb] px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                          r.rating >= 4 ? "bg-[#dcfce7] text-[#166534]" : r.rating === 3 ? "bg-[#fef3c7] text-[#92400e]" : "bg-[#fee2e2] text-[#b91c1c]"
+                        }`}>
+                          {r.rating} / 5
+                        </span>
+                        <span className="text-[12px] text-[#6b7280]">{r.email}</span>
+                      </div>
+                      {r.comment && (
+                        <p className="mt-1 text-[13px] text-[#4b5563]">“{r.comment}”</p>
+                      )}
+                    </div>
+                    <p className="shrink-0 text-[12px] text-[#9ca3af]">
+                      {new Date(r.at).toLocaleDateString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Panel>
+        </>
+      )}
     </div>
   );
 }
