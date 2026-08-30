@@ -941,6 +941,230 @@ export const ARTICLES: ArticleDef[] = [
     published: "2026-08-26",
     updated: "2026-08-27",
   },
+  {
+    slug: "net-30-payment-terms",
+    category: "Payments",
+    title: "What Are Net 30 Payment Terms?",
+    metaTitle: "What Are Net 30 Payment Terms? (And Net 15, 60, 90) | Invoala",
+    description:
+      "Net 30 means payment is due 30 days after the invoice date. Learn how net terms work, when to use them, and how to protect your cash flow.",
+    intro:
+      "\"Net 30\" appears on millions of invoices, but it's often left unexplained. It simply means the full invoice amount is due 30 days after the invoice date. Understanding net terms — and picking the right ones — shapes how fast you get paid.",
+    sections: [
+      {
+        heading: "What the numbers mean",
+        body: "Net 30: payment due 30 days after the invoice date. Net 15, Net 45, Net 60, and Net 90 follow the same rule with different day counts. The count uses calendar days, not business days. An invoice dated March 3rd with Net 30 terms is due April 2nd.",
+      },
+      {
+        heading: "When to use net terms",
+        body: "Net terms work well for established client relationships, larger contracts, and clients with formal payment processes. They're also standard in industries where clients expect credit — construction, wholesale, and B2B services. New clients usually shouldn't get generous terms until they've paid on time a few times.",
+      },
+      {
+        heading: "The risk you're taking on",
+        body: "Net 30 is effectively a 30-day, interest-free loan to your client. If you pay suppliers faster than clients pay you, the gap comes out of your cash flow. Longer terms (Net 60, Net 90) amplify this. That's why invoices should always state the terms explicitly — assumptions produce late payments.",
+      },
+      {
+        heading: "Protecting yourself",
+        body: "State terms on every invoice, and define what happens after the due date — late fees, interest, or work pauses. Follow up on the due date itself, not weeks later. And consider early-payment discounts (like 2/10 Net 30: 2% off if paid within 10 days) if you'd rather be paid faster.",
+      },
+      {
+        heading: "Due-on-receipt vs net terms",
+        body: "Due on receipt means payment is expected immediately — common for freelancers and one-off work. Net terms give the client breathing room. There's no universally right answer: match terms to the client's payment record and your own cash needs.",
+      },
+    ],
+    example:
+      "A graphic designer invoices a retail client on June 1st with Net 30 terms. Payment is due June 30th. On June 30th the payment hasn't arrived, so the designer sends a polite reminder the same day — and the payment lands July 2nd.",
+    faqs: [
+      {
+        question: "Does Net 30 mean 30 business days?",
+        answer:
+          "No — calendar days. Business-day counting would stretch 30 days into six weeks, and clients would never accept the ambiguity.",
+      },
+      {
+        question: "Should new clients get Net 30?",
+        answer:
+          "Usually not automatically. Many freelancers start new clients on due-on-receipt or Net 15 and extend terms after a few on-time payments.",
+      },
+      {
+        question: "Can I charge late fees after Net 30?",
+        answer:
+          "Only if the terms stated it upfront. Add a short late-payment clause to your invoice notes or contract before the invoice is due, not after.",
+      },
+    ],
+    related: [
+      { label: "Invoice due date calculator", href: "/tools/invoice-due-date-calculator" },
+      { label: "How to follow up on an unpaid invoice", href: "/learn/how-to-follow-up-on-an-unpaid-invoice" },
+      { label: "Late payment calculator", href: "/tools/late-payment-calculator" },
+    ],
+    published: "2026-08-29",
+    updated: "2026-08-29",
+  },
+  {
+    slug: "what-is-a-tax-invoice",
+    category: "Taxes",
+    title: "What Is a Tax Invoice?",
+    metaTitle: "What Is a Tax Invoice? Requirements & Examples | Invoala",
+    description:
+      "A tax invoice is an invoice that includes the tax details your jurisdiction requires — VAT or GST breakdowns, tax IDs, and itemized amounts. Learn what must appear on one.",
+    intro:
+      "A tax invoice is a standard invoice that meets the legal requirements for charging and reclaiming tax — most commonly VAT or GST. If you're registered for tax, you're generally required to issue tax invoices, and your business clients can't reclaim input tax without one.",
+    sections: [
+      {
+        heading: "What makes an invoice a 'tax invoice'",
+        body: "Beyond the usual invoice contents, a tax invoice must show the tax explicitly: your tax registration number, the client's tax number (when required), the taxable amount, the tax rate, and the tax charged. The exact requirements vary by country — check your local tax authority's rules.",
+      },
+      {
+        heading: "Common requirements",
+        body: "Most jurisdictions require: the words 'Tax Invoice' on the document, seller's name and tax ID, buyer's details, a unique invoice number, the invoice date, a description of the goods or services, the amount excluding tax, the tax rate, and the total tax. Some also require the currency and exchange details for foreign invoices.",
+      },
+      {
+        heading: "How Invoala handles tax invoices",
+        body: "In Invoala, set your tax rate in the generator and it calculates the tax and total automatically, showing a labeled tax line on the PDF. Add your tax registration number as a custom field so it appears on every document. You can also set the document title by choosing the invoice type.",
+      },
+      {
+        heading: "Simplified tax invoices",
+        body: "For small transactions (under a threshold that varies by country), a simplified tax invoice may be allowed — usually the same document minus the buyer's full details. Check the threshold in your jurisdiction before relying on this.",
+      },
+      {
+        heading: "Keeping tax invoices",
+        body: "Most countries require you to keep issued tax invoices for several years. Saving your invoices in Invoala keeps them searchable and re-downloadable when the tax authority asks.",
+      },
+    ],
+    example:
+      "A UK VAT-registered designer issues an invoice for £1,000 with 20% VAT: subtotal £1,000, VAT £200, total £1,200, with their VAT number shown on the invoice. The client's accountant reclaims the £200 input VAT using this document.",
+    faqs: [
+      {
+        question: "Is every invoice a tax invoice?",
+        answer:
+          "No. An invoice only qualifies as a tax invoice when it contains the tax information your jurisdiction requires — including your tax ID and the tax breakdown.",
+      },
+      {
+        question: "Do I need a tax invoice if I'm not VAT registered?",
+        answer:
+          "If you're not registered for tax, you can't charge it — so you issue a regular invoice without a tax line. Once registered, tax invoices become mandatory for taxable supplies.",
+      },
+      {
+        question: "Where do I put my tax ID on an invoice?",
+        answer:
+          "Near your business details at the top. In Invoala, add it as a custom field or in your address block so it appears on every PDF.",
+      },
+    ],
+    related: [
+      { label: "How to calculate VAT on an invoice", href: "/learn/how-to-calculate-vat-on-an-invoice" },
+      { label: "VAT calculator", href: "/tools/vat-calculator" },
+      { label: "What should an invoice include", href: "/learn/what-should-an-invoice-include" },
+    ],
+    published: "2026-08-29",
+    updated: "2026-08-29",
+  },
+  {
+    slug: "what-is-a-commercial-invoice",
+    category: "Invoicing",
+    title: "What Is a Commercial Invoice?",
+    metaTitle: "What Is a Commercial Invoice? (For International Shipping) | Invoala",
+    description:
+      "A commercial invoice is the customs document for international shipments. Learn what it must include — value, HS codes, origin — and how it differs from a regular invoice.",
+    intro:
+      "A commercial invoice is the official transaction document that accompanies goods crossing international borders. Customs uses it to assess duties and taxes, verify what's in the shipment, and clear the goods. Ship without one and your package stalls at the border.",
+    sections: [
+      {
+        heading: "What customs wants to see",
+        body: "A commercial invoice needs more than a regular invoice: seller and buyer details, shipping address, a precise description of each item, quantities, unit value and total value, the currency, the country of origin, HS (harmonized system) codes, and the reason for export. The declared value is what duties are calculated on.",
+      },
+      {
+        heading: "How it differs from a regular invoice",
+        body: "A regular invoice documents a sale for accounting. A commercial invoice does that too, but its audience is customs: it declares the goods' value, origin, and classification. Getting the value wrong — even accidentally — can cause delays, fines, or confiscation.",
+      },
+      {
+        heading: "Common mistakes to avoid",
+        body: "Undervaluing goods to reduce duty is fraud — never do it. Mismatches between the commercial invoice and the packing list cause holds. And vague descriptions like 'samples' or 'merchandise' get flagged: customs wants 'cotton t-shirts, 100% cotton' — not 'clothes'.",
+      },
+      {
+        heading: "Creating one in Invoala",
+        body: "Use Invoala's generator with item descriptions, quantities, and unit values. Add HS codes and country of origin as custom fields, and put incoterms (like FOB or CIF) in the notes. Most couriers also accept a filled PDF alongside their own forms.",
+      },
+    ],
+    example:
+      "A maker ships 50 leather wallets from the UK to a US retailer: the commercial invoice lists 'leather wallets, HS 4202.31, origin UK, value £1,250'. US customs uses it to assess import duty before release.",
+    faqs: [
+      {
+        question: "Who prepares the commercial invoice?",
+        answer:
+          "The exporter (sender). Couriers like DHL and FedEx usually generate a draft from the details you enter — but you're legally responsible for accuracy.",
+      },
+      {
+        question: "Do I need a commercial invoice for documents?",
+        answer:
+          "Usually not — non-commercial documents travel without customs value. Goods, however, almost always need one when crossing borders.",
+      },
+      {
+        question: "What are HS codes?",
+        answer:
+          "The harmonized system classifies products worldwide. Getting the right 6-digit code for your product ensures correct duty rates and faster clearance.",
+      },
+    ],
+    related: [
+      { label: "What should an invoice include", href: "/learn/what-should-an-invoice-include" },
+      { label: "Invoice generator with custom fields", href: "/invoice-generator" },
+      { label: "What is a tax invoice?", href: "/learn/what-is-a-tax-invoice" },
+    ],
+    published: "2026-08-29",
+    updated: "2026-08-29",
+  },
+  {
+    slug: "invoice-vs-quote",
+    category: "Invoicing",
+    title: "Invoice vs Quote: What's the Difference?",
+    metaTitle: "Invoice vs Quote — What's the Difference? | Invoala",
+    description:
+      "A quote is a firm price offered before work starts; an invoice requests payment for completed work. Learn when to send each and how they connect.",
+    intro:
+      "Quotes and invoices bookend every job: the quote sets the price before the work, and the invoice collects the money after. Confusing the two confuses your client — and your records.",
+    sections: [
+      {
+        heading: "The quote comes first",
+        body: "A quote is a firm offer: 'this is what I'll do, and this is exactly what it will cost.' It's sent before work begins, usually with a validity period. Once the client accepts, the price is generally binding — which is why quotes should be detailed and carefully priced.",
+      },
+      {
+        heading: "The invoice comes after",
+        body: "The invoice requests payment for work done (or in progress, for staged billing). It references the same items as the accepted quote, adds payment terms and a due date, and is the document your client actually pays against.",
+      },
+      {
+        heading: "Estimates sit between the two",
+        body: "An estimate is a ballpark figure — an informed guess that can change as scope becomes clearer. Unlike a quote, it's not a promise. Many clients say 'quote' when they mean 'estimate'; confirming which one you're providing prevents pricing disputes later.",
+      },
+      {
+        heading: "Connecting them",
+        body: "The cleanest workflow: send a quote, get approval, then convert that quote into an invoice with the same line items. Invoala does this in one click — the items carry over and a due date is added automatically. No retyping, no transcription errors, and the numbers the client approved are exactly the numbers they're billed.",
+      },
+    ],
+    example:
+      "A web designer quotes $3,000 for a site rebuild with 30-day validity. The client approves on day 12. The designer converts the quote to an invoice with Net 14 terms — same $3,000, now with a payment deadline.",
+    faqs: [
+      {
+        question: "Is a quote legally binding?",
+        answer:
+          "An accepted quote is generally a binding agreement at the quoted price. Estimates are not. Label your documents clearly so there's no doubt about which one you sent.",
+      },
+      {
+        question: "Can I change the price after a quote?",
+        answer:
+          "Only if the scope changes or the quote expired. Changing the price of an accepted quote without scope change is a fast way to lose trust — and potentially a dispute.",
+      },
+      {
+        question: "Should quotes have payment terms?",
+        answer:
+          "Quotes usually show a validity period rather than payment terms. Payment terms belong on the invoice you raise after acceptance.",
+      },
+    ],
+    related: [
+      { label: "Estimate generator", href: "/estimate-generator" },
+      { label: "Invoice vs estimate", href: "/learn/invoice-vs-estimate" },
+      { label: "Free invoice generator", href: "/invoice-generator" },
+    ],
+    published: "2026-08-29",
+    updated: "2026-08-29",
+  },
 ];
 
 export const ARTICLES_BY_SLUG = Object.fromEntries(ARTICLES.map((a) => [a.slug, a]));
