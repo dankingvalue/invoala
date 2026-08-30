@@ -1,4 +1,5 @@
 "use client";
+import { trackEvent } from "@/lib/analytics";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -245,6 +246,7 @@ export function DashboardClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: row.id, status: next }),
     }).catch(() => {});
+    if (next === "paid") trackEvent("payment_received", { invoiceNumber: row.number });
     setInvoices((rows) => rows.map((r) => (r.id === row.id ? { ...r, status: next } : r)));
     setBusy(false);
   }
@@ -261,6 +263,26 @@ export function DashboardClient({
       localStorage.setItem("invoala.edit", JSON.stringify({ id: row.id, invoice: row.data }));
     } catch {}
     router.push("/#generate");
+  }
+
+  async function shareInvoice(row: InvoiceRow) {
+    const url = `${window.location.origin}/api/invoices/${row.id}/share`;
+    const title = `Invoice #${row.number || ""} — ${row.client_name || "Invoala"}`;
+    const text = `Invoice #${row.number || ""} for ${row.client_name || "client"} — ${formatMoney(row.total, row.currency)}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text, url });
+      } catch {}
+    } else {
+      try {
+        await navigator.clipboard.writeText(url);
+        setNotice("Invoice link copied to clipboard!");
+        setTimeout(() => setNotice(""), 3000);
+      } catch {
+        window.open(url, "_blank");
+      }
+    }
   }
 
   async function addClient(e: FormEvent) {
@@ -300,16 +322,20 @@ export function DashboardClient({
         body: JSON.stringify({ plan }),
       });
       const json = (await res.json()) as { mode?: string; url?: string; error?: string };
-      if (json.mode === "stripe" && json.url) {
+      if (json.mode === "payment" && json.url) {
+        trackEvent("checkout_started", { plan });
         window.location.href = json.url;
         return;
       }
+      if (json.mode === "dev") {
+        trackEvent("subscription_started", { plan, provider: "dev" });
+      }
       if (json.mode === "not_configured") {
-        setNotice(json.error || "Payment not configured yet. Stripe integration is coming soon.");
+        setNotice(json.error || "Payment processing is not configured yet. We're working on integrating a payment provider — stay tuned!");
         return;
       }
       if (res.ok && json.mode === "dev") {
-        setNotice("Dev billing: Pro activated instantly. Add STRIPE_SECRET_KEY for live payments.");
+        setNotice("Dev billing: Pro activated instantly.");
         router.refresh();
       } else {
         setNotice(json.error || "Checkout failed.");
@@ -426,21 +452,24 @@ export function DashboardClient({
   return (
     <div>
       {/* Page header */}
-      <div className="mb-6">
-        <h1 className="text-[28px] font-extrabold tracking-tight text-ink md:text-[32px]">
-          {tab === "general" && "General"}
-          {tab === "documents" && "Documents"}
-          {tab === "clients" && "Clients"}
-          {tab === "billing" && "Billing"}
-          {tab === "security" && "Security"}
-        </h1>
-        <p className="mt-1 text-[14px] text-[#6b7280]">
-          {tab === "general" && "Manage your profile and invoicing defaults."}
-          {tab === "documents" && "View and manage all your invoices and quotes."}
-          {tab === "clients" && "Your saved client book. Auto-fills new invoices."}
-          {tab === "billing" && "Subscription plan, payment method, and invoices."}
-          {tab === "security" && "Email, password, and account deletion."}
-        </p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-[28px] font-extrabold tracking-tight text-ink md:text-[32px]">
+            {tab === "general" && "General"}
+            {tab === "documents" && "Documents"}
+            {tab === "clients" && "Clients"}
+            {tab === "billing" && "Billing"}
+            {tab === "security" && "Security"}
+          </h1>
+          <p className="mt-1 text-[14px] text-[#6b7280]">
+            {tab === "general" && "Manage your profile and invoicing defaults."}
+            {tab === "documents" && "View and manage all your invoices and quotes."}
+            {tab === "clients" && "Your saved client book. Auto-fills new invoices."}
+            {tab === "billing" && "Subscription plan, payment method, and invoices."}
+            {tab === "security" && "Email, password, and account deletion."}
+          </p>
+        </div>
+        <NotificationsBell />
       </div>
 
       {/* Card */}
@@ -549,20 +578,20 @@ export function DashboardClient({
                   These values apply to new invoices. Edit your account name, country, and currency from the generator.
                 </p>
                 <div className="mt-5 rounded-lg border border-[#e5e7eb]">
-                  <div className="flex items-center border-b border-[#e5e7eb] px-4 py-3">
-                    <span className="w-[200px] text-[13px] text-[#6b7280]">Account name</span>
+                  <div className="flex flex-col gap-1 border-b border-[#e5e7eb] px-4 py-3 sm:flex-row sm:items-center sm:gap-0">
+                    <span className="w-full text-[13px] text-[#6b7280] sm:w-[200px]">Account name</span>
                     <span className="text-[14px] font-medium text-ink">{profileName || "—"}</span>
                   </div>
-                  <div className="flex items-center border-b border-[#e5e7eb] px-4 py-3">
-                    <span className="w-[200px] text-[13px] text-[#6b7280]">Email</span>
+                  <div className="flex flex-col gap-1 border-b border-[#e5e7eb] px-4 py-3 sm:flex-row sm:items-center sm:gap-0">
+                    <span className="w-full text-[13px] text-[#6b7280] sm:w-[200px]">Email</span>
                     <span className="text-[14px] font-medium text-ink">{email}</span>
                   </div>
-                  <div className="flex items-center border-b border-[#e5e7eb] px-4 py-3">
-                    <span className="w-[200px] text-[13px] text-[#6b7280]">Timezone</span>
+                  <div className="flex flex-col gap-1 border-b border-[#e5e7eb] px-4 py-3 sm:flex-row sm:items-center sm:gap-0">
+                    <span className="w-full text-[13px] text-[#6b7280] sm:w-[200px]">Timezone</span>
                     <span className="text-[14px] font-medium text-ink">{profileTimezone || "System default"}</span>
                   </div>
-                  <div className="flex items-center px-4 py-3">
-                    <span className="w-[200px] text-[13px] text-[#6b7280]">Plan</span>
+                  <div className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:gap-0">
+                    <span className="w-full text-[13px] text-[#6b7280] sm:w-[200px]">Plan</span>
                     <span className="text-[14px] font-medium text-ink">{isPro ? "Pro" : "Free"}</span>
                   </div>
                 </div>
@@ -573,8 +602,8 @@ export function DashboardClient({
           {/* Documents Tab */}
           {tab === "documents" && (
             <div>
-              <div className="mb-5 flex items-center justify-between">
-                <div className="flex gap-4">
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap gap-3">
                   <div className="rounded-lg bg-[#f3f4f6] px-4 py-2.5">
                     <p className="text-[12px] font-medium uppercase tracking-wider text-[#6b7280]">Total</p>
                     <p className="text-[20px] font-bold text-ink">{invoices.length}</p>
@@ -641,6 +670,15 @@ export function DashboardClient({
                           </td>
                           <td className="py-3 text-right">
                             <div className="flex justify-end gap-2 text-[12px]">
+                              <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() => void shareInvoice(row)}
+                                className="text-[#6b7280] hover:text-[#166534]"
+                                title="Share invoice"
+                              >
+                                Share
+                              </button>
                               <button
                                 type="button"
                                 disabled={busy}
@@ -787,32 +825,43 @@ export function DashboardClient({
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <h3 className="text-[16px] font-bold text-ink">My Teams</h3>
                   {isPro && (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (!newTeamName.trim()) return;
-                        setTeamStatus("loading");
-                        const res = await fetch("/api/teams", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ name: newTeamName }),
-                        });
-                        if (res.ok) {
-                          const json = await res.json();
-                          setTeams((prev) => [...prev, json.team]);
-                          setNewTeamName("");
-                          setTeamStatus("done");
-                          setTeamMsg("Team created!");
-                        } else {
-                          const json = await res.json();
-                          setTeamStatus("error");
-                          setTeamMsg(json.error || "Could not create team.");
-                        }
-                      }}
-                      className="rounded-lg bg-[#14532d] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0f3d22] disabled:opacity-50"
-                    >
-                      + New team
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder="Team name"
+                        value={newTeamName}
+                        onChange={(e) => setNewTeamName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter" && newTeamName.trim()) e.currentTarget.parentElement?.querySelector("button")?.click(); }}
+                        className="w-48 rounded-lg border border-[#e5e7eb] px-3 py-2 text-[13px] focus:border-[#166534] focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        disabled={teamStatus === "loading" || !newTeamName.trim()}
+                        onClick={async () => {
+                          if (!newTeamName.trim()) return;
+                          setTeamStatus("loading");
+                          const res = await fetch("/api/teams", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ name: newTeamName }),
+                          });
+                          if (res.ok) {
+                            const json = await res.json();
+                            setTeams((prev) => [...prev, json.team]);
+                            setNewTeamName("");
+                            setTeamStatus("done");
+                            setTeamMsg("Team created!");
+                          } else {
+                            const json = await res.json();
+                            setTeamStatus("error");
+                            setTeamMsg(json.error || "Could not create team.");
+                          }
+                        }}
+                        className="rounded-lg bg-[#14532d] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0f3d22] disabled:opacity-50"
+                      >
+                        + New team
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -1019,9 +1068,7 @@ export function DashboardClient({
                   </div>
                   {subscription?.provider === "dev" ? (
                     <div className="mb-4 rounded-lg border border-[#f0c000]/30 bg-[#fef9e7] px-4 py-3 text-[13px] text-[#92600a]">
-                      <strong>Dev mode:</strong> Billing is simulated. No real charges. Add{" "}
-                      <code className="rounded bg-[#fef3c7] px-1">STRIPE_SECRET_KEY</code> to enable
-                      live payments.
+                      <strong>Dev mode:</strong> Billing is simulated. No real charges.
                     </div>
                   ) : null}
                   {isPro ? (
@@ -1293,6 +1340,78 @@ function UserMessagesTab() {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+function NotificationsBell() {
+  const [open, setOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Array<{
+    id: string; type: string; title: string; body: string; read: number; created_at: number;
+  }>>([]);
+  const [unread, setUnread] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+
+  function load() {
+    fetch("/api/notifications")
+      .then((r) => r.json())
+      .then((d) => { setNotifications(d.notifications || []); setUnread(d.unread || 0); setLoaded(true); })
+      .catch(() => setLoaded(true));
+  }
+
+  function toggle() {
+    if (!loaded) load();
+    setOpen((prev) => !prev);
+    if (!open && unread > 0) {
+      fetch("/api/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ markAll: true }),
+      }).then(() => setUnread(0));
+    }
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={toggle}
+        className="relative rounded-full p-2 text-[#6b7280] hover:bg-[#f3f4f6] hover:text-ink"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+        </svg>
+        {unread > 0 && (
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#166534] text-[10px] font-bold text-white">
+            {unread > 9 ? "9+" : unread}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full z-50 mt-2 w-80 rounded-xl border border-[#e5e7eb] bg-white shadow-xl">
+            <div className="border-b border-[#e5e7eb] px-4 py-3">
+              <p className="text-sm font-semibold">Notifications</p>
+            </div>
+            <div className="max-h-80 overflow-y-auto">
+              {notifications.length === 0 ? (
+                <p className="px-4 py-8 text-center text-sm text-[#6b7280]">No notifications yet.</p>
+              ) : (
+                notifications.map((n) => (
+                  <div key={n.id} className={`border-b border-[#f3f4f6] px-4 py-3 ${n.read ? "" : "bg-[#f0fdf4]"}`}>
+                    <p className="text-sm font-medium text-[#111827]">{n.title}</p>
+                    {n.body && <p className="mt-0.5 line-clamp-2 text-xs text-[#6b7280]">{n.body}</p>}
+                    <p className="mt-1 text-[11px] text-[#6b7280]">{new Date(n.created_at).toLocaleString()}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
