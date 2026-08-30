@@ -23,9 +23,6 @@ export { getDb };
 let schemaInitialized = false;
 
 async function ensureSchema(): Promise<void> {
-  if (schemaInitialized) return;
-  schemaInitialized = true;
-
   const db = getDb();
 
   await db.batch([
@@ -173,11 +170,61 @@ async function ensureSchema(): Promise<void> {
     { sql: `CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit_logs(actor_id)` },
     { sql: `CREATE INDEX IF NOT EXISTS idx_audit_target ON audit_logs(target_id)` },
     { sql: `CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at)` },
+    { sql: `CREATE TABLE IF NOT EXISTS notifications (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL DEFAULT '',
+      read INTEGER NOT NULL DEFAULT 0,
+      meta TEXT,
+      created_at INTEGER NOT NULL
+    )` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, created_at DESC)` },
   ]);
+
+  // Migration: add viewed_at if missing (ALTER TABLE throws if column exists)
+  try {
+    await db.execute("ALTER TABLE invoices ADD COLUMN viewed_at INTEGER");
+  } catch {}
+
+  // Migration: add share_token if missing (public share links require a token)
+  try {
+    await db.execute("ALTER TABLE invoices ADD COLUMN share_token TEXT");
+  } catch {}
+
+  try {
+    await db.execute(`CREATE TABLE IF NOT EXISTS seo_redirects (
+      id TEXT PRIMARY KEY,
+      source TEXT NOT NULL,
+      destination TEXT NOT NULL,
+      status_code INTEGER NOT NULL DEFAULT 301,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_by TEXT,
+      created_at INTEGER NOT NULL
+    )`);
+    await db.execute("CREATE INDEX IF NOT EXISTS idx_seo_redirects_source ON seo_redirects(source)");
+  } catch {}
+
+  schemaInitialized = true;
+}
+
+let schemaReady: Promise<void> | null = null;
+
+async function ensureSchemaOnce(): Promise<void> {
+  if (schemaInitialized) return;
+  if (!schemaReady) {
+    schemaReady = ensureSchema().catch((err) => {
+      schemaReady = null;
+      schemaInitialized = false;
+      throw err;
+    });
+  }
+  return schemaReady;
 }
 
 export async function dbAll<T = Record<string, unknown>>(sql: string, ...args: unknown[]): Promise<T[]> {
-  await ensureSchema();
+  await ensureSchemaOnce();
   const db = getDb();
   const result = await db.execute({ sql, args: args as (string | number | null)[] });
   return result.rows as T[];
@@ -189,14 +236,14 @@ export async function dbGet<T = Record<string, unknown>>(sql: string, ...args: u
 }
 
 export async function dbRun(sql: string, ...args: unknown[]): Promise<{ changes: number; lastInsertRowid: bigint }> {
-  await ensureSchema();
+  await ensureSchemaOnce();
   const db = getDb();
   const result = await db.execute({ sql, args: args as (string | number | null)[] });
   return { changes: Number(result.rowsAffected), lastInsertRowid: result.lastInsertRowid ?? BigInt(0) };
 }
 
 export async function dbExec(sql: string): Promise<void> {
-  await ensureSchema();
+  await ensureSchemaOnce();
   const db = getDb();
   await db.execute(sql);
 }
