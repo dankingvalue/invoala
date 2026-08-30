@@ -460,6 +460,294 @@ export const TEMPLATES: TemplateDef[] = [
       { label: "Invoicing for agencies", href: "/invoicing-for-agencies" },
     ],
   }),
+  template({
+    slug: "landscaping-invoice",
+    name: "Landscaping Invoice",
+    metaTitle: "Landscaping Invoice Template — Free & Editable | Invoala",
+    description:
+      "A landscaping invoice template for lawn care, garden design, and outdoor maintenance work. Itemize services, materials, and seasonal packages.",
+    whenToUse:
+      "Use this template for lawn mowing, garden maintenance, hardscaping, planting, or any outdoor work — whether you bill per visit, per project, or per season.",
+    fields: [
+      "Your business details and logo",
+      "Client name and property address",
+      "Services performed, with quantities and rates",
+      "Materials used (plants, mulch, stone)",
+      "Payment terms and due date",
+    ],
+    sampleItems: [
+      { description: "Lawn mowing & edging — weekly service", quantity: 1, rate: 65 },
+      { description: "Hedge trimming (front & back)", quantity: 2, rate: 45 },
+      { description: "Mulch installation — 4 cubic yards", quantity: 4, rate: 35 },
+    ],
+    tips: [
+      "List materials separately from labor so clients see exactly what they're paying for.",
+      "Add the service address as a custom field when it differs from the billing address.",
+      "Offer seasonal packages as single line items — they invoice faster than itemized visits.",
+    ],
+    faqs: [
+      {
+        question: "Should landscaping invoices include materials?",
+        answer:
+          "Yes — separate lines for labor and materials make the invoice transparent and reduce disputes about costs. Include quantities where possible.",
+      },
+      {
+        question: "How do I bill recurring lawn maintenance?",
+        answer:
+          "One invoice per visit or one monthly invoice covering all visits that month. The Invoala recurring setting lets you label either pattern.",
+      },
+      {
+        question: "Can I add before/after photos to the invoice?",
+        answer:
+          "Photos can't be embedded in the invoice itself, but you can add a project reference as a custom field or send photos alongside the invoice email.",
+      },
+    ],
+    related: [
+      { label: "Invoicing for cleaning businesses", href: "/invoicing-for-cleaning-businesses" },
+      { label: "Invoicing for small businesses", href: "/invoicing-for-small-businesses" },
+      { label: "Free invoice generator", href: "/invoice-generator" },
+    ],
+  }),
+  template({
+    slug: "construction-invoice",
+    name: "Construction Invoice",
+    metaTitle: "Construction Invoice Template — Free & Editable | Invoala",
+    description:
+      "A construction invoice template for contractors and builders. Track labor, materials, equipment, and progress payments with professional formatting.",
+    whenToUse:
+      "Use this template for remodeling, renovation, or new-build work. It works for fixed contracts and time-and-materials billing, including progress payments.",
+    fields: [
+      "Contractor details and license number",
+      "Client and job site details",
+      "Labor, materials, and equipment line items",
+      "Retention or deposit notes",
+      "Payment schedule reference",
+    ],
+    sampleItems: [
+      { description: "Framing labor — week 3", quantity: 40, rate: 55 },
+      { description: "Lumber package (per quote)", quantity: 1, rate: 4200 },
+      { description: "Skid steer rental — 5 days", quantity: 5, rate: 240 },
+    ],
+    tips: [
+      "Add your license number as a custom field — many jurisdictions require it on invoices.",
+      "For progress payments, label each invoice 'Payment 2 of 4' in the notes.",
+      "Keep materials on separate lines from labor for easier approval.",
+    ],
+    faqs: [
+      {
+        question: "What is a progress payment invoice?",
+        answer:
+          "An invoice for a portion of the contract value, issued at defined milestones. It references the total contract and the completed percentage or phase.",
+      },
+      {
+        question: "Should I charge for equipment on construction invoices?",
+        answer:
+          "Yes, as its own line item. Clients approve invoices faster when equipment, materials, and labor are clearly separated.",
+      },
+      {
+        question: "How do I handle retainage?",
+        answer:
+          "Note the withheld amount in the invoice notes or as a negative line item, and reference the contract clause so the client knows why it's held.",
+      },
+    ],
+    related: [
+      { label: "Invoicing for contractors", href: "/invoicing-for-contractors" },
+      { label: "Estimate generator", href: "/estimate-generator" },
+      { label: "Free invoice generator", href: "/invoice-generator" },
+    ],
+  }),
+  template({
+    slug: "real-estate-invoice",
+    name: "Real Estate Invoice",
+    metaTitle: "Real Estate Invoice Template — Free & Editable | Invoala",
+    description:
+      "A real estate invoice template for agents, brokers, and property managers. Bill commissions, management fees, and property services cleanly.",
+    whenToUse:
+      "Use this template for commission billing, property management fees, inspections, or maintenance coordination. Works for agencies and solo agents alike.",
+    fields: [
+      "Agency name and agent license",
+      "Client and property address",
+      "Commission or fee line items",
+      "Transaction or listing reference",
+      "Payment terms",
+    ],
+    sampleItems: [
+      { description: "Sales commission — 3% of $425,000 sale", quantity: 1, rate: 12750 },
+      { description: "Property management fee — June", quantity: 1, rate: 220 },
+      { description: "Inspection coordination", quantity: 1, rate: 150 },
+    ],
+    tips: [
+      "Reference the property address and transaction number on every invoice.",
+      "Bill commissions promptly after closing — they're easily forgotten in the post-sale rush.",
+      "Use separate lines when splitting fees across services or properties.",
+    ],
+    faqs: [
+      {
+        question: "Who pays the agent's invoice — buyer or seller?",
+        answer:
+          "Depends on the agreement. Commissions are typically paid from proceeds at closing, while management fees are billed to the property owner. Bill whoever your agreement names.",
+      },
+      {
+        question: "Are commission invoices taxable?",
+        answer:
+          "In most jurisdictions yes — commissions are business income. Use the tax field to apply your local rate and consult an accountant for specifics.",
+      },
+      {
+        question: "What details should a property management invoice include?",
+        answer:
+          "The property address, service period, management fee, and any pass-through costs like repairs or utilities, each on its own line.",
+      },
+    ],
+    related: [
+      { label: "Invoicing for small businesses", href: "/invoicing-for-small-businesses" },
+      { label: "What is a tax invoice?", href: "/learn/what-is-a-tax-invoice" },
+      { label: "Free invoice generator", href: "/invoice-generator" },
+    ],
+  }),
+  template({
+    slug: "beauty-invoice",
+    name: "Beauty & Salon Invoice",
+    metaTitle: "Beauty Salon Invoice Template — Free & Editable | Invoala",
+    description:
+      "A beauty and salon invoice template for hairdressers, estheticians, and studios. Bill services, products, and packages with a polished, client-friendly layout.",
+    whenToUse:
+      "Use this template for salon services, spa treatments, makeup, or retail product sales — for walk-in clients, wedding parties, or wholesale orders.",
+    fields: [
+      "Salon name and contact details",
+      "Client name",
+      "Services with stylist or duration notes",
+      "Retail products sold",
+      "Tips or gratuity line if applicable",
+    ],
+    sampleItems: [
+      { description: "Balayage & toner", quantity: 1, rate: 180 },
+      { description: "Cut & style", quantity: 1, rate: 65 },
+      { description: "Deep conditioning treatment", quantity: 1, rate: 35 },
+    ],
+    tips: [
+      "Note the stylist's name on the line item — clients ask for the same person next time.",
+      "List retail products separately so the service total stays clear.",
+      "For group bookings (weddings, parties), one invoice with a per-person breakdown works best.",
+    ],
+    faqs: [
+      {
+        question: "Should I put tips on the invoice?",
+        answer:
+          "If gratuity is charged as part of the service (common for group bookings), add it as a line item. Otherwise tips are paid directly and don't belong on the invoice.",
+      },
+      {
+        question: "Do salons need to charge tax on services?",
+        answer:
+          "In most jurisdictions, yes — both services and retail products are usually taxable. Use the tax field with your local rate and check with your accountant.",
+      },
+      {
+        question: "Can I use this for wholesale product orders?",
+        answer:
+          "Yes — list products with quantities and prices. Add a purchase order reference as a custom field if the buyer requires one.",
+      },
+    ],
+    related: [
+      { label: "Invoicing for small businesses", href: "/invoicing-for-small-businesses" },
+      { label: "Receipt generator", href: "/receipt-generator" },
+      { label: "Free invoice generator", href: "/invoice-generator" },
+    ],
+  }),
+  template({
+    slug: "restaurant-invoice",
+    name: "Restaurant & Catering Invoice",
+    metaTitle: "Restaurant & Catering Invoice Template — Free & Editable | Invoala",
+    description:
+      "A restaurant and catering invoice template for events, wholesale orders, and corporate accounts. Itemize menus, headcounts, and deposits.",
+    whenToUse:
+      "Use this template for catering events, corporate accounts, or wholesale deliveries — anywhere a restaurant bills on terms instead of at the table.",
+    fields: [
+      "Restaurant name and contact",
+      "Client and event details",
+      "Menu packages with guest counts",
+      "Beverage, staffing, and rental lines",
+      "Deposit paid and balance due",
+    ],
+    sampleItems: [
+      { description: "Wedding buffet — 80 guests @ $55", quantity: 80, rate: 55 },
+      { description: "Open bar package (4 hours)", quantity: 1, rate: 1200 },
+      { description: "Service staff — 3 servers", quantity: 3, rate: 180 },
+    ],
+    tips: [
+      "Show the deposit as a discount line or note it in the payment section so the balance is obvious.",
+      "Always put the event date and guest count on the invoice.",
+      "Agree on final headcount deadlines before issuing the invoice.",
+    ],
+    faqs: [
+      {
+        question: "How do catering deposits work on invoices?",
+        answer:
+          "Show the full event total, then subtract the deposit already paid — either as a discount percentage or a clearly labeled negative line, with the balance marked as due.",
+      },
+      {
+        question: "Should gratuity be on catering invoices?",
+        answer:
+          "If your contract adds a service charge, include it as a line item. Otherwise leave it off and let the client decide at the event.",
+      },
+      {
+        question: "When should the final catering invoice be sent?",
+        answer:
+          "Most caterers invoice the balance after the event once final headcount is known. Pre-event invoicing is also common if the contract requires it.",
+      },
+    ],
+    related: [
+      { label: "Invoicing for small businesses", href: "/invoicing-for-small-businesses" },
+      { label: "Estimate generator", href: "/estimate-generator" },
+      { label: "Receipt generator", href: "/receipt-generator" },
+    ],
+  }),
+  template({
+    slug: "repair-invoice",
+    name: "Repair & Maintenance Invoice",
+    metaTitle: "Repair Service Invoice Template — Free & Editable | Invoala",
+    description:
+      "A repair and maintenance invoice template for technicians and service businesses. Bill labor, parts, and call-out fees with a clear, professional layout.",
+    whenToUse:
+      "Use this template for appliance repair, HVAC service, auto repair, or general handyman work — any job with labor plus parts.",
+    fields: [
+      "Your business details",
+      "Client and service location",
+      "Diagnosis or service performed",
+      "Labor hours and rate",
+      "Parts with quantities",
+    ],
+    sampleItems: [
+      { description: "Diagnostic & repair labor — 2.5 hours", quantity: 2.5, rate: 85 },
+      { description: "Replacement compressor (part #CP-3200)", quantity: 1, rate: 410 },
+      { description: "Call-out fee", quantity: 1, rate: 60 },
+    ],
+    tips: [
+      "Include part numbers so warranty claims and re-orders are easy.",
+      "Describe the diagnosis — clients approve invoices faster when they understand the fix.",
+      "Note warranty terms on parts and labor in the invoice notes.",
+    ],
+    faqs: [
+      {
+        question: "Should I charge a call-out fee?",
+        answer:
+          "Common for field service. List it separately from labor so the client sees what the trip costs, and mention whether it's credited toward the repair.",
+      },
+      {
+        question: "How detailed should the repair description be?",
+        answer:
+          "One clear line is enough — 'replaced thermostat, tested operation' beats a paragraph. Save the full explanation for the work order.",
+      },
+      {
+        question: "What about warranty on repairs?",
+        answer:
+          "State it in the notes: e.g., '90-day warranty on parts and labor.' Being explicit prevents disputes later.",
+      },
+    ],
+    related: [
+      { label: "Invoicing for contractors", href: "/invoicing-for-contractors" },
+      { label: "Work order — free invoice generator", href: "/invoice-generator" },
+      { label: "Receipt generator", href: "/receipt-generator" },
+    ],
+  }),
 ];
 
 export const TEMPLATES_BY_SLUG = Object.fromEntries(TEMPLATES.map((t) => [t.slug, t]));
