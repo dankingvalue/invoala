@@ -7,8 +7,9 @@ import { AuditTable } from "@/components/admin/AuditTable";
 import { InvoiceTable } from "@/components/admin/InvoiceTable";
 import { CustomerSlideOut } from "@/components/admin/CustomerSlideOut";
 import { SeoTab } from "@/components/admin/SeoTab";
+import { BroadcastTab } from "@/components/admin/BroadcastTab";
 
-type Tab = "overview" | "users" | "invoices" | "messages" | "flags" | "email" | "audit" | "seo";
+type Tab = "overview" | "users" | "invoices" | "messages" | "flags" | "email" | "audit" | "seo" | "notify";
 
 type Stats = {
   users: number;
@@ -62,6 +63,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "email", label: "Email" },
   { id: "audit", label: "Audit Trail" },
   { id: "seo", label: "SEO" },
+  { id: "notify", label: "Notify Users" },
 ];
 
 export function AdminDashboard({ myRole }: { myRole: string }) {
@@ -93,6 +95,7 @@ export function AdminDashboard({ myRole }: { myRole: string }) {
       {tab === "email" && <EmailTab />}
       {tab === "audit" && <AuditTab />}
       {tab === "seo" && <SeoTab />}
+      {tab === "notify" && <BroadcastTab />}
     </div>
   );
 }

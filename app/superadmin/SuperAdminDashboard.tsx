@@ -7,6 +7,7 @@ import { AuditTable } from "@/components/admin/AuditTable";
 import { InvoiceTable } from "@/components/admin/InvoiceTable";
 import { CustomerSlideOut } from "@/components/admin/CustomerSlideOut";
 import { SeoTab } from "@/components/admin/SeoTab";
+import { BroadcastTab } from "@/components/admin/BroadcastTab";
 
 type Tab =
   | "overview"
@@ -19,7 +20,8 @@ type Tab =
   | "audit"
   | "settings"
   | "danger"
-  | "seo";
+  | "seo"
+  | "notify";
 
 type Stats = {
   users: number;
@@ -76,6 +78,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "settings", label: "Settings" },
   { id: "danger", label: "Danger Zone" },
   { id: "seo", label: "SEO" },
+  { id: "notify", label: "Notify Users" },
 ];
 
 export function SuperAdminDashboard() {
@@ -110,6 +113,7 @@ export function SuperAdminDashboard() {
       {tab === "settings" && <SettingsTab />}
       {tab === "danger" && <DangerTab />}
       {tab === "seo" && <SeoTab />}
+      {tab === "notify" && <BroadcastTab />}
     </div>
   );
 }
