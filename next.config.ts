@@ -22,6 +22,17 @@ const nextConfig: NextConfig = {
         headers: securityHeaders,
       },
       {
+        // The /embed page is designed to be embedded in third-party sites via iframe.
+        source: "/embed",
+        headers: [
+          { key: "X-Frame-Options", value: "ALLOWALL" },
+          {
+            key: "Content-Security-Policy",
+            value: "frame-ancestors *",
+          },
+        ],
+      },
+      {
         source: "/api/(.*)",
         headers: [
           ...securityHeaders,

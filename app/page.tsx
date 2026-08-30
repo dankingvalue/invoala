@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { Reveal } from "@/components/Reveal";
-import { InvoiceGenerator } from "@/components/InvoiceGenerator";
+import { LazyInvoiceGenerator } from "@/components/LazyInvoiceGenerator";
 import { EmailCapture } from "@/components/EmailCapture";
 import { TrustStrip } from "@/components/TrustStrip";
 import { CURRENCIES } from "@/lib/invoice";
@@ -30,6 +30,42 @@ const faqs = [
   {
     q: "Can I use it for quotes or receipts too?",
     a: "Absolutely. Change the dates and item descriptions to send estimates before a project, or receipts after payment.",
+  },
+  {
+    q: "What currencies are supported?",
+    a: "154 world currencies including USD, EUR, GBP, JPY, CAD, AUD, and more. The invoice formats the symbol and decimals automatically.",
+  },
+  {
+    q: "Can I add my own logo?",
+    a: "Yes. Upload your logo and it appears at the top of every invoice. Free users get a watermark-free PDF.",
+  },
+  {
+    q: "Does it calculate tax automatically?",
+    a: "Yes. Enter your tax rate (VAT, GST, sales tax) and the total updates live as you type.",
+  },
+  {
+    q: "Can I save clients for reuse?",
+    a: "Yes. Save client details once and select them from a dropdown on future invoices. All data stays in your browser.",
+  },
+  {
+    q: "What file format does it export?",
+    a: "PDF — print-ready A4 format that looks identical on every device and prints perfectly on any printer.",
+  },
+  {
+    q: "Is there a limit on how many invoices I can create?",
+    a: "No limit. Create as many as you want, forever. There are no daily or monthly caps.",
+  },
+  {
+    q: "How is this different from Excel or Google Sheets?",
+    a: "Invoala is purpose-built for invoicing. You get live totals, automatic tax math, professional formatting, and a PDF download — all in one step. No formulas, no templates to set up.",
+  },
+  {
+    q: "Can freelancers use this?",
+    a: "Absolutely. Invoala is built for freelancers, consultants, and solo operators who want professional invoices without paying for software.",
+  },
+  {
+    q: "Do you support recurring invoices?",
+    a: "You can save your details and client info for quick reuse. Full recurring invoice scheduling is available on the Pro plan.",
   },
 ];
 
@@ -109,6 +145,7 @@ export default async function Home() {
     <div id="top" className="scroll-mt-20">
       <FaqJsonLd />
       <Nav />
+      <main>
       {user || !flags.signupPrompt ? null : <SignupPrompt />}
 
       {announcement ? (
@@ -170,14 +207,7 @@ export default async function Home() {
             </div>
           </Reveal>
           <Reveal delay={120}>
-            <InvoiceGenerator
-              ai={flags.aiComposer}
-              print={flags.printButton}
-              allowLogo={flags.logoUpload}
-              quoteMode={flags.quoteMode}
-              recurringTerms={flags.recurringTerms}
-              user={user ? { email: user.email } : null}
-            />
+            <LazyInvoiceGenerator />
           </Reveal>
         </div>
       </section>
@@ -244,7 +274,7 @@ export default async function Home() {
             ].map((s, i) => (
               <Reveal key={s.n} delay={i * 100}>
                 <div>
-                  <p className="text-[56px] font-extrabold leading-none tracking-tight text-[#166534]/20 md:text-[64px]">
+                  <p className="text-[56px] font-extrabold leading-none tracking-tight text-[#166534]/60 md:text-[64px]">
                     {s.n}
                   </p>
                   <h3 className="mt-4 text-[18px] font-bold tracking-tight">{s.title}</h3>
@@ -268,6 +298,109 @@ export default async function Home() {
 
       {/* Pro pricing */}
       {flags.proTeaser ? <ProPricing /> : null}
+
+      {/* SEO content — What makes a good invoice */}
+      <section className="px-6 py-16 md:py-28">
+        <div className="mx-auto max-w-[1024px]">
+          <Reveal>
+            <h2 className="text-center text-[36px] font-extrabold tracking-tight md:text-[52px]">
+              What makes a good invoice?
+            </h2>
+          </Reveal>
+          <div className="mt-14 grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              {
+                title: "Clear line items",
+                desc: "Each service or product is listed separately with a description, quantity, and price. No vague bundles.",
+              },
+              {
+                title: "Professional layout",
+                desc: "Clean typography, proper spacing, and your logo. It signals credibility and attention to detail.",
+              },
+              {
+                title: "Payment terms upfront",
+                desc: "Net 15 or Net 30 — state when payment is due. Include your preferred method and any late fees.",
+              },
+              {
+                title: "Correct tax",
+                desc: "Apply the right rate for your jurisdiction. Invoala calculates the total automatically.",
+              },
+              {
+                title: "Unique invoice number",
+                desc: "Sequential IDs (INV-001, INV-002) help you and your client track payments without confusion.",
+              },
+              {
+                title: "Contact info",
+                desc: "Your name, email, and address — so the client knows exactly who to pay and how to reach you.",
+              },
+            ].map((item, i) => (
+              <Reveal key={item.title} delay={i * 80}>
+                <div>
+                  <h3 className="text-[17px] font-bold tracking-tight">{item.title}</h3>
+                  <p className="mt-2 text-[15px] leading-relaxed text-[#6b7280]">{item.desc}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+          <Reveal delay={300}>
+            <div className="mt-14 text-center">
+              <a
+                href="#generate"
+                className="rounded-lg bg-[#14532d] px-7 py-3.5 text-[16px] font-semibold text-white shadow-sm transition hover:bg-[#0f3d22] active:scale-[0.99]"
+              >
+                Build a better invoice
+              </a>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* Internal links — guides */}
+      <section className="bg-[#f3f4f6] px-6 py-16 md:py-20">
+        <div className="mx-auto max-w-[1024px]">
+          <Reveal>
+            <h2 className="text-center text-[36px] font-extrabold tracking-tight md:text-[44px]">
+              Learn more
+            </h2>
+          </Reveal>
+          <div className="mt-10 grid gap-6 sm:grid-cols-2">
+            <Reveal>
+              <Link
+                href="/how-to-create-invoice"
+                className="block rounded-xl border border-[#e5e7eb] bg-white p-6 transition hover:shadow-md"
+              >
+                <h3 className="text-[18px] font-bold tracking-tight text-[#111827]">
+                  How to Create an Invoice
+                </h3>
+                <p className="mt-2 text-[15px] text-[#6b7280]">
+                  Step-by-step guide from blank page to paid client. Covers line
+                  items, tax, payment terms, and sending.
+                </p>
+                <span className="mt-3 inline-block text-[14px] font-semibold text-[#166534]">
+                  Read the guide &rsaquo;
+                </span>
+              </Link>
+            </Reveal>
+            <Reveal delay={100}>
+              <Link
+                href="/invoice-template"
+                className="block rounded-xl border border-[#e5e7eb] bg-white p-6 transition hover:shadow-md"
+              >
+                <h3 className="text-[18px] font-bold tracking-tight text-[#111827]">
+                  Free Invoice Templates
+                </h3>
+                <p className="mt-2 text-[15px] text-[#6b7280]">
+                  Industry-specific templates for freelancers, designers,
+                  photographers, contractors, and small businesses.
+                </p>
+                <span className="mt-3 inline-block text-[14px] font-semibold text-[#166534]">
+                  Browse templates &rsaquo;
+                </span>
+              </Link>
+            </Reveal>
+          </div>
+        </div>
+      </section>
 
       {/* FAQ */}
       <section id="faq" className="scroll-mt-16 px-6 py-16 md:py-28">
@@ -308,6 +441,7 @@ export default async function Home() {
 
       {/* Email capture */}
       {flags.emailCapture ? <EmailCapture /> : null}
+      </main>
 
       {/* Footer */}
       <footer className="border-t border-[#e5e7eb] bg-[#f3f4f6] px-6 py-10">
@@ -323,6 +457,8 @@ export default async function Home() {
             <nav className="flex items-center gap-6">
               <a href="#features" className="transition-colors hover:text-ink">Features</a>
               <a href="#faq" className="transition-colors hover:text-ink">FAQ</a>
+              <Link href="/how-to-create-invoice" className="transition-colors hover:text-ink">Guide</Link>
+              <Link href="/invoice-template" className="transition-colors hover:text-ink">Templates</Link>
               <Link href="/privacy" className="transition-colors hover:text-ink">Privacy</Link>
               <Link href="/terms" className="transition-colors hover:text-ink">Terms</Link>
               <a href="mailto:hello@invoala.com" className="transition-colors hover:text-ink">
