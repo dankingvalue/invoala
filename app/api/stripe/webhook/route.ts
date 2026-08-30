@@ -1,5 +1,5 @@
 import { verifyStripeSignature } from "@/lib/email";
-import { activateStripeSubscription, isPlan } from "@/lib/billing";
+import { activatePaymentSubscription, isPlan } from "@/lib/billing";
 import { createTeam, getUserTeams } from "@/lib/teams";
 
 export async function POST(req: Request) {
@@ -23,12 +23,13 @@ export async function POST(req: Request) {
     const userId = String(object.client_reference_id || metadata.userId || "");
     const plan = metadata.plan;
     if (userId && isPlan(plan)) {
-      await activateStripeSubscription({
+      await activatePaymentSubscription({
         userId,
         plan,
         customerId: typeof object.customer === "string" ? object.customer : null,
         subscriptionId: typeof object.subscription === "string" ? object.subscription : null,
         currentPeriodEnd: Date.now() + (plan === "pro_yearly" ? 365 : 30) * 864e5,
+        provider: "stripe",
       });
 
       // Auto-create team for teams plans

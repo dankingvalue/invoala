@@ -97,26 +97,28 @@ export async function activateDevSubscription(userId: string, plan: PlanId): Pro
   return (await getSubscription(userId))!;
 }
 
-export async function activateStripeSubscription(opts: {
+export async function activatePaymentSubscription(opts: {
   userId: string;
   plan: PlanId;
   customerId: string | null;
   subscriptionId: string | null;
   currentPeriodEnd: number;
+  provider?: string;
 }): Promise<void> {
   const now = Date.now();
+  const provider = opts.provider || "payment";
   const existing = await dbGet<{ id: string }>("SELECT id FROM subscriptions WHERE user_id = ?", opts.userId);
   if (existing) {
     await dbRun(
-      `UPDATE subscriptions SET plan=?, status='active', provider='stripe', stripe_customer_id=?,
+      `UPDATE subscriptions SET plan=?, status='active', provider=?, stripe_customer_id=?,
        stripe_subscription_id=?, current_period_end=?, cancel_at_period_end=0, updated_at=? WHERE user_id=?`,
-      opts.plan, opts.customerId, opts.subscriptionId, opts.currentPeriodEnd, now, opts.userId
+      opts.plan, provider, opts.customerId, opts.subscriptionId, opts.currentPeriodEnd, now, opts.userId
     );
   } else {
     await dbRun(
       `INSERT INTO subscriptions (id, user_id, plan, status, provider, stripe_customer_id, stripe_subscription_id, current_period_end, created_at, updated_at)
-       VALUES (?, ?, ?, 'active', 'stripe', ?, ?, ?, ?, ?)`,
-      randomUUID(), opts.userId, opts.plan, opts.customerId, opts.subscriptionId, opts.currentPeriodEnd, now, now
+       VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)`,
+      randomUUID(), opts.userId, opts.plan, provider, opts.customerId, opts.subscriptionId, opts.currentPeriodEnd, now, now
     );
   }
 }

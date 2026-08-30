@@ -24,56 +24,23 @@ export async function POST(req: Request) {
     }
   }
 
-  const stripeKey = process.env.STRIPE_SECRET_KEY;
+  const paymentConfigured = !!process.env.PAYMENT_API_KEY;
 
-  if (!stripeKey) {
+  if (!paymentConfigured) {
     return Response.json({
-      error: "Payment not configured yet. Stripe integration is coming soon — you'll be able to subscribe to Pro, Teams, and Lifetime plans directly.",
+      error: "Payment processing is not configured yet. We're working on integrating a payment provider — stay tuned!",
       mode: "not_configured",
     });
   }
 
-  const origin = req.headers.get("origin") || new URL(req.url).origin;
+  // TODO: Integrate payment processor here
+  // Example flow:
+  // 1. Create a payment session with your processor
+  // 2. Return the checkout URL for redirect
+  // 3. Handle webhooks for payment confirmation
+  //
+  // const session = await paymentClient.createSession({ ... });
+  // return Response.json({ ok: true, mode: "payment", url: session.url });
 
-  try {
-    const form = new URLSearchParams();
-    const isLifetime = plan === "lifetime";
-    form.set("mode", isLifetime ? "payment" : "subscription");
-    form.set("success_url", `${origin}/dashboard?upgraded=1&plan=${plan}`);
-    form.set("cancel_url", `${origin}/dashboard?upgraded=0`);
-    form.set("customer_email", user.email);
-    form.set("client_reference_id", user.id);
-    form.set("line_items[0][quantity]", "1");
-    form.set("line_items[0][price_data][currency]", "usd");
-    form.set("line_items[0][price_data][unit_amount]", String(PLANS[plan].amountCents));
-    if (!isLifetime) {
-      form.set("line_items[0][price_data][recurring][interval]", PLANS[plan].interval as string);
-    }
-    form.set("line_items[0][price_data][product_data][name]", `Invoala ${PLANS[plan].label}`);
-    form.set("metadata[userId]", user.id);
-    form.set("metadata[plan]", plan);
-    if (isTeamsPlan) {
-      form.set("metadata[createTeam]", "true");
-    }
-
-    const res = await fetch("https://api.stripe.com/v1/checkout/sessions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${stripeKey}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: form,
-      signal: AbortSignal.timeout(20000),
-    });
-    const json = (await res.json()) as { url?: string; error?: { message?: string } };
-    if (!res.ok || !json.url) {
-      return Response.json(
-        { error: json.error?.message || "Stripe checkout failed." },
-        { status: 502 },
-      );
-    }
-    return Response.json({ ok: true, mode: "stripe", url: json.url });
-  } catch {
-    return Response.json({ error: "Could not reach Stripe." }, { status: 502 });
-  }
+  return Response.json({ error: "Payment processor not yet connected." }, { status: 501 });
 }

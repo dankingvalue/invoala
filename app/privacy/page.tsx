@@ -4,6 +4,8 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description: "Invoala privacy policy — how we handle your data.",
+  alternates: { canonical: "https://www.invoala.com/privacy" },
+  robots: { index: true, follow: true },
 };
 
 export default function PrivacyPage() {
@@ -77,7 +79,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-[18px] font-bold text-ink">5. Third-party services</h2>
             <ul className="list-disc pl-5">
-              <li><strong>Stripe</strong> — payment processing (privacy policy: stripe.com/privacy)</li>
+              <li><strong>Payment processor</strong> — billing and subscription management</li>
               <li><strong>Resend</strong> — transactional email delivery</li>
               <li><strong>Google OAuth</strong> — optional sign-in (if configured)</li>
             </ul>
