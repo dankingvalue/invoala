@@ -5,7 +5,8 @@ export type ToolKind =
   | "hourly-rate-calculator"
   | "profit-margin-calculator"
   | "markup-calculator"
-  | "vat-calculator";
+  | "vat-calculator"
+  | "invoice-due-date-calculator";
 
 export type ToolDef = {
   slug: string;
@@ -286,6 +287,44 @@ export const TOOLS: ToolDef[] = [
     related: [
       { label: "Invoice tax calculator", href: "/tools/invoice-tax-calculator" },
       { label: "How to calculate VAT on an invoice", href: "/learn/how-to-calculate-vat-on-an-invoice" },
+      { label: "Free invoice generator", href: "/invoice-generator" },
+    ],
+  },
+  {
+    slug: "invoice-due-date-calculator",
+    kind: "invoice-due-date-calculator",
+    name: "Invoice Due Date Calculator",
+    h1: "Invoice Due Date Calculator",
+    short: "Work out exactly when payment is due.",
+    description:
+      "Enter your invoice date and payment terms (Net 15, Net 30, Net 60, or any number of days) and instantly see the due date and how many days remain. Never miscalculate a deadline again.",
+    howTo: [
+      "Pick the date the invoice was issued.",
+      "Choose or type your payment terms in days.",
+      "Read the exact due date and days remaining.",
+    ],
+    example:
+      "An invoice issued on March 3rd with Net 30 terms is due on April 2nd. The calculator shows the date, the weekday, and how many days are left until payment is owed.",
+    faqs: [
+      {
+        question: "What does Net 30 mean?",
+        answer:
+          "Net 30 means the full invoice amount is due 30 calendar days after the invoice date. Net 15, Net 45, and Net 60 follow the same pattern with different day counts.",
+      },
+      {
+        question: "Do payment terms include weekends?",
+        answer:
+          "Usually yes — terms count calendar days, not business days. If the due date lands on a weekend or holiday, most businesses accept payment on the next business day.",
+      },
+      {
+        question: "When should the clock start?",
+        answer:
+          "Most commonly from the invoice date. Some businesses use the delivery date or end-of-month. Pick whichever you state on the invoice — the important part is being consistent.",
+      },
+    ],
+    related: [
+      { label: "Late payment calculator", href: "/tools/late-payment-calculator" },
+      { label: "How to follow up on an unpaid invoice", href: "/learn/how-to-follow-up-on-an-unpaid-invoice" },
       { label: "Free invoice generator", href: "/invoice-generator" },
     ],
   },

@@ -54,7 +54,14 @@ type WidgetResult =
   | { kind: "rate"; rate: number }
   | { kind: "margin"; profit: number; margin: number }
   | { kind: "markup"; price: number; profit: number; margin: number }
-  | { kind: "vat"; vat: number; other: number };
+  | { kind: "vat"; vat: number; other: number }
+  | { kind: "due-date"; dueDate: Date | null; daysLeft: number | null };
+
+function parseDate(v: string): Date | null {
+  if (!v) return null;
+  const d = new Date(v + (v.length === 10 ? "T00:00:00" : ""));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
 
 export function ToolWidget({ kind }: { kind: ToolKind }) {
   useEffect(() => {
@@ -117,6 +124,17 @@ export function ToolWidget({ kind }: { kind: ToolKind }) {
         }
         const net = rate === 100 ? amount / 2 : amount / (1 + rate / 100);
         return { kind: "vat", vat: amount - net, other: net };
+      }
+      case "invoice-due-date-calculator": {
+        const issue = parseDate(a);
+        const netDays = Math.max(0, Math.floor(num(b) || 0));
+        if (!issue) return { kind: "due-date", dueDate: null, daysLeft: null };
+        const due = new Date(issue);
+        due.setDate(due.getDate() + netDays);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const daysLeft = Math.round((due.getTime() - today.getTime()) / 86400000);
+        return { kind: "due-date", dueDate: due, daysLeft };
       }
     }
   }, [kind, a, b, c, d, mode]);
@@ -237,6 +255,35 @@ export function ToolWidget({ kind }: { kind: ToolKind }) {
             </Field>
           </>
         ) : null}
+
+        {kind === "invoice-due-date-calculator" ? (
+          <>
+            <Field label="Invoice date">
+              <input type="date" className={inputCls} value={a} onChange={(e) => setA(e.target.value)} />
+            </Field>
+            <Field label="Payment terms" hint="Number of days until payment is due">
+              <input className={inputCls} inputMode="numeric" value={b} onChange={(e) => setB(e.target.value)} placeholder="30" />
+            </Field>
+            <div className="sm:col-span-2">
+              <div className="flex flex-wrap gap-2">
+                {[7, 14, 30, 45, 60, 90].map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setB(String(d))}
+                    className={`rounded-full px-3.5 py-1.5 text-[13px] font-medium transition ${
+                      String(d) === b.trim()
+                        ? "bg-[#166534] text-white"
+                        : "bg-[#f3f4f6] text-[#6b7280] hover:bg-[#e5e7eb]"
+                    }`}
+                  >
+                    Net {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        ) : null}
       </div>
 
       <div className="mt-6 border-t border-[#e5e7eb] pt-5">
@@ -295,6 +342,18 @@ export function ToolWidget({ kind }: { kind: ToolKind }) {
               <>
                 <Result label={mode === "add" ? "VAT amount" : "VAT included"} value={`$${fmt(result.vat)}`} />
                 <Result label={mode === "add" ? "Gross total" : "Net amount"} value={`$${fmt(result.other)}`} />
+              </>
+            ) : null}
+            {kind === "invoice-due-date-calculator" && result?.kind === "due-date" ? (
+              <>
+                <Result
+                  label="Payment due"
+                  value={result.dueDate ? result.dueDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }) : "—"}
+                />
+                <Result
+                  label="Days remaining"
+                  value={result.daysLeft === null ? "—" : result.daysLeft < 0 ? `${Math.abs(result.daysLeft)} days overdue` : `${result.daysLeft} days`}
+                />
               </>
             ) : null}
           </div>
