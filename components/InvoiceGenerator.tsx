@@ -31,7 +31,7 @@ export function InvoiceGenerator({
   quoteMode?: boolean;
   recurringTerms?: boolean;
   preset?: Partial<Invoice> | null;
-  user?: { email: string } | null;
+  user?: { email: string; isPro?: boolean } | null;
 }) {
   const [invoice, setInvoice] = useState<Invoice>(() => createDefaultInvoice());
   const [hydrated, setHydrated] = useState(false);
@@ -208,20 +208,42 @@ export function InvoiceGenerator({
     setSendingEmail(false);
   }
 
-  async function downloadPdf() {
+  async function captureInvoiceCanvas(): Promise<HTMLCanvasElement | null> {
     const el = previewRef.current;
-    if (!el || downloading) return;
-    setDownloading(true);
+    if (!el) return null;
+    const { default: html2canvas } = await import("html2canvas-pro");
+
+    // Render at A4 aspect width (794px @96dpi) so PDF/print fonts come out
+    // at natural invoice sizes instead of being blown up from the small preview.
+    const holder = document.createElement("div");
+    holder.style.position = "fixed";
+    holder.style.left = "-10000px";
+    holder.style.top = "0";
+    holder.style.width = "794px";
+    holder.style.background = "#ffffff";
+    document.body.appendChild(holder);
+    const clone = el.cloneNode(true) as HTMLElement;
+    holder.appendChild(clone);
+
     try {
-      const [{ jsPDF }, { default: html2canvas }] = await Promise.all([
-        import("jspdf"),
-        import("html2canvas-pro"),
-      ]);
-      const canvas = await html2canvas(el, {
-        scale: 3,
+      const canvas = await html2canvas(clone, {
+        scale: 2,
         backgroundColor: "#ffffff",
         logging: false,
       });
+      return canvas;
+    } finally {
+      holder.remove();
+    }
+  }
+
+  async function downloadPdf() {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const { jsPDF } = await import("jspdf");
+      const canvas = await captureInvoiceCanvas();
+      if (!canvas) throw new Error("no preview");
       const pdf = new jsPDF({ unit: "pt", format: "a4", compress: true });
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
@@ -275,6 +297,39 @@ export function InvoiceGenerator({
     }
   }
 
+  async function printInvoice() {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const canvas = await captureInvoiceCanvas();
+      if (!canvas) throw new Error("no preview");
+      const w = window.open("", "_blank");
+      if (!w) {
+        window.print();
+        return;
+      }
+      w.document.write(`<!DOCTYPE html><html><head><title>Print invoice</title><style>
+        html, body { margin: 0; padding: 0; background: #fff; }
+        img { width: 100%; display: block; }
+        @media print { @page { margin: 8mm; } }
+      </style></head><body><img src="${canvas.toDataURL("image/jpeg", 0.95)}" alt="Invoice" /></body></html>`);
+      w.document.close();
+      const img = w.document.querySelector("img");
+      if (img) {
+        img.onload = () => {
+          w.focus();
+          setTimeout(() => w.print(), 200);
+        };
+      }
+      setTimeout(() => w.print(), 1500);
+    } catch (err) {
+      console.error(err);
+      alert("Something went wrong preparing the print view. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <div id="generate" className="scroll-mt-20">
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_420px]">
@@ -312,8 +367,9 @@ export function InvoiceGenerator({
             {print ? (
               <button
                 type="button"
-                onClick={() => window.print()}
-                className="rounded-full bg-[#e8e8ed] px-6 py-3.5 text-[17px] font-medium text-ink transition hover:bg-[#dcdce1] active:scale-[0.99]"
+                onClick={() => void printInvoice()}
+                disabled={downloading}
+                className="rounded-full bg-[#e8e8ed] px-6 py-3.5 text-[17px] font-medium text-ink transition hover:bg-[#dcdce1] active:scale-[0.99] disabled:pointer-events-none disabled:opacity-60"
               >
                 Print
               </button>
@@ -365,9 +421,11 @@ export function InvoiceGenerator({
               {saveNote ? <span className="text-xs text-subtle">{saveNote}</span> : null}
             </div>
           ) : null}
-          <p className="mt-3 text-center text-xs text-subtle">
-            Free · No watermark · No credit card required
-          </p>
+          {!user?.isPro ? (
+            <p className="mt-3 text-center text-xs text-subtle">
+              Free · No watermark · No credit card required
+            </p>
+          ) : null}
         </div>
       </div>
     </div>

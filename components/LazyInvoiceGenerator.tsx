@@ -22,14 +22,14 @@ export function LazyInvoiceGenerator() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [shouldMount, setShouldMount] = useState(false);
   const [flags, setFlags] = useState<PublicFlags>(DEFAULT_FLAGS);
-  const [user, setUser] = useState<{ email: string } | null>(null);
+  const [user, setUser] = useState<{ email: string; isPro?: boolean } | null>(null);
   const [Comp, setComp] = useState<React.ComponentType<{
     ai: boolean;
     print: boolean;
     allowLogo: boolean;
     quoteMode: boolean;
     recurringTerms: boolean;
-    user: { email: string } | null;
+    user: { email: string; isPro?: boolean } | null;
   }> | null>(null);
 
   useEffect(() => {
@@ -42,8 +42,8 @@ export function LazyInvoiceGenerator() {
 
     fetch("/api/auth/me")
       .then((r) => (r.ok ? r.json() : null))
-      .then((data: { user?: { email: string } } | null) => {
-        if (data?.user?.email) setUser({ email: data.user.email });
+      .then((data: { user?: { email: string }; isPro?: boolean } | null) => {
+        if (data?.user?.email) setUser({ email: data.user.email, isPro: !!data.isPro });
       })
       .catch(() => {});
 
