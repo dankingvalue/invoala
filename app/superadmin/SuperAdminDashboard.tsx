@@ -6,6 +6,7 @@ import { StatCard, Panel, SectionHead } from "@/components/admin/Panel";
 import { AuditTable } from "@/components/admin/AuditTable";
 import { InvoiceTable } from "@/components/admin/InvoiceTable";
 import { CustomerSlideOut } from "@/components/admin/CustomerSlideOut";
+import { SeoTab } from "@/components/admin/SeoTab";
 
 type Tab =
   | "overview"
@@ -17,7 +18,8 @@ type Tab =
   | "email"
   | "audit"
   | "settings"
-  | "danger";
+  | "danger"
+  | "seo";
 
 type Stats = {
   users: number;
@@ -73,6 +75,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "audit", label: "Audit Trail" },
   { id: "settings", label: "Settings" },
   { id: "danger", label: "Danger Zone" },
+  { id: "seo", label: "SEO" },
 ];
 
 export function SuperAdminDashboard() {
@@ -106,6 +109,7 @@ export function SuperAdminDashboard() {
       {tab === "audit" && <AuditTab />}
       {tab === "settings" && <SettingsTab />}
       {tab === "danger" && <DangerTab />}
+      {tab === "seo" && <SeoTab />}
     </div>
   );
 }
@@ -189,7 +193,7 @@ function UsersTab() {
       .catch(() => setLoading(false));
   };
 
-  useEffect(() => { setLoading(true); load(); }, [page, search]);
+  useEffect(() => { load(); }, [page, search]);
 
   async function mutate(id: string, body: Record<string, unknown>) {
     setBusy(true);
@@ -208,6 +212,22 @@ function UsersTab() {
     await fetch(`/api/admin/users/${id}`, { method: "DELETE" }).catch(() => {});
     setBusy(false);
     load();
+  }
+
+  async function impersonate(userId: string) {
+    if (!confirm("Impersonate this user? You'll be logged in as them for 1 hour.")) return;
+    setBusy(true);
+    const res = await fetch("/api/admin/impersonate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId }),
+    });
+    const data = await res.json();
+    setBusy(false);
+    if (data.ok && data.token) {
+      document.cookie = `invoala_session=${data.token}; path=/; max-age=3600; samesite=lax`;
+      window.location.href = "/dashboard";
+    }
   }
 
   return (
@@ -231,7 +251,7 @@ function UsersTab() {
         <p className="py-6 text-sm text-[#6b7280] text-center">No users found.</p>
       ) : (
         <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[800px] text-left text-sm">
+          <table className="w-full min-w-[600px] text-left text-sm">
             <thead>
               <tr className="border-b border-[#e5e7eb] text-[#6b7280]">
                 <th className="pb-2 font-medium">Email</th>
@@ -280,7 +300,10 @@ function UsersTab() {
                     )}
                   </td>
                   <td className="py-2.5 text-right">
-                    <button type="button" disabled={busy} onClick={() => void remove(u.id, u.email)} className="text-xs text-red-600 hover:underline disabled:opacity-50">Delete</button>
+                    <div className="flex justify-end gap-2">
+                      <button type="button" disabled={busy} onClick={() => void impersonate(u.id)} className="text-xs text-[#166534] hover:underline disabled:opacity-50">Impersonate</button>
+                      <button type="button" disabled={busy} onClick={() => void remove(u.id, u.email)} className="text-xs text-red-600 hover:underline disabled:opacity-50">Delete</button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -383,7 +406,6 @@ function MessagesTab() {
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
   useEffect(() => {
-    setLoading(true);
     const params = new URLSearchParams({ page: String(convPage), status: statusFilter });
     fetch(`/api/admin/messages?${params}`)
       .then((r) => r.json())
@@ -428,7 +450,7 @@ function MessagesTab() {
   if (selectedConv) {
     return (
       <Panel>
-        <div className="flex h-[600px] flex-col">
+        <div className="flex max-h-[calc(100vh-120px)] flex-col">
           <div className="flex items-center justify-between border-b border-[#e5e7eb] px-4 py-3">
             <div>
               <p className="text-sm font-semibold">{selectedConv.user_name || selectedConv.user_email}</p>
@@ -716,8 +738,8 @@ function DangerTab() {
           <div className="rounded-xl border-2 border-red-200 bg-red-50 p-5">
             <h3 className="text-sm font-semibold text-red-800">Delete all user data</h3>
             <p className="mt-1 text-sm text-red-600">Permanently remove all users, invoices, teams, conversations, and subscriptions. This cannot be undone.</p>
-            <div className="mt-3 flex items-center gap-3">
-              <input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} placeholder='Type "DELETE ALL DATA" to confirm' className="w-72 rounded-lg border border-red-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500" />
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} placeholder='Type "DELETE ALL DATA" to confirm' className="w-full max-w-72 flex-1 rounded-lg border border-red-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500" />
               <button type="button" disabled={confirmText !== "DELETE ALL DATA"} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed">Delete everything</button>
             </div>
           </div>
@@ -725,8 +747,8 @@ function DangerTab() {
           <div className="rounded-xl border-2 border-red-200 bg-red-50 p-5">
             <h3 className="text-sm font-semibold text-red-800">Reset platform to defaults</h3>
             <p className="mt-1 text-sm text-red-600">Reset all feature flags, announcement bar, and settings to factory defaults.</p>
-            <div className="mt-3 flex items-center gap-3">
-              <input value={confirmText2} onChange={(e) => setConfirmText2(e.target.value)} placeholder='Type "RESET PLATFORM" to confirm' className="w-72 rounded-lg border border-red-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500" />
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <input value={confirmText2} onChange={(e) => setConfirmText2(e.target.value)} placeholder='Type "RESET PLATFORM" to confirm' className="w-full max-w-72 flex-1 rounded-lg border border-red-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500" />
               <button type="button" disabled={confirmText2 !== "RESET PLATFORM"} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed">Reset everything</button>
             </div>
           </div>

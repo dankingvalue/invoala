@@ -32,7 +32,6 @@ export function InvoiceTable({ role }: { role: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     const params = new URLSearchParams({ page: String(page) });
     if (q) params.set("q", q);
     if (statusFilter) params.set("status", statusFilter);

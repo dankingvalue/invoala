@@ -63,7 +63,6 @@ export function AuditTable({ role }: { role: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     const params = new URLSearchParams({ page: String(page) });
     if (actionFilter) params.set("action", actionFilter);
     fetch(`/api/admin/audit?${params}`)

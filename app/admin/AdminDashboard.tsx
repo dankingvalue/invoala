@@ -6,8 +6,9 @@ import { StatCard, Panel, SectionHead } from "@/components/admin/Panel";
 import { AuditTable } from "@/components/admin/AuditTable";
 import { InvoiceTable } from "@/components/admin/InvoiceTable";
 import { CustomerSlideOut } from "@/components/admin/CustomerSlideOut";
+import { SeoTab } from "@/components/admin/SeoTab";
 
-type Tab = "overview" | "users" | "invoices" | "messages" | "flags" | "email" | "audit";
+type Tab = "overview" | "users" | "invoices" | "messages" | "flags" | "email" | "audit" | "seo";
 
 type Stats = {
   users: number;
@@ -60,6 +61,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "flags", label: "Flags" },
   { id: "email", label: "Email" },
   { id: "audit", label: "Audit Trail" },
+  { id: "seo", label: "SEO" },
 ];
 
 export function AdminDashboard({ myRole }: { myRole: string }) {
@@ -90,6 +92,7 @@ export function AdminDashboard({ myRole }: { myRole: string }) {
       {tab === "flags" && <FlagsTab />}
       {tab === "email" && <EmailTab />}
       {tab === "audit" && <AuditTab />}
+      {tab === "seo" && <SeoTab />}
     </div>
   );
 }
@@ -173,7 +176,7 @@ function UsersTab({ myRole }: { myRole: string }) {
       .catch(() => setLoading(false));
   };
 
-  useEffect(() => { setLoading(true); load(); }, [page, search]);
+  useEffect(() => { load(); }, [page, search]);
 
   async function mutate(id: string, body: Record<string, unknown>) {
     setBusy(true);
@@ -207,7 +210,7 @@ function UsersTab({ myRole }: { myRole: string }) {
         <p className="py-6 text-sm text-[#6b7280] text-center">No users found.</p>
       ) : (
         <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[700px] text-left text-sm">
+          <table className="w-full min-w-[500px] text-left text-sm">
             <thead>
               <tr className="border-b border-[#e5e7eb] text-[#6b7280]">
                 <th className="pb-2 font-medium">Email</th>
@@ -254,7 +257,7 @@ function UsersTab({ myRole }: { myRole: string }) {
                   </td>
                   <td className="py-2.5 text-right">
                     {myRole === "superadmin" ? (
-                      <button type="button" disabled={busy} onClick={() => void mutate(u.id, { role: u.role })} className="text-xs text-red-600 hover:underline disabled:opacity-50">Delete</button>
+                      <button type="button" disabled={busy} onClick={async () => { if (!confirm(`Delete ${u.email}?`)) return; setBusy(true); await fetch(`/api/admin/users/${u.id}`, { method: "DELETE" }); setBusy(false); load(); }} className="text-xs text-red-600 hover:underline disabled:opacity-50">Delete</button>
                     ) : null}
                   </td>
                 </tr>
@@ -299,7 +302,6 @@ function MessagesTab() {
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
   useEffect(() => {
-    setLoading(true);
     const params = new URLSearchParams({ page: String(convPage), status: statusFilter });
     fetch(`/api/admin/messages?${params}`)
       .then((r) => r.json())
@@ -344,7 +346,7 @@ function MessagesTab() {
   if (selectedConv) {
     return (
       <Panel>
-        <div className="flex h-[600px] flex-col">
+        <div className="flex max-h-[calc(100vh-120px)] flex-col">
           <div className="flex items-center justify-between border-b border-[#e5e7eb] px-4 py-3">
             <div>
               <p className="text-sm font-semibold">{selectedConv.user_name || selectedConv.user_email}</p>
