@@ -122,7 +122,7 @@ export function SignupPrompt() {
             type="button"
             onClick={dismiss}
             aria-label="Dismiss"
-            className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-base leading-none text-[#9ca3af] transition hover:bg-[#f3f4f6] hover:text-ink"
+            className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-base leading-none text-[#6b7280] transition hover:bg-[#f3f4f6] hover:text-ink"
           >
             &times;
           </button>

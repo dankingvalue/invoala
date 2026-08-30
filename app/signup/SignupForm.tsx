@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { trackEvent } from "@/lib/analytics";
 
 export function SignupForm({ googleEnabled }: { googleEnabled: boolean }) {
   const router = useRouter();
@@ -22,6 +23,7 @@ export function SignupForm({ googleEnabled }: { googleEnabled: boolean }) {
     }
     setStatus("loading");
     setMessage("");
+    trackEvent("signup_started");
     try {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
@@ -30,6 +32,7 @@ export function SignupForm({ googleEnabled }: { googleEnabled: boolean }) {
       });
       const json = (await res.json()) as { ok?: boolean; error?: string; needsVerification?: boolean };
       if (res.ok && json.ok) {
+        trackEvent("signup_completed");
         if (json.needsVerification) {
           router.push("/verify");
         } else {
@@ -47,14 +50,15 @@ export function SignupForm({ googleEnabled }: { googleEnabled: boolean }) {
   }
 
   const inputCls =
-    "w-full rounded-xl border border-hairline bg-white px-3.5 py-2.5 text-[15px] text-ink outline-none transition placeholder:text-[#86868b] focus:border-accent focus:ring-[3px] focus:ring-accent/20";
+    "w-full rounded-xl border border-hairline bg-white px-3.5 py-2.5 text-[15px] text-ink outline-none transition placeholder:text-[#6b7280] focus:border-accent focus:ring-[3px] focus:ring-accent/20";
 
   return (
     <div className="space-y-5">
       <form onSubmit={submit} className="space-y-4">
         <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-subtle">Name</label>
+          <label htmlFor="signup-name" className="mb-1.5 block text-[13px] font-medium text-subtle">Name</label>
           <input
+            id="signup-name"
             type="text"
             autoComplete="name"
             value={name}
@@ -64,8 +68,9 @@ export function SignupForm({ googleEnabled }: { googleEnabled: boolean }) {
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-subtle">Email</label>
+          <label htmlFor="signup-email" className="mb-1.5 block text-[13px] font-medium text-subtle">Email</label>
           <input
+            id="signup-email"
             type="email"
             required
             autoComplete="email"
@@ -76,10 +81,11 @@ export function SignupForm({ googleEnabled }: { googleEnabled: boolean }) {
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-subtle">
-            Password <span className="font-normal text-subtle/70">(min 8 characters)</span>
+          <label htmlFor="signup-password" className="mb-1.5 block text-[13px] font-medium text-subtle">
+            Password <span className="font-normal text-subtle">(min 8 characters)</span>
           </label>
           <input
+            id="signup-password"
             type="password"
             required
             minLength={8}
@@ -91,8 +97,9 @@ export function SignupForm({ googleEnabled }: { googleEnabled: boolean }) {
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-subtle">Confirm password</label>
+          <label htmlFor="signup-confirm" className="mb-1.5 block text-[13px] font-medium text-subtle">Confirm password</label>
           <input
+            id="signup-confirm"
             type="password"
             required
             minLength={8}

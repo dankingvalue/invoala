@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { trackEvent } from "@/lib/analytics";
 import Link from "next/link";
 
 type Mode = "password" | "google" | "magic";
@@ -58,6 +59,7 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
       });
       const json = (await res.json()) as { ok?: boolean; error?: string };
       if (res.ok && json.ok) {
+        trackEvent("login_completed");
         setMagicSent(true);
         setStatus("idle");
       } else {
@@ -71,7 +73,7 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
   }
 
   const inputCls =
-    "w-full rounded-xl border border-hairline bg-white px-3.5 py-2.5 text-[15px] text-ink outline-none transition placeholder:text-[#86868b] focus:border-accent focus:ring-[3px] focus:ring-accent/20";
+    "w-full rounded-xl border border-hairline bg-white px-3.5 py-2.5 text-[15px] text-ink outline-none transition placeholder:text-[#6b7280] focus:border-accent focus:ring-[3px] focus:ring-accent/20";
 
   return (
     <div className="space-y-5">
@@ -79,8 +81,9 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
       {mode === "password" && (
         <form onSubmit={submitPassword} className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-[13px] font-medium text-subtle">Email</label>
+            <label htmlFor="login-email" className="mb-1.5 block text-[13px] font-medium text-subtle">Email</label>
             <input
+              id="login-email"
               type="email"
               required
               autoComplete="username"
@@ -92,7 +95,7 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
           </div>
           <div>
             <div className="mb-1.5 flex items-center justify-between">
-              <label className="text-[13px] font-medium text-subtle">Password</label>
+              <label htmlFor="login-password" className="text-[13px] font-medium text-subtle">Password</label>
               <Link href="/forgot-password" className="text-[13px] text-link hover:underline">
                 Forgot?
               </Link>
@@ -154,8 +157,9 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
         ) : (
           <form onSubmit={submitMagic} className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-subtle">Email</label>
+              <label htmlFor="magic-email" className="mb-1.5 block text-[13px] font-medium text-subtle">Email</label>
               <input
+                id="magic-email"
                 type="email"
                 required
                 autoComplete="username"

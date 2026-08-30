@@ -22,7 +22,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-6">
+    <main className="flex min-h-screen items-center justify-center px-6">
       <div className="w-full max-w-[400px] text-center">
         <div className="mb-6 flex justify-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#e8f4fd]">
@@ -50,6 +50,7 @@ export default function ForgotPasswordPage() {
         ) : (
           <form onSubmit={submit} className="mt-8">
             <input
+              aria-label="Email address"
               type="email"
               required
               value={email}
@@ -70,6 +71,6 @@ export default function ForgotPasswordPage() {
           </form>
         )}
       </div>
-    </div>
+    </main>
   );
 }

@@ -58,7 +58,7 @@ function VerifyForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-6">
+    <main className="flex min-h-screen items-center justify-center px-6">
       <div className="w-full max-w-[400px] text-center">
         <div className="mb-6 flex justify-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#e8f4fd]">
@@ -82,6 +82,7 @@ function VerifyForm() {
         ) : (
           <form onSubmit={verify} className="mt-6">
             <input
+              aria-label="Verification code"
               value={code}
               onChange={(e) => {
                 setCode(e.target.value.replace(/\D/g, "").slice(0, 6));
@@ -125,7 +126,7 @@ function VerifyForm() {
           Back to sign in
         </button>
       </div>
-    </div>
+    </main>
   );
 }
 

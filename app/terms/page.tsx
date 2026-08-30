@@ -4,6 +4,8 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Terms of Service",
   description: "Invoala terms of service.",
+  alternates: { canonical: "https://www.invoala.com/terms" },
+  robots: { index: true, follow: true },
 };
 
 export default function TermsPage() {

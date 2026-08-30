@@ -58,6 +58,7 @@ export function AiComposer({
         invoice fills itself in.
       </p>
       <textarea
+        aria-label="Describe the work to draft your invoice"
         value={text}
         onChange={(e) => {
           setText(e.target.value);
@@ -68,7 +69,7 @@ export function AiComposer({
         }}
         rows={3}
         placeholder={PLACEHOLDER}
-        className="mt-4 w-full resize-none rounded-xl border border-hairline bg-white px-3.5 py-3 text-[15px] leading-relaxed text-ink outline-none transition placeholder:text-[#86868b] focus:border-accent focus:ring-[3px] focus:ring-accent/20"
+        className="mt-4 w-full resize-none rounded-xl border border-hairline bg-white px-3.5 py-3 text-[15px] leading-relaxed text-ink outline-none transition placeholder:text-[#6b7280] focus:border-accent focus:ring-[3px] focus:ring-accent/20"
       />
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <button

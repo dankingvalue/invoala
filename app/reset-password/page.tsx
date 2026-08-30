@@ -44,7 +44,7 @@ function ResetForm() {
 
   if (!token) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-6">
+      <main className="flex min-h-screen items-center justify-center px-6">
         <div className="text-center">
           <h1 className="text-[28px] font-semibold tracking-tight">Invalid link</h1>
           <p className="mt-2 text-[15px] text-subtle">This password reset link is invalid.</p>
@@ -52,12 +52,12 @@ function ResetForm() {
             Request a new link
           </Link>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-6">
+    <main className="flex min-h-screen items-center justify-center px-6">
       <div className="w-full max-w-[400px] text-center">
         <div className="mb-6 flex justify-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#e8f4fd]">
@@ -75,6 +75,7 @@ function ResetForm() {
           <form onSubmit={submit} className="mt-6 space-y-3">
             {message ? <p className="text-sm text-[#d70015]">{message}</p> : null}
             <input
+              aria-label="New password"
               type="password"
               required
               minLength={8}
@@ -84,6 +85,7 @@ function ResetForm() {
               className="w-full rounded-xl border border-hairline bg-white px-4 py-3 text-[15px] outline-none focus:border-accent focus:ring-[3px] focus:ring-accent/15"
             />
             <input
+              aria-label="Confirm password"
               type="password"
               required
               minLength={8}
@@ -106,7 +108,7 @@ function ResetForm() {
           Back to sign in
         </Link>
       </div>
-    </div>
+    </main>
   );
 }
 

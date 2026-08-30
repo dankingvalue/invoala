@@ -9,10 +9,11 @@ const freeFeatures = [
 
 const proFeatures = [
   "Everything in Free",
-  "Client book with saved profiles",
-  "Invoice history & search",
+  "Saved client profiles & history",
   "Recurring invoices on autopilot",
-  "Quotes that convert to invoices",
+  "Quotes & estimates",
+  "Multi-business profiles",
+  "Priority support",
 ];
 
 const teamsFeatures = [
