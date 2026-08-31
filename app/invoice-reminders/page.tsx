@@ -6,7 +6,7 @@ import { SeoFooter } from "@/components/seo/SeoPage";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Invoice Reminders — Get Paid Faster with Automated Follow-Ups",
+  title: "Invoice Reminders — Automated Follow-Ups That Get You Paid",
   description:
     "Send smart invoice reminders to get paid faster. Write friendly, firm, or final follow-ups with ready-to-use templates and timing strategies.",
   keywords: [
