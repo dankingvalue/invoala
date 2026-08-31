@@ -17,13 +17,13 @@ export const metadata: Metadata = {
     "invoice follow up template",
   ],
   alternates: {
-    canonical: "https://invoala.com/invoice-reminders",
+    canonical: "https://www.invoala.com/invoice-reminders",
   },
   openGraph: {
-    title: "Invoice Reminders — Get Paid Faster with Automated Follow-Ups",
+  title: "Invoice Reminders — Automated Follow-Ups That Get You Paid",
     description:
       "Send smart invoice reminders to get paid faster. Write friendly, firm, or final follow-ups with ready-to-use templates.",
-    url: "https://invoala.com/invoice-reminders",
+    url: "https://www.invoala.com/invoice-reminders",
     siteName: "Invoala",
     type: "website",
   },

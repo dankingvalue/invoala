@@ -17,13 +17,13 @@ export const metadata: Metadata = {
     "estimate vs quote",
   ],
   alternates: {
-    canonical: "https://invoala.com/estimates-and-invoices",
+    canonical: "https://www.invoala.com/estimates-and-invoices",
   },
   openGraph: {
     title: "Estimates and Invoices — What's the Difference?",
     description:
       "Understand the difference between estimates and invoices, when to use each, and how to convert an estimate into a professional invoice.",
-    url: "https://invoala.com/estimates-and-invoices",
+    url: "https://www.invoala.com/estimates-and-invoices",
     siteName: "Invoala",
     type: "website",
   },

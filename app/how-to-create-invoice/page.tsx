@@ -12,12 +12,12 @@ export const metadata: Metadata = {
     "create invoice online",
     "freelance invoice guide",
   ],
-  alternates: { canonical: "https://invoala.com/how-to-create-invoice" },
+  alternates: { canonical: "https://www.invoala.com/how-to-create-invoice" },
   openGraph: {
     title: "How to Create an Invoice — Step-by-Step Guide",
     description:
       "Learn how to create a professional invoice in minutes. Free step-by-step guide for freelancers.",
-    url: "https://invoala.com/how-to-create-invoice",
+    url: "https://www.invoala.com/how-to-create-invoice",
   },
 };
 

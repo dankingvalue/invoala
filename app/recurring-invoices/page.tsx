@@ -16,13 +16,13 @@ export const metadata: Metadata = {
     "recurring invoice template",
   ],
   alternates: {
-    canonical: "https://invoala.com/recurring-invoices",
+    canonical: "https://www.invoala.com/recurring-invoices",
   },
   openGraph: {
     title: "Recurring Invoices — Automate Repetitive Billing",
     description:
       "Set up recurring invoices to automate repetitive billing. Save time, never miss a billing cycle, and get paid on schedule.",
-    url: "https://invoala.com/recurring-invoices",
+    url: "https://www.invoala.com/recurring-invoices",
     siteName: "Invoala",
     type: "website",
   },

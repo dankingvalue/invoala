@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     "consultant invoicing",
   ],
   alternates: {
-    canonical: "https://invoala.com/industries",
+    canonical: "https://www.invoala.com/industries",
   },
 };
 

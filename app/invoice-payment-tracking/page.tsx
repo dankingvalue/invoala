@@ -17,13 +17,13 @@ export const metadata: Metadata = {
     "payment tracking software",
   ],
   alternates: {
-    canonical: "https://invoala.com/invoice-payment-tracking",
+    canonical: "https://www.invoala.com/invoice-payment-tracking",
   },
   openGraph: {
     title: "Invoice Payment Tracking — Know Who Owes You",
     description:
       "Track every invoice from sent to paid. Know who owes you, when it's due, and what's overdue.",
-    url: "https://invoala.com/invoice-payment-tracking",
+    url: "https://www.invoala.com/invoice-payment-tracking",
     siteName: "Invoala",
     type: "website",
   },

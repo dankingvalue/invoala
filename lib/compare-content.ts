@@ -109,7 +109,7 @@ export const COMPARISONS: CompareDef[] = [
     ],
     related: [
       { label: "Best invoicing software", href: "/best-invoicing-software" },
-      { label: "Free invoice generator", href: "/free-invoice-generator" },
+      { label: "Free invoice generator", href: "/invoice-generator" },
       { label: "Invoala vs Wave", href: "/compare/invoala-vs-wave" },
     ],
   },
@@ -263,7 +263,7 @@ export const COMPARISONS: CompareDef[] = [
     related: [
       { label: "Best invoicing software for freelancers", href: "/best-invoicing-software-for-freelancers" },
       { label: "Invoala vs Wave", href: "/compare/invoala-vs-wave" },
-      { label: "Free invoice generator", href: "/free-invoice-generator" },
+      { label: "Free invoice generator", href: "/invoice-generator" },
     ],
   },
   {
@@ -416,7 +416,7 @@ export const COMPARISONS: CompareDef[] = [
     related: [
       { label: "Invoala vs QuickBooks", href: "/compare/invoala-vs-quickbooks" },
       { label: "Best invoicing software", href: "/best-invoicing-software" },
-      { label: "Free invoice generator", href: "/free-invoice-generator" },
+      { label: "Free invoice generator", href: "/invoice-generator" },
     ],
   },
   {

@@ -18,13 +18,13 @@ export const metadata: Metadata = {
     "sales receipt",
   ],
   alternates: {
-    canonical: "https://invoala.com/receipt-generator",
+    canonical: "https://www.invoala.com/receipt-generator",
   },
   openGraph: {
     title: "Receipt Generator — Create Professional Receipts Free",
     description:
       "Create a professional receipt in seconds. Record payments and download a print-ready PDF. Free, no sign-up.",
-    url: "https://invoala.com/receipt-generator",
+    url: "https://www.invoala.com/receipt-generator",
     siteName: "Invoala",
     type: "website",
   },

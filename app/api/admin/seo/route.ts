@@ -13,7 +13,6 @@ const CORE_PAGES: { url: string; title: string; type: string; inSitemap: boolean
   { url: "/invoicing-software", title: "Invoicing Software", type: "PRODUCT", inSitemap: true, indexable: true },
   { url: "/online-invoicing", title: "Online Invoicing", type: "PRODUCT", inSitemap: true, indexable: true },
   { url: "/invoice-generator", title: "Free Invoice Generator", type: "PRODUCT", inSitemap: true, indexable: true },
-  { url: "/free-invoice-generator", title: "Free Invoice Generator — No Sign-Up", type: "PRODUCT", inSitemap: true, indexable: true },
   { url: "/invoice-maker", title: "Invoice Maker", type: "PRODUCT", inSitemap: true, indexable: true },
   { url: "/recurring-invoices", title: "Recurring Invoices", type: "PRODUCT", inSitemap: true, indexable: true },
   { url: "/invoice-payment-tracking", title: "Invoice Payment Tracking", type: "PRODUCT", inSitemap: true, indexable: true },

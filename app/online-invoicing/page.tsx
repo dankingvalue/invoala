@@ -17,13 +17,13 @@ export const metadata: Metadata = {
     "free online invoicing",
   ],
   alternates: {
-    canonical: "https://invoala.com/online-invoicing",
+    canonical: "https://www.invoala.com/online-invoicing",
   },
   openGraph: {
     title: "Online Invoicing — Create & Send Invoices from Anywhere",
     description:
       "Create and send professional invoices from any device with Invoala's free online invoicing tool. No software to install.",
-    url: "https://invoala.com/online-invoicing",
+    url: "https://www.invoala.com/online-invoicing",
     siteName: "Invoala",
     type: "website",
   },
@@ -338,7 +338,7 @@ export default function OnlineInvoicingPage() {
                 </Link>
               </li>
               <li>
-                <Link href="/free-invoice-generator" className="text-[#166534] hover:underline">
+                <Link href="/receipt-generator" className="text-[#166534] hover:underline">
                   Free Invoice Generator
                 </Link>
               </li>

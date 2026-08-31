@@ -75,7 +75,7 @@ export function verifyStripeSignature(payload: string, header: string | null): b
 }
 
 function origin(): string {
-  return process.env.SITE_URL || "https://invoala.com";
+  return process.env.SITE_URL || "https://www.invoala.com";
 }
 
 export async function sendVerificationEmail(opts: {
@@ -132,6 +132,6 @@ export async function sendWelcomeEmail(opts: {
   to: string;
   name: string;
 }): Promise<void> {
-  const text = `Hey ${opts.name || "there"},\n\nWelcome to Invoala! Your account is ready.\n\nCreate your first invoice in under a minute:\nhttps://invoala.com/#generate\n\nNo templates to configure. No forms to study. Just fill in the blanks and download your PDF.\n\nQuestions? Just reply to this email.\n\n— The Invoala Team`;
+  const text = `Hey ${opts.name || "there"},\n\nWelcome to Invoala! Your account is ready.\n\nCreate your first invoice in under a minute:\nhttps://www.invoala.com/#generate\n\nNo templates to configure. No forms to study. Just fill in the blanks and download your PDF.\n\nQuestions? Just reply to this email.\n\n— The Invoala Team`;
   await sendEmail({ to: opts.to, subject: "Welcome to Invoala", text });
 }

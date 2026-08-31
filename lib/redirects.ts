@@ -29,7 +29,7 @@ export function normalizeSource(source: string): string | null {
   const trimmed = source.trim();
   if (!trimmed) return null;
   const withSlash = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
-  const url = new URL(`https://invoala.com${withSlash}`);
+  const url = new URL(`https://www.invoala.com${withSlash}`);
   const normalized = url.pathname.replace(/\/+$/, "") || "/";
   if (!normalized.startsWith("/") || normalized.includes("//")) return null;
   return normalized;

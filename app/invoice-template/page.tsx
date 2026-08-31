@@ -13,12 +13,12 @@ export const metadata: Metadata = {
     "business invoice template",
     "custom invoice template",
   ],
-  alternates: { canonical: "https://invoala.com/invoice-template" },
+  alternates: { canonical: "https://www.invoala.com/invoice-template" },
   openGraph: {
     title: "Free Invoice Template — Download & Customize",
     description:
       "Free invoice templates for freelancers. Customize and download as PDF.",
-    url: "https://invoala.com/invoice-template",
+    url: "https://www.invoala.com/invoice-template",
   },
 };
 

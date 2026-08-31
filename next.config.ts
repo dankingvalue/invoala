@@ -15,6 +15,15 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  async redirects() {
+    return [
+      {
+        source: "/free-invoice-generator",
+        destination: "/invoice-generator",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {

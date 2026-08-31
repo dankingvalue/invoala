@@ -16,7 +16,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE_URL}/invoice-generator`, lastModified: NOW, changeFrequency: "weekly", priority: 1 },
     { url: `${SITE_URL}/receipt-generator`, lastModified: NOW, changeFrequency: "weekly", priority: 0.9 },
     { url: `${SITE_URL}/estimate-generator`, lastModified: NOW, changeFrequency: "weekly", priority: 0.9 },
-    { url: `${SITE_URL}/free-invoice-generator`, lastModified: NOW, changeFrequency: "weekly", priority: 0.9 },
     { url: `${SITE_URL}/invoice-maker`, lastModified: NOW, changeFrequency: "monthly", priority: 0.8 },
     { url: `${SITE_URL}/recurring-invoices`, lastModified: NOW, changeFrequency: "monthly", priority: 0.9 },
     { url: `${SITE_URL}/invoice-payment-tracking`, lastModified: NOW, changeFrequency: "monthly", priority: 0.9 },

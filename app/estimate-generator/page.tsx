@@ -18,13 +18,13 @@ export const metadata: Metadata = {
     "estimate template",
   ],
   alternates: {
-    canonical: "https://invoala.com/estimate-generator",
+    canonical: "https://www.invoala.com/estimate-generator",
   },
   openGraph: {
     title: "Estimate Generator — Free Job Estimates & Quotes",
     description:
       "Create a professional job estimate in seconds and convert it to an invoice when the work is approved. Free, no sign-up.",
-    url: "https://invoala.com/estimate-generator",
+    url: "https://www.invoala.com/estimate-generator",
     siteName: "Invoala",
     type: "website",
   },
