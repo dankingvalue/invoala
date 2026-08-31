@@ -1,6 +1,7 @@
 import { getSessionUser } from "@/lib/server-auth";
 import { isPlan, PLANS } from "@/lib/billing";
 import { getUserTeams } from "@/lib/teams";
+import { createPolarCheckout } from "@/lib/polar";
 
 export async function POST(req: Request) {
   const user = await getSessionUser(req);
@@ -24,23 +25,31 @@ export async function POST(req: Request) {
     }
   }
 
-  const paymentConfigured = !!process.env.PAYMENT_API_KEY;
+  const polarConfigured = !!process.env.POLAR_ACCESS_TOKEN;
 
-  if (!paymentConfigured) {
+  if (!polarConfigured) {
     return Response.json({
       error: "Payment processing is not configured yet. We're working on integrating a payment provider — stay tuned!",
       mode: "not_configured",
     });
   }
 
-  // TODO: Integrate payment processor here
-  // Example flow:
-  // 1. Create a payment session with your processor
-  // 2. Return the checkout URL for redirect
-  // 3. Handle webhooks for payment confirmation
-  //
-  // const session = await paymentClient.createSession({ ... });
-  // return Response.json({ ok: true, mode: "payment", url: session.url });
+  const origin = req.headers.get("origin") || new URL(req.url).origin;
+  const successUrl = `${origin}/dashboard?upgraded=1&plan=${plan}`;
+  const returnUrl = `${origin}/dashboard?upgraded=0`;
 
-  return Response.json({ error: "Payment processor not yet connected." }, { status: 501 });
+  try {
+    const url = await createPolarCheckout({
+      plan,
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      successUrl,
+      returnUrl,
+    });
+    return Response.json({ ok: true, mode: "polar", url });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Could not create a checkout.";
+    return Response.json({ error: message }, { status: 502 });
+  }
 }

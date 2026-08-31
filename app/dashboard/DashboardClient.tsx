@@ -360,7 +360,7 @@ export function DashboardClient({
         body: JSON.stringify({ plan }),
       });
       const json = (await res.json()) as { mode?: string; url?: string; error?: string };
-      if (json.mode === "payment" && json.url) {
+      if ((json.mode === "payment" || json.mode === "polar") && json.url) {
         trackEvent("checkout_started", { plan });
         window.location.href = json.url;
         return;

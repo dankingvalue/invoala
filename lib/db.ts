@@ -181,6 +181,11 @@ async function ensureSchema(): Promise<void> {
       created_at INTEGER NOT NULL
     )` },
     { sql: `CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, created_at DESC)` },
+    { sql: `CREATE TABLE IF NOT EXISTS billing_config (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    )` },
   ]);
 
   // Migration: add viewed_at if missing (ALTER TABLE throws if column exists)

@@ -8,7 +8,7 @@ export async function GET(req: Request) {
   return Response.json({
     subscription,
     isPro: await isUserPro(user.id, user.role),
-    liveBilling: !!process.env.PAYMENT_API_KEY,
+    liveBilling: !!process.env.POLAR_ACCESS_TOKEN,
     plans: PLANS,
   });
 }
