@@ -5,7 +5,7 @@ import { ARTICLES_BY_CATEGORY } from "@/lib/learn-content";
 import { SeoNav, SeoFooter } from "@/components/seo/SeoPage";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Invoicing Learning Center — Guides & Best Practices | Invoala",
+  title: "Invoicing Learning Center — Guides & Best Practices",
   description:
     "Practical invoicing guides for freelancers and small businesses: getting paid faster, invoices vs receipts, VAT, payment terms, and more.",
   path: "/learn",

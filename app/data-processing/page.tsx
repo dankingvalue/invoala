@@ -4,7 +4,7 @@ import { pageMetadata } from "@/lib/seo";
 import { SeoNav, SeoFooter } from "@/components/seo/SeoPage";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Data Processing — How Invoala Handles Your Data | Invoala",
+  title: "Data Processing — How Invoala Handles Your Data",
   description:
     "How Invoala processes, stores, and protects your data: browser-local drafts, encrypted transport, managed storage, and your rights.",
   path: "/data-processing",

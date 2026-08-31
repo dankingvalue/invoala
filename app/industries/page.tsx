@@ -4,7 +4,7 @@ import { SeoNav, SeoFooter } from "@/components/seo/SeoPage";
 import { SOLUTIONS } from "@/lib/solution-content";
 
 export const metadata: Metadata = {
-  title: "Invoicing by Industry — Solutions for Every Trade | Invoala",
+  title: "Invoicing by Industry — Solutions for Every Trade",
   description:
     "Invoicing guides built for your industry: freelancers, contractors, agencies, consultants, photographers, and more. See common billing models and recommended invoice fields.",
   keywords: [

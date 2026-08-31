@@ -6,7 +6,7 @@ import { SeoFooter } from "@/components/seo/SeoPage";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Online Invoicing — Create & Send Invoices from Anywhere | Invoala",
+  title: "Online Invoicing — Create & Send Invoices from Anywhere",
   description:
     "Create and send professional invoices from any device with Invoala's free online invoicing tool. No software to install — just open your browser and start billing.",
   keywords: [
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     canonical: "https://invoala.com/online-invoicing",
   },
   openGraph: {
-    title: "Online Invoicing — Create & Send Invoices from Anywhere | Invoala",
+    title: "Online Invoicing — Create & Send Invoices from Anywhere",
     description:
       "Create and send professional invoices from any device with Invoala's free online invoicing tool. No software to install.",
     url: "https://invoala.com/online-invoicing",

@@ -5,7 +5,7 @@ import { SeoFooter } from "@/components/seo/SeoPage";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Recurring Invoices — Automate Repetitive Billing | Invoala",
+  title: "Recurring Invoices — Automate Repetitive Billing",
   description:
     "Set up recurring invoices to automate repetitive billing. Save time, never miss a billing cycle, and get paid on schedule with Invoala's free recurring invoicing.",
   keywords: [
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     canonical: "https://invoala.com/recurring-invoices",
   },
   openGraph: {
-    title: "Recurring Invoices — Automate Repetitive Billing | Invoala",
+    title: "Recurring Invoices — Automate Repetitive Billing",
     description:
       "Set up recurring invoices to automate repetitive billing. Save time, never miss a billing cycle, and get paid on schedule.",
     url: "https://invoala.com/recurring-invoices",

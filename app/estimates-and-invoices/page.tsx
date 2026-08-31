@@ -6,7 +6,7 @@ import { SeoFooter } from "@/components/seo/SeoPage";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Estimates and Invoices — What's the Difference? | Invoala",
+  title: "Estimates and Invoices — What's the Difference?",
   description:
     "Understand the difference between estimates and invoices, when to use each, and how to convert an estimate into a professional invoice with Invoala.",
   keywords: [
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     canonical: "https://invoala.com/estimates-and-invoices",
   },
   openGraph: {
-    title: "Estimates and Invoices — What's the Difference? | Invoala",
+    title: "Estimates and Invoices — What's the Difference?",
     description:
       "Understand the difference between estimates and invoices, when to use each, and how to convert an estimate into a professional invoice.",
     url: "https://invoala.com/estimates-and-invoices",

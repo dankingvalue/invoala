@@ -7,7 +7,7 @@ import { getCurrentUser } from "@/lib/server-auth";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Free Invoice Generator — Create Professional Invoices Online | Invoala",
+  title: "Free Invoice Generator — Create Professional Invoices Online",
   description:
     "Use Invoala's free invoice generator to create professional invoices in seconds. No sign-up required — just fill in the form and download a polished PDF.",
   keywords: [
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     canonical: "https://invoala.com/invoice-generator",
   },
   openGraph: {
-    title: "Free Invoice Generator — Create Professional Invoices Online | Invoala",
+    title: "Free Invoice Generator — Create Professional Invoices Online",
     description:
       "Use Invoala's free invoice generator to create professional invoices in seconds. No sign-up required.",
     url: "https://invoala.com/invoice-generator",

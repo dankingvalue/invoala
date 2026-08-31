@@ -5,7 +5,7 @@ import { TEMPLATES } from "@/lib/template-content";
 import { SeoNav, SeoFooter } from "@/components/seo/SeoPage";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Free Invoice Templates — Edit & Download as PDF | Invoala",
+  title: "Free Invoice Templates — Edit & Download as PDF",
   description:
     "Free, editable invoice templates for freelancers, consultants, photographers, contractors, designers, and more. Fill in, preview, and download a PDF — no sign-up.",
   path: "/templates",

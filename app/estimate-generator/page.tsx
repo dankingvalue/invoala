@@ -7,7 +7,7 @@ import { getCurrentUser } from "@/lib/server-auth";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Estimate Generator — Free Job Estimates & Quotes | Invoala",
+  title: "Estimate Generator — Free Job Estimates & Quotes",
   description:
     "Create a professional job estimate in seconds. Outline costs before work begins, win the project, then convert the estimate to an invoice in one click. Free, no sign-up.",
   keywords: [
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     canonical: "https://invoala.com/estimate-generator",
   },
   openGraph: {
-    title: "Estimate Generator — Free Job Estimates & Quotes | Invoala",
+    title: "Estimate Generator — Free Job Estimates & Quotes",
     description:
       "Create a professional job estimate in seconds and convert it to an invoice when the work is approved. Free, no sign-up.",
     url: "https://invoala.com/estimate-generator",

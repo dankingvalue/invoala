@@ -4,7 +4,7 @@ import { pageMetadata } from "@/lib/seo";
 import { SeoNav, SeoFooter } from "@/components/seo/SeoPage";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Help Center — Getting Started with Invoala | Invoala",
+  title: "Help Center — Getting Started with Invoala",
   description:
     "Answers to common Invoala questions: creating invoices, saving clients, quotes, teams, billing, and getting paid faster.",
   path: "/help",

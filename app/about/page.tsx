@@ -4,7 +4,7 @@ import { pageMetadata } from "@/lib/seo";
 import { SeoNav, SeoFooter, CtaBlock } from "@/components/seo/SeoPage";
 
 export const metadata: Metadata = pageMetadata({
-  title: "About Invoala — Free Invoicing for Small Business | Invoala",
+  title: "About Invoala — Free Invoicing for Small Business",
   description:
     "Invoala is a free online invoice generator for freelancers and small businesses. Learn what we're building and why we keep the core tool free.",
   path: "/about",

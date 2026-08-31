@@ -6,7 +6,7 @@ import { TOOLS } from "@/lib/tool-content";
 import { SeoNav, SeoFooter } from "@/components/seo/SeoPage";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Free Invoicing Tools & Calculators | Invoala",
+  title: "Free Invoicing Tools & Calculators",
   description:
     "Free tools for freelancers and small businesses: invoice number generator, VAT calculator, profit margin calculator, markup calculator, hourly rate calculator, and more.",
   path: "/tools",

@@ -5,7 +5,7 @@ import { ProPricing } from "@/components/ProPricing";
 import { faqSchema } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Pricing — Free Forever, Upgrade When You're Ready | Invoala",
+  title: "Pricing — Free Forever, Upgrade When You're Ready",
   description:
     "Invoala pricing: a genuinely free invoice generator, plus Pro and Teams plans for saved clients, quotes, and team billing. No credit card required to start.",
   path: "/pricing",

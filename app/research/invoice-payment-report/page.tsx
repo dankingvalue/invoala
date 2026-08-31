@@ -4,7 +4,7 @@ import { pageMetadata } from "@/lib/seo";
 import { SeoNav, SeoFooter } from "@/components/seo/SeoPage";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Invoala Invoice Payment Report — Original Research | Invoala",
+  title: "Invoala Invoice Payment Report — Original Research",
   description:
     "Invoala's original research on invoice payment behavior: how long invoices really take to be paid, what predicts late payment, and what helps. Methodology published with every release.",
   path: "/research/invoice-payment-report",

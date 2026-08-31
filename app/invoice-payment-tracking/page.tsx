@@ -6,7 +6,7 @@ import { SeoFooter } from "@/components/seo/SeoPage";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Invoice Payment Tracking — Know Who Owes You | Invoala",
+  title: "Invoice Payment Tracking — Know Who Owes You",
   description:
     "Track every invoice from sent to paid. Know who owes you, when it's due, and what's overdue with Invoala's free invoice payment tracking.",
   keywords: [
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     canonical: "https://invoala.com/invoice-payment-tracking",
   },
   openGraph: {
-    title: "Invoice Payment Tracking — Know Who Owes You | Invoala",
+    title: "Invoice Payment Tracking — Know Who Owes You",
     description:
       "Track every invoice from sent to paid. Know who owes you, when it's due, and what's overdue.",
     url: "https://invoala.com/invoice-payment-tracking",

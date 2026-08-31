@@ -6,7 +6,7 @@ import { SeoFooter } from "@/components/seo/SeoPage";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Invoice Reminders — Get Paid Faster with Automated Follow-Ups | Invoala",
+  title: "Invoice Reminders — Get Paid Faster with Automated Follow-Ups",
   description:
     "Send smart invoice reminders to get paid faster. Write friendly, firm, or final follow-ups with ready-to-use templates and timing strategies.",
   keywords: [
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     canonical: "https://invoala.com/invoice-reminders",
   },
   openGraph: {
-    title: "Invoice Reminders — Get Paid Faster with Automated Follow-Ups | Invoala",
+    title: "Invoice Reminders — Get Paid Faster with Automated Follow-Ups",
     description:
       "Send smart invoice reminders to get paid faster. Write friendly, firm, or final follow-ups with ready-to-use templates.",
     url: "https://invoala.com/invoice-reminders",

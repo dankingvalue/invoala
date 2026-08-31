@@ -7,7 +7,7 @@ import { getCurrentUser } from "@/lib/server-auth";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Receipt Generator — Create Professional Receipts Free | Invoala",
+  title: "Receipt Generator — Create Professional Receipts Free",
   description:
     "Create a professional receipt in seconds. Record payments, show what was paid and when, and download a print-ready PDF receipt. Free, no sign-up.",
   keywords: [
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     canonical: "https://invoala.com/receipt-generator",
   },
   openGraph: {
-    title: "Receipt Generator — Create Professional Receipts Free | Invoala",
+    title: "Receipt Generator — Create Professional Receipts Free",
     description:
       "Create a professional receipt in seconds. Record payments and download a print-ready PDF. Free, no sign-up.",
     url: "https://invoala.com/receipt-generator",
