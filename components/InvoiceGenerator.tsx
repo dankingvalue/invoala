@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import type { jsPDF } from "jspdf";
 import {
   createDefaultInvoice,
   loadDraft,
@@ -15,6 +17,109 @@ import { AiComposer } from "@/components/AiComposer";
 import type { ParsedInvoice } from "@/lib/parseInvoice";
 import { trackEvent } from "@/lib/analytics";
 import type { ClientRow } from "@/lib/data";
+
+// Printable area on an A4 page with 8mm margins (print flow).
+const PRINT_W_MM = 194;
+const PRINT_H_MM = 281;
+// Invoices that overflow a page by less than this are scaled down to fit a
+// single page instead of emitting a nearly-empty trailing page.
+const FIT_ONE_PAGE_OVERFLOW = 1.2;
+
+function sliceCanvasIntoPages(canvas: HTMLCanvasElement, sliceHeight: number): HTMLCanvasElement[] {
+  const slices: HTMLCanvasElement[] = [];
+  let y = 0;
+  while (y < canvas.height) {
+    const h = Math.min(sliceHeight, canvas.height - y);
+    const slice = document.createElement("canvas");
+    slice.width = canvas.width;
+    slice.height = h;
+    const ctx = slice.getContext("2d");
+    if (!ctx) break;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, slice.width, slice.height);
+    ctx.drawImage(canvas, 0, y, canvas.width, h, 0, 0, canvas.width, h);
+    slices.push(slice);
+    y += h;
+  }
+  return slices;
+}
+
+// Draws the captured invoice canvas into a jsPDF A4 document. Page breaks are
+// aligned to the A4 page grid, and borderline overflows are scaled to a single
+// page so the PDF never contains an empty trailing page.
+function addCanvasToPdf(pdf: jsPDF, canvas: HTMLCanvasElement) {
+  const pageW = pdf.internal.pageSize.getWidth();
+  const pageH = pdf.internal.pageSize.getHeight();
+  const ratio = pageW / canvas.width;
+  const scaledH = canvas.height * ratio;
+
+  if (scaledH <= pageH) {
+    pdf.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, pageW, scaledH);
+    return;
+  }
+  if (scaledH < pageH * FIT_ONE_PAGE_OVERFLOW) {
+    const scale = pageH / canvas.height;
+    pdf.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, canvas.width * scale, pageH);
+    return;
+  }
+  const sliceH = Math.floor(canvas.width * (pageH / pageW));
+  sliceCanvasIntoPages(canvas, sliceH).forEach((slice, i) => {
+    if (i > 0) pdf.addPage();
+    pdf.addImage(slice.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, pageW, slice.height * ratio);
+  });
+}
+
+type PrintPage = { dataUrl: string; widthMm: number; heightMm: number };
+
+// navigator.share can hang indefinitely where no share sheet exists (some
+// desktop/embedded browsers). Race it with a timeout so we can fall back.
+function shareTimed(data: ShareData, timeoutMs = 3000): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let done = false;
+    const timer = setTimeout(() => {
+      if (done) return;
+      done = true;
+      reject(new DOMException("Timed out", "TimeoutError"));
+    }, timeoutMs);
+    navigator.share(data).then(
+      () => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        resolve();
+      },
+      (err) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
+
+// Layouts the captured canvas as A4 print pages. Each page fills the printable
+// area (A4 minus 8mm margins) exactly, so printing never produces empty pages.
+function layoutPrintPages(canvas: HTMLCanvasElement): PrintPage[] {
+  const cssWidth = canvas.width / 2;
+  const mmPerCssPx = PRINT_W_MM / cssWidth;
+  const fullPageCssH = PRINT_H_MM / mmPerCssPx;
+  const cssHeight = canvas.height / 2;
+
+  const asPage = (c: HTMLCanvasElement): PrintPage => ({
+    dataUrl: c.toDataURL("image/jpeg", 0.95),
+    widthMm: PRINT_W_MM,
+    heightMm: (c.height / 2) * mmPerCssPx,
+  });
+
+  if (cssHeight <= fullPageCssH) return [asPage(canvas)];
+  if (cssHeight < fullPageCssH * FIT_ONE_PAGE_OVERFLOW) {
+    const s = Math.min(PRINT_W_MM / cssWidth, PRINT_H_MM / cssHeight);
+    return [{ dataUrl: canvas.toDataURL("image/jpeg", 0.95), widthMm: cssWidth * s, heightMm: cssHeight * s }];
+  }
+  const sliceH = Math.floor(canvas.width * (fullPageCssH / cssWidth));
+  return sliceCanvasIntoPages(canvas, sliceH).map(asPage);
+}
 
 export function InvoiceGenerator({
   ai = true,
@@ -36,12 +141,16 @@ export function InvoiceGenerator({
   const [invoice, setInvoice] = useState<Invoice>(() => createDefaultInvoice());
   const [hydrated, setHydrated] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [saveNote, setSaveNote] = useState("");
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailNote, setEmailNote] = useState("");
   const previewRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const pathname = usePathname();
+  const signupHref = `/signup?next=${encodeURIComponent(pathname || "/invoice-generator")}`;
 
   useEffect(() => {
     trackEvent("invoice_started");
@@ -146,7 +255,11 @@ export function InvoiceGenerator({
   }
 
   async function saveToAccount() {
-    if (!user || downloading) return;
+    if (!user) {
+      router.push(signupHref);
+      return;
+    }
+    if (downloading) return;
     setSaveNote("Saving…");
     try {
       const res = await fetch("/api/invoices", {
@@ -173,7 +286,10 @@ export function InvoiceGenerator({
   }
 
   async function emailInvoice() {
-    if (!user) return;
+    if (!user) {
+      router.push(signupHref);
+      return;
+    }
     const toEmail = prompt("Send invoice to (client email):");
     if (!toEmail || !toEmail.includes("@")) return;
     setSendingEmail(true);
@@ -249,54 +365,20 @@ export function InvoiceGenerator({
     }
   }
 
+  async function buildInvoicePdf(canvas: HTMLCanvasElement) {
+    const { jsPDF } = await import("jspdf");
+    const pdf = new jsPDF({ unit: "pt", format: "a4", compress: true });
+    addCanvasToPdf(pdf, canvas);
+    return pdf;
+  }
+
   async function downloadPdf() {
     if (downloading) return;
     setDownloading(true);
     try {
-      const { jsPDF } = await import("jspdf");
       const canvas = await captureInvoiceCanvas();
       if (!canvas) throw new Error("no preview");
-      const pdf = new jsPDF({ unit: "pt", format: "a4", compress: true });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const ratio = pageW / canvas.width;
-
-      if (canvas.height * ratio <= pageH) {
-        pdf.addImage(
-          canvas.toDataURL("image/jpeg", 0.95),
-          "JPEG",
-          0,
-          0,
-          pageW,
-          canvas.height * ratio,
-        );
-      } else {
-        const sliceH = Math.floor(canvas.width * (pageH / pageW));
-        let y = 0;
-        let first = true;
-        while (y < canvas.height) {
-          const h = Math.min(sliceH, canvas.height - y);
-          const slice = document.createElement("canvas");
-          slice.width = canvas.width;
-          slice.height = h;
-          const ctx = slice.getContext("2d");
-          if (!ctx) break;
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, slice.width, slice.height);
-          ctx.drawImage(canvas, 0, y, canvas.width, h, 0, 0, canvas.width, h);
-          if (!first) pdf.addPage();
-          pdf.addImage(
-            slice.toDataURL("image/jpeg", 0.95),
-            "JPEG",
-            0,
-            0,
-            pageW,
-            h * ratio,
-          );
-          first = false;
-          y += h;
-        }
-      }
+      const pdf = await buildInvoicePdf(canvas);
       const name = (invoice.invoiceNumber || "invoice").replace(/[^\w.-]+/g, "-");
       pdf.save(`${name}.pdf`);
       trackEvent("invoice_downloaded", { invoiceNumber: invoice.invoiceNumber, currency: invoice.currency, amount: invoice.items.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.rate) || 0), 0) });
@@ -315,30 +397,124 @@ export function InvoiceGenerator({
     try {
       const canvas = await captureInvoiceCanvas();
       if (!canvas) throw new Error("no preview");
-      const w = window.open("", "_blank");
-      if (!w) {
-        window.print();
-        return;
-      }
-      w.document.write(`<!DOCTYPE html><html><head><title>Print invoice</title><style>
+      const pages = layoutPrintPages(canvas);
+      const imgs = pages
+        .map((p, i) => {
+          const brk = i < pages.length - 1 ? "page-break-after:always;break-after:page;" : "";
+          return `<img src="${p.dataUrl}" alt="" style="display:block;width:${p.widthMm.toFixed(2)}mm;height:${p.heightMm.toFixed(2)}mm;margin:0 auto;${brk}"/>`;
+        })
+        .join("");
+
+      // Print from a hidden iframe (not a popup) so popup blockers never
+      // swallow the print window on mobile browsers.
+      const frame = document.createElement("iframe");
+      frame.style.position = "fixed";
+      frame.style.right = "0";
+      frame.style.bottom = "0";
+      frame.style.width = "0";
+      frame.style.height = "0";
+      frame.style.border = "0";
+      document.body.appendChild(frame);
+      const doc = frame.contentDocument;
+      if (!doc) throw new Error("no print document");
+      doc.open();
+      doc.write(`<!DOCTYPE html><html><head><title>Print invoice</title><style>
         html, body { margin: 0; padding: 0; background: #fff; }
-        img { width: 100%; display: block; }
-        @media print { @page { margin: 8mm; } }
-      </style></head><body><img src="${canvas.toDataURL("image/jpeg", 0.95)}" alt="Invoice" /></body></html>`);
-      w.document.close();
-      const img = w.document.querySelector("img");
-      if (img) {
-        img.onload = () => {
-          w.focus();
-          setTimeout(() => w.print(), 200);
-        };
-      }
-      setTimeout(() => w.print(), 1500);
+        @media print { @page { size: A4; margin: 8mm; } }
+      </style></head><body>${imgs}</body></html>`);
+      doc.close();
+
+      let printed = false;
+      const triggerPrint = () => {
+        if (printed) return;
+        printed = true;
+        const win = frame.contentWindow;
+        if (win) {
+          win.focus();
+          win.print();
+        }
+        frame.remove();
+      };
+      const imagesReady = Promise.all(
+        Array.from(doc.images).map(
+          (img) =>
+            new Promise<void>((resolve) => {
+              if (img.complete) resolve();
+              else {
+                img.onload = () => resolve();
+                img.onerror = () => resolve();
+              }
+            }),
+        ),
+      );
+      imagesReady.then(() => setTimeout(triggerPrint, 150)).catch(() => setTimeout(triggerPrint, 300));
+      setTimeout(triggerPrint, 2500);
     } catch (err) {
       console.error(err);
       alert("Something went wrong preparing the print view. Please try again.");
     } finally {
       setDownloading(false);
+    }
+  }
+
+  async function shareInvoice() {
+    if (sharing || downloading) return;
+    setSharing(true);
+    try {
+      const canvas = await captureInvoiceCanvas();
+      if (!canvas) throw new Error("no preview");
+      const pdf = await buildInvoicePdf(canvas);
+      const name = (invoice.invoiceNumber || "invoice").replace(/[^\w.-]+/g, "-");
+      const text = `Invoice #${invoice.invoiceNumber || ""} — ${invoice.businessName.trim() || "Invoala"}`;
+      const file = new File([pdf.output("blob")], `${name}.pdf`, { type: "application/pdf" });
+
+      // Preferred: share the actual PDF file (opens every app on a phone).
+      if (navigator.canShare?.({ files: [file] })) {
+        try {
+          await shareTimed({ files: [file], title: text, text });
+          trackEvent("invoice_shared", { method: "file" });
+          return;
+        } catch (err) {
+          if (err instanceof DOMException && err.name === "AbortError") return;
+          // Share sheet unavailable or timed out — fall through to fallbacks.
+        }
+      }
+
+      // Fallback for signed-in users: share the online view link.
+      if (savedId) {
+        let url = "";
+        try {
+          const res = await fetch(`/api/invoices/${savedId}/share`, { method: "POST" });
+          const json = (await res.json()) as { url?: string };
+          url = json.url || "";
+        } catch {}
+        if (url && typeof navigator.share === "function") {
+          try {
+            await shareTimed({ title: text, text, url });
+            trackEvent("invoice_shared", { method: "link" });
+            return;
+          } catch {
+            // Fall through to clipboard below.
+          }
+        }
+        if (url) {
+          try {
+            await navigator.clipboard.writeText(url);
+          } catch {
+            window.open(url, "_blank");
+          }
+          return;
+        }
+      }
+
+      // Last resort: download the PDF.
+      pdf.save(`${name}.pdf`);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      console.error(err);
+      alert("Something went wrong sharing the invoice. Please try again.");
+    } finally {
+      setSharing(false);
     }
   }
 
@@ -386,53 +562,39 @@ export function InvoiceGenerator({
                 Print
               </button>
             ) : null}
-            {user ? (
-              <button
-                type="button"
-                onClick={() => void emailInvoice()}
-                disabled={sendingEmail}
-                className="rounded-full bg-[#e8e8ed] px-6 py-3.5 text-[17px] font-medium text-ink transition hover:bg-[#dcdce1] active:scale-[0.99] disabled:pointer-events-none disabled:opacity-60"
-              >
-                {sendingEmail ? "Sending…" : "Email"}
-              </button>
-            ) : null}
-            {user && savedId ? (
-              <button
-                type="button"
-                onClick={async () => {
-                  let url = "";
-                  try {
-                    const res = await fetch(`/api/invoices/${savedId}/share`, { method: "POST" });
-                    const json = (await res.json()) as { url?: string };
-                    url = json.url || "";
-                  } catch {}
-                  if (!url) return;
-                  const text = `Invoice #${invoice.invoiceNumber || ""} — ${invoice.clientName || "Invoala"}`;
-                  if (navigator.share) {
-                    try { await navigator.share({ title: text, text, url }); } catch {}
-                  } else {
-                    try { await navigator.clipboard.writeText(url); } catch { window.open(url, "_blank"); }
-                  }
-                }}
-                className="rounded-full bg-[#e8e8ed] px-6 py-3.5 text-[17px] font-medium text-ink transition hover:bg-[#dcdce1] active:scale-[0.99]"
-              >
-                Share
-              </button>
-            ) : null}
+            <button
+              type="button"
+              onClick={() => void emailInvoice()}
+              disabled={sendingEmail || downloading}
+              className="rounded-full bg-[#e8e8ed] px-6 py-3.5 text-[17px] font-medium text-ink transition hover:bg-[#dcdce1] active:scale-[0.99] disabled:pointer-events-none disabled:opacity-60"
+            >
+              {sendingEmail ? "Sending…" : "Email"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void shareInvoice()}
+              disabled={sharing || downloading}
+              className="rounded-full bg-[#e8e8ed] px-6 py-3.5 text-[17px] font-medium text-ink transition hover:bg-[#dcdce1] active:scale-[0.99] disabled:pointer-events-none disabled:opacity-60"
+            >
+              {sharing ? "Sharing…" : "Share"}
+            </button>
           </div>
           {emailNote ? <p className="mt-2 text-center text-xs text-[#166534]">{emailNote}</p> : null}
-          {user ? (
-            <div className="mt-3 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => void saveToAccount()}
-                className="rounded-full border border-hairline px-5 py-2 text-sm font-medium text-ink transition hover:border-accent hover:text-accent"
-              >
-                {savedId ? "Update saved invoice" : "Save to dashboard"}
-              </button>
-              {saveNote ? <span className="text-xs text-subtle">{saveNote}</span> : null}
-            </div>
+          {!user ? (
+            <p className="mt-3 text-center text-xs text-subtle">
+              Create a free account to save invoices to your dashboard and email them to clients.
+            </p>
           ) : null}
+          <div className="mt-3 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => void saveToAccount()}
+              className="rounded-full border border-hairline px-5 py-2 text-sm font-medium text-ink transition hover:border-accent hover:text-accent"
+            >
+              {savedId ? "Update saved invoice" : user ? "Save to dashboard" : "Save to account"}
+            </button>
+            {saveNote ? <span className="text-xs text-subtle">{saveNote}</span> : null}
+          </div>
           {(invoice.docType === "quote" || invoice.docType === "estimate") && (
             <div className="mt-3 flex items-center justify-between rounded-xl bg-[#f0fdf4] px-4 py-3">
               <p className="text-[13px] text-[#166534]">

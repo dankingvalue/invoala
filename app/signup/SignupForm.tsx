@@ -1,11 +1,13 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { trackEvent } from "@/lib/analytics";
 
 export function SignupForm({ googleEnabled }: { googleEnabled: boolean }) {
   const router = useRouter();
+  const rawNext = useSearchParams().get("next");
+  const next = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,9 +36,9 @@ export function SignupForm({ googleEnabled }: { googleEnabled: boolean }) {
       if (res.ok && json.ok) {
         trackEvent("signup_completed");
         if (json.needsVerification) {
-          router.push("/verify");
+          router.push(`/verify?next=${encodeURIComponent(next ?? "/dashboard")}`);
         } else {
-          router.push("/dashboard");
+          router.push(next ?? "/dashboard");
         }
         router.refresh();
         return;

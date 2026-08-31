@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { trackEvent } from "@/lib/analytics";
 import Link from "next/link";
 
@@ -9,6 +9,8 @@ type Mode = "password" | "google" | "magic";
 
 export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
   const router = useRouter();
+  const rawNext = useSearchParams().get("next");
+  const next = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
   const [mode, setMode] = useState<Mode>("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,13 +31,13 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
       });
       const json = (await res.json()) as { ok?: boolean; role?: string; error?: string; needsVerification?: boolean };
       if (res.ok && json.ok) {
-        const dest = json.role === "superadmin" ? "/superadmin" : json.role === "admin" ? "/admin" : json.role === "support" ? "/support" : "/dashboard";
+        const dest = next ?? (json.role === "superadmin" ? "/superadmin" : json.role === "admin" ? "/admin" : json.role === "support" ? "/support" : "/dashboard");
         router.push(dest);
         router.refresh();
         return;
       }
       if (json.needsVerification) {
-        router.push("/verify");
+        router.push(`/verify?next=${encodeURIComponent(next ?? "/dashboard")}`);
         return;
       }
       setStatus("error");

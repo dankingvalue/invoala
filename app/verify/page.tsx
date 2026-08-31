@@ -7,6 +7,8 @@ function VerifyForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
+  const rawNext = searchParams.get("next");
+  const next = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
   const [code, setCode] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [message, setMessage] = useState(
@@ -32,7 +34,7 @@ function VerifyForm() {
       const json = (await res.json()) as { ok?: boolean; error?: string };
       if (res.ok && json.ok) {
         setStatus("done");
-        setTimeout(() => router.push("/dashboard?verified=1"), 1500);
+        setTimeout(() => router.push(next ?? "/dashboard?verified=1"), 1500);
       } else {
         setStatus("error");
         setMessage(json.error || "Invalid code.");
