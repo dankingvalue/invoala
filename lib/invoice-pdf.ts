@@ -7,9 +7,10 @@ import { dbGet, dbRun } from "@/lib/db";
 // download, email attachments, recurring sends). Rendered from the same
 // HTML/CSS design language as the generator preview.
 //
-// Failure policy (per incident review): retry with fresh browser contexts and
-// backoff; if all attempts fail, THROW — an unstyled plain-text PDF must never
-// be shipped to a customer. The failure also fires an alert.
+// Failure policy: 3 styled attempts (fresh Chromium per try, backoff), then an
+// emergency styled-lite jsPDF invoice so a PDF ALWAYS ships; only if even that
+// fails does the caller handle the error (email falls back to full text).
+// Any engine degradation fires a globally-throttled incident alert.
 
 let chromiumResolved: { path: string; args: string[] } | null | undefined;
 let chromiumError: string | undefined;
