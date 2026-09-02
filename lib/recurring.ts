@@ -3,7 +3,7 @@ import { getSubscription } from "@/lib/billing";
 import { setInvoiceStatus, upsertInvoice } from "@/lib/data";
 import { sendEmail } from "@/lib/email";
 import { invoicePdfBuffer } from "@/lib/invoice-pdf";
-import type { Invoice } from "@/lib/invoice";
+import { computeTotals, type Invoice } from "@/lib/invoice";
 
 const INTERVAL_DAYS: Record<string, number> = {
   weekly: 7,
@@ -36,11 +36,7 @@ export function isoDaysBetween(fromIso: string, toIso: string): number {
 }
 
 function fmtAmount(invoice: Invoice): string {
-  const sub = (invoice.items || []).reduce((s, item) => s + (Number(item.quantity) || 0) * (Number(item.rate) || 0), 0);
-  const rate = Number(invoice.taxRate) || 0;
-  const tax = sub * (rate / 100);
-  const disc = (sub * (Number(invoice.discount) || 0)) / 100;
-  const total = sub + tax - disc + (Number(invoice.shipping) || 0);
+  const { total } = computeTotals(invoice);
   return `${total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${invoice.currency || "USD"}`;
 }
 

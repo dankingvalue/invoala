@@ -52,7 +52,7 @@ function buildSystemPrompt(): string {
     "You extract structured invoice data from natural language or pasted invoice text.",
     `Today's date is ${today}.`,
     "Return ONLY a JSON object with this exact shape:",
-    '{"businessName":string|null,"businessEmail":string|null,"businessAddress":string|null,"clientName":string|null,"clientEmail":string|null,"clientAddress":string|null,"currency":string|null,"taxRate":number|null,"discount":number|null,"invoiceNumber":string|null,"issueDate":string|null,"dueDate":string|null,"paymentInstructions":string|null,"notes":string|null,"amountPaid":number|null,"items":[{"description":string,"quantity":number,"rate":number}]}',
+    '{"businessName":string|null,"businessEmail":string|null,"businessAddress":string|null,"clientName":string|null,"clientEmail":string|null,"clientAddress":string|null,"currency":string|null,"taxRate":number|null,"discount":number|null,"discountAmount":number|null,"invoiceNumber":string|null,"issueDate":string|null,"dueDate":string|null,"paymentInstructions":string|null,"notes":string|null,"amountPaid":number|null,"items":[{"description":string,"quantity":number,"rate":number}]}',
     "",
     "Rules:",
     "- businessName/businessEmail/businessAddress: info about the sender (the user). Extract if mentioned.",
@@ -78,23 +78,30 @@ async function callOpenAICompatible(
   baseUrl: string,
   system: string,
   text: string,
+  isReasoner = false,
 ): Promise<string | null> {
+  const body: Record<string, unknown> = {
+    model,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: text },
+    ],
+  };
+  if (!isReasoner) {
+    // Reasoner models don't accept response_format or temperature.
+    body.temperature = 0;
+    body.response_format = { type: "json_object" };
+  } else {
+    body.max_tokens = 4000;
+  }
   const res = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model,
-      temperature: 0,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: text },
-      ],
-    }),
-    signal: AbortSignal.timeout(30000),
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(90000),
   });
   if (!res.ok) {
     console.error("[parse:ai] request failed", res.status);
@@ -192,6 +199,8 @@ function parseResponse(content: string): ParsedInvoice | null {
         typeof parsed.currency === "string" ? parsed.currency.toUpperCase() : undefined,
       taxRate: typeof parsed.taxRate === "number" ? parsed.taxRate : undefined,
       discount: typeof parsed.discount === "number" ? parsed.discount : undefined,
+      discountAmount:
+        typeof parsed.discountAmount === "number" ? parsed.discountAmount : undefined,
       invoiceNumber: parsed.invoiceNumber as string | undefined,
       issueDate: parsed.issueDate as string | undefined,
       dueDate: parsed.dueDate as string | undefined,
@@ -215,9 +224,28 @@ async function parseWithLlm(text: string): Promise<ParsedInvoice | null> {
     let content: string | null = null;
 
     switch (provider) {
-      case "openai":
-        content = await callOpenAICompatible(apiKey, model, baseUrl || "https://api.deepseek.com", system, text);
-        break;
+      case "openai": {
+        // Prefer the strongest model, fall back down the list automatically.
+        const candidates: string[] = [
+          ...(model ? [model] : []),
+          "deepseek-reasoner",
+          "deepseek-chat",
+        ].filter((m, i, a) => a.indexOf(m) === i);
+        for (const candidate of candidates) {
+          content = await callOpenAICompatible(
+            apiKey,
+            candidate,
+            baseUrl || "https://api.deepseek.com",
+            system,
+            text,
+            candidate.includes("reasoner"),
+          );
+          if (!content) continue;
+          const parsed = parseResponse(content);
+          if (parsed) return parsed;
+        }
+        return null;
+      }
       case "anthropic":
         content = await callAnthropic(apiKey, model, system, text);
         break;

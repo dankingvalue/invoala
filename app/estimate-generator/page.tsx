@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SeoFooter } from "@/components/seo/SeoPage";
+import { SeoNavMobile } from "@/components/SeoNavMobile";
 import { InvoiceGenerator } from "@/components/InvoiceGenerator";
 import { getCurrentUser } from "@/lib/server-auth";
 
@@ -87,12 +88,15 @@ export default async function EstimateGeneratorPage() {
             </svg>
             Invoala
           </Link>
-          <Link
-            href="/#generate"
-            className="rounded-lg bg-[#14532d] px-5 py-2 text-[14px] font-semibold text-white transition hover:bg-[#0f3d22]"
-          >
-            Create Invoice
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/#generate"
+              className="rounded-lg bg-[#14532d] px-5 py-2 text-[14px] font-semibold text-white transition hover:bg-[#0f3d22]"
+            >
+              Create Invoice
+            </Link>
+            <SeoNavMobile />
+          </div>
         </div>
       </nav>
 

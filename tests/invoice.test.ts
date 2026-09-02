@@ -46,6 +46,29 @@ describe("computeTotals", () => {
     expect(t.subtotal).toBe(100);
   });
 
+  it("applies fixed-amount discounts", () => {
+    const t = computeTotals(
+      makeInvoice({
+        discountMode: "fixed",
+        discountAmount: 15000,
+        discount: 0,
+        taxRate: 16,
+        items: [{ id: "a", description: "web dev", quantity: 1, rate: 185000 }],
+      }),
+    );
+    expect(t.discountAmount).toBe(15000);
+    expect(t.taxAmount).toBeCloseTo(27200); // (185000-15000)*0.16
+    expect(t.total).toBeCloseTo(197200);
+  });
+
+  it("clamps a fixed discount to the subtotal", () => {
+    const t = computeTotals(
+      makeInvoice({ discountMode: "fixed", discountAmount: 999999, items: [{ id: "a", description: "x", quantity: 1, rate: 50 }] }),
+    );
+    expect(t.discountAmount).toBe(50);
+    expect(t.total).toBe(0);
+  });
+
   it("treats missing/NaN numbers as zero", () => {
     const t = computeTotals(makeInvoice({
       items: [{ id: "a", description: "", quantity: Number.NaN, rate: Number.NaN }],

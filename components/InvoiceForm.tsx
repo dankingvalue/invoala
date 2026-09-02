@@ -334,17 +334,60 @@ export function InvoiceForm({
               onChange={(e) => onChange({ taxRate: Number(e.target.value) || 0 })}
             />
           </Field>
-          <Field label="Discount %" id="inv-discount">
-            <input
-              id="inv-discount"
-              type="number"
-              min={0}
-              max={100}
-              step="0.01"
-              className={inputCls}
-              value={invoice.discount}
-              onChange={(e) => onChange({ discount: Number(e.target.value) || 0 })}
-            />
+          <Field label="Discount" id="inv-discount">
+            <div className="flex gap-2">
+              <select
+                aria-label="Discount type"
+                value={invoice.discountMode === "fixed" ? "fixed" : "percent"}
+                onChange={(e) => {
+                  const mode = e.target.value as "percent" | "fixed";
+                  if (mode === "fixed") {
+                    const keep = Number(invoice.discount) > 0 ? Number(invoice.discount) : Number(invoice.discountAmount) || 0;
+                    onChange({ discountMode: "fixed", discountAmount: keep, discount: 0 });
+                  } else {
+                    const keep = Number(invoice.discountAmount) > 0 ? Number(invoice.discountAmount) : Number(invoice.discount) || 0;
+                    onChange({ discountMode: "percent", discount: keep > 100 ? 0 : keep, discountAmount: 0 });
+                  }
+                }}
+                className={`${inputCls} w-[118px] shrink-0`}
+              >
+                <option value="percent">%</option>
+                <option value="fixed">Amount</option>
+              </select>
+              {invoice.discountMode === "fixed" ? (
+                <input
+                  id="inv-discount"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  className={inputCls}
+                  value={invoice.discountAmount ?? 0}
+                  onChange={(e) =>
+                    onChange({
+                      discountAmount: Number(e.target.value) || 0,
+                      discount: 0,
+                    })
+                  }
+                  placeholder="0.00"
+                />
+              ) : (
+                <input
+                  id="inv-discount"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="0.01"
+                  className={inputCls}
+                  value={invoice.discount}
+                  onChange={(e) =>
+                    onChange({
+                      discount: Number(e.target.value) || 0,
+                      discountAmount: 0,
+                    })
+                  }
+                />
+              )}
+            </div>
           </Field>
           <Field label="Shipping" id="inv-shipping">
             <input

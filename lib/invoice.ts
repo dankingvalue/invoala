@@ -53,6 +53,9 @@ export type Invoice = {
   items: LineItem[];
   taxRate: number;
   discount: number;
+  /** "percent" (discount field) or "fixed" (discountAmount, e.g. AI-parsed invoices). */
+  discountMode?: "percent" | "fixed";
+  discountAmount?: number;
   shipping: number;
   /** Optional partial payment (AI-parsed invoices, deposits) shown on the preview. */
   amountPaid?: number;
@@ -264,6 +267,8 @@ export function createDefaultInvoice(): Invoice {
     items: [{ id: newId(), description: "", quantity: 1, rate: 0 }],
     taxRate: 0,
     discount: 0,
+    discountMode: "percent",
+    discountAmount: 0,
     shipping: 0,
     notes: "Payment due within 14 days. Thank you for your business!",
     docType: "invoice",
@@ -298,6 +303,14 @@ export function loadDraft(): Invoice | null {
       logoDataUrl: typeof parsed.logoDataUrl === "string" ? parsed.logoDataUrl : null,
       taxRate: typeof parsed.taxRate === "number" ? parsed.taxRate : base.taxRate,
       discount: typeof parsed.discount === "number" ? parsed.discount : base.discount,
+      discountMode:
+        parsed.discountMode === "fixed" || parsed.discountMode === "percent"
+          ? parsed.discountMode
+          : Number(parsed.discountAmount) > 0
+            ? "fixed"
+            : base.discountMode || "percent",
+      discountAmount:
+        typeof parsed.discountAmount === "number" ? parsed.discountAmount : Number(parsed.discount) || 0,
       shipping: typeof parsed.shipping === "number" ? parsed.shipping : 0,
       docType: DOC_TYPE_VALUES.has(String(parsed.docType))
         ? (String(parsed.docType) as Invoice["docType"])
@@ -350,7 +363,10 @@ export function computeTotals(invoice: Invoice): {
     (sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.rate) || 0),
     0,
   );
-  const discountAmount = subtotal * ((Number(invoice.discount) || 0) / 100);
+  const discountAmount =
+    invoice.discountMode === "fixed"
+      ? Math.min(Math.max(Number(invoice.discountAmount) || 0, 0), Math.max(subtotal, 0))
+      : subtotal * ((Number(invoice.discount) || 0) / 100);
   const shipping = Number(invoice.shipping) || 0;
   const afterDiscount = subtotal - discountAmount + shipping;
   const taxAmount = afterDiscount * ((Number(invoice.taxRate) || 0) / 100);

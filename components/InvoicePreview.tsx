@@ -161,7 +161,9 @@ export function InvoicePreview({
             {discountAmount > 0 ? (
               <tr>
                 <td className="pb-1.5" style={{ color: subtle }}>
-                  Discount ({invoice.discount}%)
+                  {invoice.discountMode === "fixed"
+                    ? `Discount (${formatMoney(discountAmount, invoice.currency)})`
+                    : `Discount (${invoice.discount}%)`}
                 </td>
                 <td className="pb-1.5 text-right tabular-nums" style={{ color: ink }}>
                   &minus;{formatMoney(discountAmount, invoice.currency)}

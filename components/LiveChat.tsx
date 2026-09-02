@@ -263,6 +263,24 @@ export function LiveChat() {
                     </div>
                   </div>
                 ))}
+                {sending ? (
+                  <div className="flex justify-start">
+                    <div className="flex items-center gap-1.5 rounded-2xl bg-[#f3f4f6] px-4 py-3">
+                      <span className="text-[11px] font-medium text-[#6b7280]">
+                        Invoala is thinking
+                      </span>
+                      <span className="flex items-center gap-0.5" aria-label="Thinking">
+                        {[0, 1, 2].map((i) => (
+                          <span
+                            key={i}
+                            className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#6b7280]"
+                            style={{ animationDelay: `${i * 150}ms` }}
+                          />
+                        ))}
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
                 <div ref={messagesEndRef} />
               </div>
             )}

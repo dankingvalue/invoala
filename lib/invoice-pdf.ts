@@ -148,7 +148,15 @@ export async function invoicePdfBuffer(invoice: Invoice): Promise<Buffer> {
   const sumX = pageW - M - 175;
   const totals: Array<[string, number, boolean]> = [
     ["Subtotal", subtotal, false],
-    ...(discountAmount > 0 ? [["Discount", -discountAmount, false]] as Array<[string, number, boolean]> : []),
+    ...(discountAmount > 0
+      ? [[
+          invoice.discountMode === "fixed"
+            ? "Discount"
+            : `Discount (${invoice.discount}%)`,
+          -discountAmount,
+          false,
+        ]] as Array<[string, number, boolean]>
+      : []),
     ...(shipping > 0 ? [["Shipping", shipping, false]] as Array<[string, number, boolean]> : []),
     ...(taxAmount > 0 ? [[`Tax (${invoice.taxRate}%)`, taxAmount, false]] as Array<[string, number, boolean]> : []),
     ["Total due", total, true],

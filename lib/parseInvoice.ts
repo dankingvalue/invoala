@@ -14,6 +14,7 @@ export type ParsedInvoice = {
   currency?: string;
   taxRate?: number;
   discount?: number;
+  discountAmount?: number;
   invoiceNumber?: string;
   issueDate?: string;
   dueDate?: string;

@@ -261,6 +261,16 @@ export function InvoiceGenerator({
         typeof data.discount === "number" && !Number.isNaN(data.discount)
           ? data.discount
           : inv.discount,
+      discountAmount:
+        typeof data.discountAmount === "number" && !Number.isNaN(data.discountAmount)
+          ? data.discountAmount
+          : inv.discountAmount ?? 0,
+      discountMode:
+        typeof data.discountAmount === "number" && data.discountAmount > 0
+          ? "fixed"
+          : typeof data.discount === "number" && data.discount > 0
+            ? "percent"
+            : inv.discountMode || "percent",
       amountPaid:
         typeof data.amountPaid === "number" && !Number.isNaN(data.amountPaid)
           ? data.amountPaid
