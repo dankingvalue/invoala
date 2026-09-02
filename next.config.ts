@@ -12,8 +12,17 @@ const securityHeaders = [
   },
 ];
 
+const CHROMIUM_INCLUDES = ["./node_modules/@sparticuz/chromium/bin/**/*", "./node_modules/@sparticuz/chromium/build/**/*"];
+
 const nextConfig: NextConfig = {
   serverExternalPackages: ["playwright-core", "@sparticuz/chromium", "jspdf"],
+  outputFileTracingIncludes: {
+    "/api/invoices/[id]/pdf": CHROMIUM_INCLUDES,
+    "/api/invoices/[id]/email": CHROMIUM_INCLUDES,
+    "/api/cron/recurring": CHROMIUM_INCLUDES,
+    "/api/pdf-engine": CHROMIUM_INCLUDES,
+    "/dashboard": CHROMIUM_INCLUDES,
+  },
   poweredByHeader: false,
   reactStrictMode: true,
   async redirects() {
