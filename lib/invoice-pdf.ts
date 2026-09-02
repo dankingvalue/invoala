@@ -46,10 +46,6 @@ async function resolveChromium(): Promise<{ path: string; args: string[] } | nul
   }
 }
 
-// Warm up: begin resolving the Chromium path as soon as the module loads so
-// the first PDF request doesn't pay the full cold-start resolution cost.
-void resolveChromium();
-
 type Engine = import("playwright-core").Browser;
 
 async function launchChromium(): Promise<Engine | null> {
