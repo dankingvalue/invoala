@@ -152,23 +152,64 @@ export async function createPolarCheckout(opts: {
   return json.url;
 }
 
+// Standard Webhooks signature verification (https://standardwebhooks.com).
+// Accepts both the spec header names (webhook-id/-timestamp/-signature) and
+// Polar's legacy names (polar-webhook-*). Handles the `v1,<base64>` envelope,
+// space-delimited multi-signatures (secret rotation), and both key encodings:
+// Polar currently signs with the raw secret bytes including `whsec_`, while
+// Standard Webhooks libraries use the base64-decoded key after `whsec_`.
 export function verifyPolarWebhook(body: string, headers: Headers): boolean {
   const secret = process.env.POLAR_WEBHOOK_SECRET;
   if (!secret) return false;
 
-  const id = headers.get("polar-webhook-id");
-  const timestamp = headers.get("polar-webhook-timestamp");
-  const signature = headers.get("polar-webhook-signature");
-  if (!id || !timestamp || !signature) return false;
-
-  try {
-    const expected = createHmac("sha256", secret)
-      .update(`${id}.${timestamp}.${body}`)
-      .digest("base64");
-    const a = Buffer.from(expected);
-    const b = Buffer.from(signature);
-    return a.length === b.length && timingSafeEqual(a, b);
-  } catch {
+  const get = (...names: string[]) => {
+    for (const n of names) {
+      const v = headers.get(n);
+      if (v) return v;
+    }
+    return null;
+  };
+  const id = get("webhook-id", "polar-webhook-id");
+  const timestamp = get("webhook-timestamp", "polar-webhook-timestamp");
+  const signatureHeader = get("webhook-signature", "polar-webhook-signature");
+  if (!id || !timestamp || !signatureHeader) {
+    console.error("[polar:webhook] missing headers", { id: !!id, ts: !!timestamp, sig: !!signatureHeader });
     return false;
   }
+
+  // Replay protection: reject deliveries outside a ~5 minute window.
+  const tsSec = Number(timestamp);
+  if (!Number.isFinite(tsSec) || Math.abs(Date.now() / 1000 - tsSec) > 5 * 60) {
+    console.error("[polar:webhook] timestamp out of window", timestamp);
+    return false;
+  }
+
+  // Key candidates: raw secret bytes (Polar's current encoding) and, for
+  // whsec_-prefixed secrets, the base64-decoded spec key.
+  const keys: Buffer[] = [Buffer.from(secret, "utf8")];
+  if (secret.startsWith("whsec_")) {
+    try {
+      keys.push(Buffer.from(secret.slice("whsec_".length), "base64"));
+    } catch {}
+  }
+
+  const tokens = signatureHeader.split(" ").filter(Boolean);
+  for (const token of tokens) {
+    const [version, providedB64] = token.split(",", 2);
+    if (version !== "v1" || !providedB64) continue;
+    for (const key of keys) {
+      try {
+        const expected = createHmac("sha256", key)
+          .update(`${id}.${timestamp}.${body}`)
+          .digest("base64");
+        const a = Buffer.from(expected);
+        const b = Buffer.from(providedB64);
+        if (a.length === b.length && timingSafeEqual(a, b)) return true;
+      } catch {
+        // try the next key/token
+      }
+    }
+  }
+  console.error("[polar:webhook] signature did not match");
+  return false;
 }
