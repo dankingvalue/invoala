@@ -46,8 +46,8 @@ export async function GET() {
   let renderBytes = 0;
   let renderError: string | undefined;
   try {
-    const buf = await invoicePdfBuffer(sample);
-    renderBytes = buf.length;
+    const { buffer } = await invoicePdfBuffer(sample);
+    renderBytes = buffer.length;
   } catch (err) {
     renderError = err instanceof Error ? err.message.slice(0, 300) : String(err);
   }

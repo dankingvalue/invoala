@@ -90,7 +90,8 @@ export async function generateDueRecurringInvoice(row: RecurringRow): Promise<bo
     // schedule so no duplicate child is created tomorrow.
     let pdf: Buffer | null = null;
     try {
-      pdf = await invoicePdfBuffer(childInvoice);
+      const { buffer } = await invoicePdfBuffer(childInvoice);
+      pdf = buffer;
     } catch (err) {
       console.error("[recurring] PDF generation failed — sending text summary", err);
     }

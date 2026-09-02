@@ -23,7 +23,7 @@ describe("invoicePdfBuffer engine", () => {
       })),
       notes: "Payment due within 14 days. Thank you for your business!",
     };
-    const buf = await invoicePdfBuffer(inv);
+    const { buffer: buf } = await invoicePdfBuffer(inv);
     expect(Buffer.isBuffer(buf)).toBe(true);
     expect(buf.length).toBeGreaterThan(1000);
     expect(buf.subarray(0, 5).toString()).toBe("%PDF-");

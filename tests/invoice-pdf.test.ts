@@ -28,22 +28,22 @@ function sampleInvoice(over: Partial<Invoice> = {}, itemCount = 3): Invoice {
 
 describe("invoicePdfBuffer", () => {
   it("produces a valid-looking PDF buffer", async () => {
-    const buf = await invoicePdfBuffer(sampleInvoice());
+    const { buffer: buf } = await invoicePdfBuffer(sampleInvoice());
     expect(Buffer.isBuffer(buf)).toBe(true);
     expect(buf.length).toBeGreaterThan(1000);
     expect(buf.subarray(0, 5).toString()).toBe("%PDF-");
   });
 
   it("renders short and very long invoices without throwing", async () => {
-    const short = await invoicePdfBuffer(sampleInvoice({}, 1));
-    const long = await invoicePdfBuffer(sampleInvoice({}, 60));
+    const { buffer: short } = await invoicePdfBuffer(sampleInvoice({}, 1));
+    const { buffer: long } = await invoicePdfBuffer(sampleInvoice({}, 60));
     expect(short.length).toBeGreaterThan(500);
     expect(long.length).toBeGreaterThan(short.length);
   });
 
   it("renders quotes and receipts too", async () => {
-    const q = await invoicePdfBuffer(sampleInvoice({ docType: "quote" }));
-    const r = await invoicePdfBuffer(sampleInvoice({ docType: "receipt" }));
+    const { buffer: q } = await invoicePdfBuffer(sampleInvoice({ docType: "quote" }));
+    const { buffer: r } = await invoicePdfBuffer(sampleInvoice({ docType: "receipt" }));
     expect(q.length).toBeGreaterThan(500);
     expect(r.length).toBeGreaterThan(500);
   });
@@ -52,7 +52,7 @@ describe("invoicePdfBuffer", () => {
     // 1x1 transparent PNG
     const logo =
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
-    const pdf = await invoicePdfBuffer(
+    const { buffer: pdf } = await invoicePdfBuffer(
       sampleInvoice({
         logoDataUrl: logo,
         discountMode: "fixed",

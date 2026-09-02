@@ -27,7 +27,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const url = new URL(req.url);
   const inline = url.searchParams.get("inline") === "1";
 
-  let pdf: Buffer;
+  let pdf: { buffer: Buffer; engine: "chromium" | "emergency" };
   try {
     pdf = await invoicePdfBuffer(invoice as never);
   } catch (err) {
@@ -38,11 +38,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     );
   }
   const name = `Invoice-${(row.number || "invoice").replace(/[^\w.-]+/g, "-")}.pdf`;
-  return new Response(new Uint8Array(pdf), {
+  return new Response(new Uint8Array(pdf.buffer), {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${name}"`,
       "Cache-Control": "private, no-store",
+      "X-PDF-Engine": pdf.engine,
     },
   });
 }

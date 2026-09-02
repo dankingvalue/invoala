@@ -36,17 +36,19 @@ async function resolveChromium(): Promise<{ path: string; args: string[] } | nul
       chromiumError = undefined;
       return chromiumResolved;
     } catch (err) {
-      chromiumResolved = null;
       chromiumError = err instanceof Error ? err.message.slice(0, 500) : String(err);
       console.error("[invoice-pdf] chromium executablePath failed", chromiumError);
       return null;
     }
   } catch (err) {
-    chromiumResolved = null;
     chromiumError = err instanceof Error ? err.message.slice(0, 500) : String(err);
     return null;
   }
 }
+
+// Warm up: begin resolving the Chromium path as soon as the module loads so
+// the first PDF request doesn't pay the full cold-start resolution cost.
+void resolveChromium();
 
 type Engine = import("playwright-core").Browser;
 
@@ -63,6 +65,10 @@ async function launchChromium(): Promise<Engine | null> {
     return browser;
   } catch (err) {
     chromiumError = err instanceof Error ? err.message.slice(0, 500) : String(err);
+    // Don't cache a poisoned resolution: the next attempt re-resolves the
+    // executable path (fixes cold-start failures permanently poisoning an
+    // instance).
+    chromiumResolved = undefined;
     console.error("[invoice-pdf] chromium launch failed", chromiumError);
     return null;
   }
@@ -137,9 +143,12 @@ async function notifyPdfIncident(detail: string): Promise<void> {
 }
 
 // ---- Render (retry with fresh browser + backoff) --------------------------
-const MAX_ATTEMPTS = 3;
+const MAX_ATTEMPTS = 5;
 
-async function renderStyledPdf(invoice: Invoice, html: string): Promise<Buffer> {
+async function renderStyledPdfWithMeta(
+  invoice: Invoice,
+  html: string,
+): Promise<{ buffer: Buffer; engine: "chromium" | "emergency" }> {
   let lastError = "unknown";
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const browser = await launchChromium();
@@ -147,19 +156,28 @@ async function renderStyledPdf(invoice: Invoice, html: string): Promise<Buffer> 
       lastError = chromiumError || "chromium unavailable";
     } else {
       try {
-        const page = await browser.newPage({ viewport: { width: 794, height: 1123 } });
-        await page.setContent(html, { waitUntil: "load" });
-        // Wait for layout + any web font to settle before printing.
-        try {
-          await page.evaluate(() => (document as Document).fonts.ready);
-        } catch {}
-        await page.waitForTimeout(200);
-        const pdf = await page.pdf({
-          format: "A4",
-          printBackground: true,
-          preferCSSPageSize: true,
-        });
-        return Buffer.from(pdf);
+        const result = await Promise.race([
+          (async () => {
+            const page = await browser.newPage({ viewport: { width: 794, height: 1123 } });
+            await page.setContent(html, { waitUntil: "load" });
+            // Wait for layout + any web font to settle before printing.
+            try {
+              await page.evaluate(() => (document as Document).fonts.ready);
+            } catch {}
+            await page.waitForTimeout(200);
+            return await page.pdf({
+              format: "A4",
+              printBackground: true,
+              preferCSSPageSize: true,
+            });
+          })(),
+          // A stuck render (slow font CDN, hung process) must not burn the
+          // whole function budget — fail this attempt and retry.
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("pdf render timed out after 25s")), 25_000),
+          ),
+        ]);
+        return { buffer: Buffer.from(result), engine: "chromium" as const };
       } catch (err) {
         lastError = err instanceof Error ? err.message.slice(0, 500) : String(err);
         console.error(`[invoice-pdf] render attempt ${attempt}/${MAX_ATTEMPTS} failed`, lastError);
@@ -177,18 +195,20 @@ async function renderStyledPdf(invoice: Invoice, html: string): Promise<Buffer> 
   // styled engine is sick so we can repair it.
   await notifyPdfIncident(lastError);
   try {
-    return await jsPdfEmergency(invoice);
+    return { buffer: await jsPdfEmergency(invoice), engine: "emergency" as const };
   } catch (err2) {
     console.error("[invoice-pdf] emergency render also failed", err2);
     throw new Error("The invoice PDF engine is unavailable right now; no document was generated.");
   }
 }
 
-export async function invoicePdfBuffer(invoice: Invoice): Promise<Buffer> {
+export async function invoicePdfBuffer(
+  invoice: Invoice,
+): Promise<{ buffer: Buffer; engine: "chromium" | "emergency" }> {
   const html = buildInvoiceHtml(invoice, {
     money: (n) => formatMoney(n, invoice.currency || "USD"),
   });
-  return renderStyledPdf(invoice, html);
+  return renderStyledPdfWithMeta(invoice, html);
 }
 
 // Public status for the /api/pdf-engine diagnostic + tests. Performs a real

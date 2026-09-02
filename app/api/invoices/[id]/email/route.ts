@@ -51,10 +51,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // delivering the invoice; the incident alert has already fired.
   let pdfAttachment: { filename: string; content: string } | undefined;
   try {
-    const pdf = await invoicePdfBuffer(invoiceData as never);
+    const { buffer } = await invoicePdfBuffer(invoiceData as never);
     pdfAttachment = {
       filename: `Invoice-${invoice.number.replace(/[^\w.-]+/g, "-")}.pdf`,
-      content: pdf.toString("base64"),
+      content: buffer.toString("base64"),
     };
   } catch (err) {
     console.error("[email:invoice] PDF generation failed — sending text summary only", err);
