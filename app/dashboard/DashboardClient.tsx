@@ -7,7 +7,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import type { InvoiceRow, ClientRow } from "@/lib/data";
 import type { Subscription } from "@/lib/billing";
 import { PLAN_PITCHES } from "@/lib/plans-content";
-import { formatMoney, type Invoice, type LineItem } from "@/lib/invoice";
+import { CURRENCIES, formatMoney, type Invoice, type LineItem } from "@/lib/invoice";
 
 type Props = {
   userId: string;
@@ -22,6 +22,8 @@ type Props = {
   needsVerification: boolean;
   userRole: string;
   promo?: { code: string; expires_at: number } | null;
+  fxLatest?: Record<string, number> | null;
+  fxInvoice?: Record<string, { usd: number; asOf: string; exact: boolean }> | null;
   initialCheckoutPlan?: string | null;
   initialTab?: string;
 };
@@ -43,9 +45,19 @@ function planKeyFor(id: string): string {
 const STATUS_STYLES: Record<string, string> = {
   draft: "bg-fog text-subtle",
   sent: "bg-accent/10 text-accent",
+  partial: "bg-[#fef3c7] text-[#92600a]",
   paid: "bg-[#00b67a]/10 text-[#00875a]",
 };
-const NEXT_STATUS: Record<string, string> = { draft: "sent", sent: "paid", paid: "draft" };
+
+// Pure client-side FX (rates are pre-fetched server-side; this module never
+// imports the DB layer).
+function convertFx(amount: number, from: string, to: string, rates: Record<string, number>): number {
+  if (from === to) return amount;
+  const fromRate = rates[from] ?? 1;
+  const toRate = rates[to] ?? 1;
+  if (!fromRate || !toRate) return amount;
+  return (amount / fromRate) * toRate;
+}
 
 const TIMEZONES = [
   "UTC",
@@ -181,6 +193,8 @@ export function DashboardClient({
   isPro,
   needsVerification,
   promo = null,
+  fxLatest = null,
+  fxInvoice = null,
   initialCheckoutPlan = null,
   initialTab = "general",
 }: Props) {
@@ -296,19 +310,6 @@ export function DashboardClient({
       })
       .catch(() => {});
   }, [selectedTeam]);
-
-  async function cycleStatus(row: InvoiceRow) {
-    const next = NEXT_STATUS[row.status] || "draft";
-    setBusy(true);
-    await fetch("/api/invoices", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: row.id, status: next }),
-    }).catch(() => {});
-    if (next === "paid") trackEvent("payment_received", { invoiceNumber: row.number });
-    setInvoices((rows) => rows.map((r) => (r.id === row.id ? { ...r, status: next } : r)));
-    setBusy(false);
-  }
 
   async function removeInvoice(id: string) {
     setBusy(true);
@@ -535,10 +536,152 @@ export function DashboardClient({
     }
   }
 
+  // ---- FX-aware documents summary ----
+  const fxRates = fxLatest && Object.keys(fxLatest).length > 0 ? fxLatest : { USD: 1 };
+  const [displayCcy, setDisplayCcy] = useState<string>(() => {
+    try {
+      const saved = window.localStorage.getItem("invoala.ccy");
+      if (saved && /^[A-Z]{3}$/.test(saved)) return saved;
+    } catch {}
+    return "USD";
+  });
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const paidAmt = (row: InvoiceRow) =>
+    typeof (row.data as { amountPaid?: number } | undefined)?.amountPaid === "number"
+      ? ((row.data as { amountPaid?: number }).amountPaid as number)
+      : 0;
+  const balanceOf = (row: InvoiceRow) =>
+    row.status === "paid" ? 0 : Math.max(0, (row.total || 0) - paidAmt(row));
+  const usdValue = (row: InvoiceRow, amount: number) =>
+    amount * (fxInvoice?.[row.id]?.usd ?? 1);
+  const inDisplay = (usd: number) => convertFx(usd, "USD", displayCcy, fxRates);
+
   const paidCount = invoices.filter((i) => i.status === "paid").length;
-  const outstanding = invoices
-    .filter((i) => i.status !== "paid")
-    .reduce((sum, i) => sum + i.total, 0);
+  const outstandingUsd = invoices.reduce((sum, i) => sum + usdValue(i, balanceOf(i)), 0);
+  const outstanding = inDisplay(outstandingUsd);
+  const totalsUsd = invoices.reduce((sum, i) => sum + usdValue(i, i.total || 0), 0);
+  const totalsInDisplay = inDisplay(totalsUsd);
+
+
+
+  function selectAllVisible(rows: InvoiceRow[]) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      const allSelected = rows.every((r) => next.has(r.id));
+      for (const r of rows) {
+        if (allSelected) next.delete(r.id);
+        else next.add(r.id);
+      }
+      return next;
+    });
+  }
+
+  const downloadInvoicePdf = async (row: InvoiceRow) => {
+    try {
+      const res = await fetch(`/api/invoices/${row.id}/pdf`);
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `Invoice-${(row.number || "invoice").replace(/[^\w.-]+/g, "-")}.pdf`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch {}
+  };
+
+  const printInvoicePdf = async (row: InvoiceRow) => {
+    try {
+      const res = await fetch(`/api/invoices/${row.id}/pdf?inline=1`);
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const iframe = document.createElement("iframe");
+      iframe.style.position = "fixed";
+      iframe.style.right = "0";
+      iframe.style.bottom = "0";
+      iframe.style.width = "0";
+      iframe.style.height = "0";
+      iframe.style.border = "0";
+      document.body.appendChild(iframe);
+      const doc = iframe.contentDocument;
+      if (!doc) return;
+      doc.open();
+      doc.write(
+        `<html><body style="margin:0"><embed src="${url}" type="application/pdf" width="100%" height="100%"></body></html>`,
+      );
+      doc.close();
+      const win = iframe.contentWindow;
+      const trigger = () => {
+        if (win) {
+          win.focus();
+          win.print();
+        }
+        setTimeout(() => iframe.remove(), 2000);
+      };
+      setTimeout(trigger, 600);
+    } catch {}
+  };
+
+  async function applyRowStatus(row: InvoiceRow, status: string) {
+    const amountPaid = paidAmt(row);
+    const res = await fetch("/api/invoices", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: row.id, status, amountPaid }),
+    });
+    if (res.ok) {
+      setInvoices((rows) => rows.map((r) => (r.id === row.id ? { ...r, status } : r)));
+    }
+  }
+
+  async function markPaidFull(row: InvoiceRow) {
+    const total = row.total || 0;
+    const res = await fetch("/api/invoices", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: row.id, status: "paid", amountPaid: total }),
+    });
+    if (res.ok) {
+      trackEvent("payment_received", { invoiceNumber: row.number });
+      setInvoices((rows) =>
+        rows.map((r) =>
+          r.id === row.id
+            ? { ...r, status: "paid", data: { ...r.data, amountPaid: total } }
+            : r,
+        ),
+      );
+    }
+  }
+
+  async function markPartial(row: InvoiceRow) {
+    const total = row.total || 0;
+    const current = paidAmt(row);
+    const input = window.prompt(
+      `Amount paid so far (${row.currency || "USD"}). Total is ${total.toLocaleString("en-US", { maximumFractionDigits: 2 })}.`,
+      String(current > 0 ? current : total > 0 ? Math.round(total / 2 * 100) / 100 : 0),
+    );
+    if (input === null) return;
+    const parsed = Number(String(input).replace(/[^0-9.]/g, ""));
+    if (!Number.isFinite(parsed) || parsed < 0) return;
+    const paid = Math.min(parsed, total);
+    const status = paid >= total ? "paid" : "partial";
+    const res = await fetch("/api/invoices", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: row.id, status, amountPaid: paid }),
+    });
+    if (res.ok) {
+      if (status === "paid") trackEvent("payment_received", { invoiceNumber: row.number });
+      setInvoices((rows) =>
+        rows.map((r) =>
+          r.id === row.id
+            ? { ...r, status, data: { ...r.data, amountPaid: paid } }
+            : r,
+        ),
+      );
+    }
+  }
 
   const inputCls =
     "w-full rounded-lg border border-[#e5e7eb] bg-white px-3.5 py-2.5 text-[14px] text-ink outline-none transition placeholder:text-[#9ca3af] focus:border-[#166534] focus:ring-2 focus:ring-[#166534]/15";
@@ -696,8 +839,8 @@ export function DashboardClient({
           {/* Documents Tab */}
           {tab === "documents" && (
             <div>
-              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap gap-3">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-end gap-3">
                   <div className="rounded-lg bg-[#f3f4f6] px-4 py-2.5">
                     <p className="text-[12px] font-medium uppercase tracking-wider text-[#6b7280]">Total</p>
                     <p className="text-[20px] font-bold text-ink">{invoices.length}</p>
@@ -707,9 +850,41 @@ export function DashboardClient({
                     <p className="text-[20px] font-bold text-[#00875a]">{paidCount}</p>
                   </div>
                   <div className="rounded-lg bg-[#f3f4f6] px-4 py-2.5">
-                    <p className="text-[12px] font-medium uppercase tracking-wider text-[#6b7280]">Outstanding</p>
-                    <p className="text-[20px] font-bold text-ink">{formatMoney(outstanding, "USD")}</p>
+                    <p className="text-[12px] font-medium uppercase tracking-wider text-[#6b7280]">
+                      Outstanding ({displayCcy})
+                    </p>
+                    <p className="text-[20px] font-bold text-ink tabular-nums">
+                      {formatMoney(outstanding, displayCcy)}
+                    </p>
                   </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] font-medium uppercase tracking-wider text-[#6b7280]">
+                      Totals in
+                    </label>
+                    <select
+                      aria-label="Display currency for totals"
+                      value={displayCcy}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setDisplayCcy(v);
+                        try {
+                          window.localStorage.setItem("invoala.ccy", v);
+                        } catch {}
+                      }}
+                      className="rounded-lg border border-[#e5e7eb] bg-white px-2 py-1.5 text-[13px] font-medium text-ink outline-none focus:border-[#166534]"
+                    >
+                      {CURRENCIES.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.code}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {totalsUsd > 0 && displayCcy !== "USD" ? (
+                    <p className="pb-1 text-[11px] text-[#9ca3af]">
+                      Σ {formatMoney(totalsInDisplay, displayCcy)} · converted at invoice-date rates
+                    </p>
+                  ) : null}
                 </div>
                 <Link
                   href="/#generate"
@@ -718,6 +893,60 @@ export function DashboardClient({
                   + New invoice
                 </Link>
               </div>
+
+              {selected.size > 0 ? (
+                <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-[#166534]/30 bg-[#f0fdf4] px-4 py-3">
+                  <p className="text-[13px] font-medium text-[#166534]">
+                    {selected.size} selected
+                  </p>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      for (const r of invoices) {
+                        if (selected.has(r.id)) void markPaidFull(r);
+                      }
+                      setSelected(new Set());
+                    }}
+                    className="rounded-full bg-[#14532d] px-4 py-1.5 text-[12px] font-semibold text-white transition hover:bg-[#0f3d22] disabled:opacity-50"
+                  >
+                    Mark paid in full
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      for (const r of invoices) {
+                        if (selected.has(r.id)) void applyRowStatus(r, "sent");
+                      }
+                      setSelected(new Set());
+                    }}
+                    className="rounded-full border border-[#166534] px-4 py-1.5 text-[12px] font-semibold text-[#166534] transition hover:bg-[#f0fdf4] disabled:opacity-50"
+                  >
+                    Reopen as sent
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      for (const r of invoices) {
+                        if (selected.has(r.id)) void removeInvoice(r.id);
+                      }
+                      setSelected(new Set());
+                    }}
+                    className="rounded-full border border-[#e5e7eb] px-4 py-1.5 text-[12px] font-medium text-[#d70015] transition hover:bg-[#fef2f2] disabled:opacity-50"
+                  >
+                    Delete
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelected(new Set())}
+                    className="ml-auto text-[12px] text-[#6b7280] hover:text-ink"
+                  >
+                    Clear
+                  </button>
+                </div>
+              ) : null}
 
               {invoices.length === 0 ? (
                 <div className="py-16 text-center">
@@ -728,88 +957,146 @@ export function DashboardClient({
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[700px] text-left text-[13px]">
+                  <table className="w-full min-w-[820px] text-left text-[13px]">
                     <thead>
                       <tr className="border-b border-[#e5e7eb] text-[12px] uppercase tracking-wider text-[#6b7280]">
+                        <th className="pb-2.5 pr-3 font-semibold">
+                          <input
+                            type="checkbox"
+                            aria-label="Select all invoices"
+                            checked={invoices.length > 0 && selected.size === invoices.length}
+                            onChange={() => selectAllVisible(invoices)}
+                            className="h-4 w-4 accent-[#166534]"
+                          />
+                        </th>
                         <th className="pb-2.5 pr-4 font-semibold">Number</th>
                         <th className="pb-2.5 pr-4 font-semibold">Client</th>
                         <th className="pb-2.5 pr-4 font-semibold">Date</th>
                         <th className="pb-2.5 pr-4 text-right font-semibold">Total</th>
                         <th className="pb-2.5 pr-4 font-semibold">Status</th>
-                        <th className="pb-2.5 text-right font-semibold">Actions</th>
+                        <th className="pb-2.5 pr-4 text-right font-semibold">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {invoices.map((row) => (
-                        <tr key={row.id} className="border-b border-[#f3f4f6] last:border-0 hover:bg-[#f9fafb]">
-                          <td className="py-3 pr-4 font-medium text-ink">{row.number || "—"}</td>
-                          <td className="py-3 pr-4 text-[#6b7280]">{row.client_name || "—"}</td>
-                          <td className="py-3 pr-4 text-[#6b7280]">
-                            {new Date(row.updated_at).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                            })}
-                          </td>
-                          <td className="py-3 pr-4 text-right tabular-nums font-medium text-ink">
-                            {formatMoney(row.total, row.currency)}
-                          </td>
-                          <td className="py-3 pr-4">
-                            <span
-                              className={`inline-block rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${
-                                STATUS_STYLES[row.status] || STATUS_STYLES.draft
-                              }`}
-                            >
-                              {row.status}
-                            </span>
-                          </td>
-                          <td className="py-3 text-right">
-                            <div className="flex justify-end gap-2 text-[12px]">
-                              <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() => void shareInvoice(row)}
-                                className="text-[#6b7280] hover:text-[#166534]"
-                                title="Share invoice"
-                              >
-                                Share
-                              </button>
-                              <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() => void cycleStatus(row)}
-                                className="font-medium text-[#166534] hover:underline disabled:opacity-50"
-                              >
-                                {NEXT_STATUS[row.status]}
-                              </button>
+                      {invoices.map((row) => {
+                        const rowPaid = paidAmt(row);
+                        const rowBalance = balanceOf(row);
+                        return (
+                          <tr key={row.id} className="border-b border-[#f3f4f6] last:border-0 hover:bg-[#f9fafb]">
+                            <td className="py-3 pr-3">
+                              <input
+                                type="checkbox"
+                                aria-label={`Select invoice ${row.number || ""}`}
+                                checked={selected.has(row.id)}
+                                onChange={() => {
+                                  setSelected((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(row.id)) next.delete(row.id);
+                                    else next.add(row.id);
+                                    return next;
+                                  });
+                                }}
+                                className="h-4 w-4 accent-[#166534]"
+                              />
+                            </td>
+                            <td className="py-3 pr-4 font-medium text-ink">{row.number || "—"}</td>
+                            <td className="py-3 pr-4 text-[#6b7280]">{row.client_name || "—"}</td>
+                            <td className="py-3 pr-4 text-[#6b7280]">
+                              {new Date(row.updated_at).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                              })}
+                            </td>
+                            <td className="py-3 pr-4 text-right">
+                              <p className="font-medium tabular-nums text-ink">
+                                {formatMoney(row.total, row.currency)}
+                              </p>
+                              {rowPaid > 0 && row.status !== "paid" ? (
+                                <p className="text-[11px] tabular-nums text-[#00875a]">
+                                  {formatMoney(rowPaid, row.currency)} paid
+                                </p>
+                              ) : null}
                               {row.status === "paid" ? (
+                                <p className="text-[11px] text-[#00875a]">Paid in full</p>
+                              ) : null}
+                            </td>
+                            <td className="py-3 pr-4">
+                              <span
+                                className={`inline-block rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${
+                                  STATUS_STYLES[row.status] || STATUS_STYLES.draft
+                                }`}
+                              >
+                                {row.status === "partial" && rowBalance > 0
+                                  ? `Partial · ${formatMoney(rowBalance, row.currency)} left`
+                                  : row.status}
+                              </span>
+                            </td>
+                            <td className="py-3 text-right">
+                              <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-[12px]">
                                 <button
                                   type="button"
-                                  onClick={() => makeReceipt(row)}
-                                  className="text-[#166534] hover:underline"
-                                  title="Generate a receipt for this payment"
+                                  onClick={() => void downloadInvoicePdf(row)}
+                                  className="font-medium text-[#166534] hover:underline"
+                                  title="Download PDF"
                                 >
-                                  Receipt
+                                  Download
                                 </button>
-                              ) : null}
-                              <button
-                                type="button"
-                                onClick={() => editInvoice(row)}
-                                className="text-[#6b7280] hover:text-ink"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() => void removeInvoice(row.id)}
-                                className="text-[#d70015] hover:underline disabled:opacity-50"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                                <button
+                                  type="button"
+                                  onClick={() => void printInvoicePdf(row)}
+                                  className="text-[#6b7280] hover:text-[#166534]"
+                                  title="Print PDF"
+                                >
+                                  Print
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={busy}
+                                  onClick={() => void markPaidFull(row)}
+                                  className="font-medium text-[#00875a] hover:underline disabled:opacity-50"
+                                  title="Mark as fully paid"
+                                >
+                                  Paid
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={busy}
+                                  onClick={() => void markPartial(row)}
+                                  className="text-[#92600a] hover:underline disabled:opacity-50"
+                                  title="Mark as partially paid"
+                                >
+                                  Partial
+                                </button>
+                                {row.status === "paid" ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => makeReceipt(row)}
+                                    className="text-[#166534] hover:underline"
+                                    title="Generate a receipt for this payment"
+                                  >
+                                    Receipt
+                                  </button>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  onClick={() => editInvoice(row)}
+                                  className="text-[#6b7280] hover:text-ink"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={busy}
+                                  onClick={() => void removeInvoice(row.id)}
+                                  className="text-[#d70015] hover:underline disabled:opacity-50"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

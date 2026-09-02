@@ -1,5 +1,5 @@
 import { getSessionUser } from "@/lib/server-auth";
-import { listInvoices, upsertInvoice } from "@/lib/data";
+import { listInvoices, setInvoiceStatusWithPayment, upsertInvoice } from "@/lib/data";
 import type { Invoice } from "@/lib/invoice";
 
 function isValidInvoice(v: unknown): v is Invoice {
@@ -26,6 +26,7 @@ export async function PUT(req: Request) {
     invoice?: unknown;
     id?: string;
     status?: string;
+    amountPaid?: number | null;
   };
   try {
     body = await req.json();
@@ -34,11 +35,12 @@ export async function PUT(req: Request) {
   }
 
   if (body.id && typeof body.status === "string" && !body.invoice) {
-    if (!["draft", "sent", "paid"].includes(body.status)) {
+    if (!["draft", "sent", "paid", "partial"].includes(body.status)) {
       return Response.json({ error: "Invalid status." }, { status: 400 });
     }
     try {
-      await upsertInvoice(user.id, {} as Invoice, { id: body.id, status: body.status });
+      const ok = await setInvoiceStatusWithPayment(user.id, body.id, body.status, body.amountPaid);
+      if (!ok) return Response.json({ error: "Invoice not found." }, { status: 404 });
       return Response.json({ ok: true, id: body.id });
     } catch {
       return Response.json({ error: "Invoice not found." }, { status: 404 });

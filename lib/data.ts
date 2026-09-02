@@ -92,6 +92,40 @@ export async function setInvoiceStatus(userId: string, id: string, status: strin
   return changes > 0;
 }
 
+// Status + optional payment amount. Unlike the old status path it never
+// touches the invoice's data JSON unless an amountPaid is being recorded
+// (merging it in), so marking an invoice paid can't wipe its contents.
+export async function setInvoiceStatusWithPayment(
+  userId: string,
+  id: string,
+  status: string,
+  amountPaid?: number | null,
+): Promise<boolean> {
+  if (typeof amountPaid === "number" && amountPaid >= 0) {
+    const row = await dbGet<{ data: string }>(
+      "SELECT data FROM invoices WHERE id = ? AND user_id = ?",
+      id,
+      userId,
+    );
+    if (!row) return false;
+    let data: Record<string, unknown> = {};
+    try {
+      data = JSON.parse(row.data) as Record<string, unknown>;
+    } catch {}
+    data.amountPaid = amountPaid > 0 ? amountPaid : undefined;
+    const { changes } = await dbRun(
+      "UPDATE invoices SET status = ?, data = ?, updated_at = ? WHERE id = ? AND user_id = ?",
+      status,
+      JSON.stringify(data),
+      Date.now(),
+      id,
+      userId,
+    );
+    return changes > 0;
+  }
+  return setInvoiceStatus(userId, id, status);
+}
+
 export async function deleteInvoice(userId: string, id: string): Promise<boolean> {
   const { changes } = await dbRun("DELETE FROM invoices WHERE id = ? AND user_id = ?", id, userId);
   return changes > 0;

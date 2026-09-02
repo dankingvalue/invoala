@@ -5,7 +5,8 @@ import { getCurrentUser, verificationRequired } from "@/lib/server-auth";
 import { getSubscription, isUserPro, isPlan } from "@/lib/billing";
 import { getActivePromo } from "@/lib/promo";
 import { runRecurringPass } from "@/lib/recurring";
-import { listClients, listInvoices } from "@/lib/data";
+import { ensureLatestRates, ratesForDay } from "@/lib/fx";
+import { listClients, listInvoices, type InvoiceRow } from "@/lib/data";
 import { DashboardClient } from "./DashboardClient";
 import { Nav } from "@/components/Nav";
 import { TrustStrip } from "@/components/TrustStrip";
@@ -43,6 +44,42 @@ export default async function DashboardPage({
   const checkoutPlan =
     typeof params.checkout === "string" && isPlan(params.checkout) ? params.checkout : null;
 
+  // FX: latest snapshot for display-currency conversion + a per-invoice
+  // USD factor at the invoice's creation date (nearest stored daily snapshot).
+  let fxLatest: Record<string, number> = {};
+  let fxInvoice: Record<string, { usd: number; asOf: string; exact: boolean }> = {};
+  try {
+    fxLatest = await ensureLatestRates();
+    const dayCache: Record<string, { rates: Record<string, number>; asOf: string; exact: boolean }> = {};
+    for (const inv of invoices) {
+      const ccy = inv.currency || "USD";
+      if (!ccy || ccy === "USD") {
+        fxInvoice[inv.id] = { usd: 1, asOf: "", exact: true };
+        continue;
+      }
+      const day =
+        (inv.data?.issueDate as string | undefined) ||
+        new Date(inv.created_at).toISOString().slice(0, 10);
+      if (!dayCache[day]) {
+        dayCache[day] = await ratesForDay(day).catch(() => ({
+          rates: { USD: 1 },
+          asOf: "",
+          exact: false,
+        }));
+      }
+      const entry = dayCache[day];
+      const rate = entry.rates[ccy];
+      if (typeof rate === "number" && rate > 0) {
+        fxInvoice[inv.id] = { usd: 1 / rate, asOf: entry.asOf, exact: entry.exact };
+      } else {
+        fxInvoice[inv.id] = { usd: 1 / (fxLatest[ccy] ?? 1), asOf: "", exact: false };
+      }
+    }
+  } catch {
+    fxLatest = {};
+    fxInvoice = {};
+  }
+
   return (
     <div className="min-h-screen bg-[#f3f4f6]">
       <Nav />
@@ -61,6 +98,8 @@ export default async function DashboardPage({
             promo={promo ? { code: promo.code, expires_at: promo.expires_at } : null}
             needsVerification={verificationRequired() && !user.email_verified}
             userRole={user.role}
+            fxLatest={fxLatest}
+            fxInvoice={fxInvoice}
             initialCheckoutPlan={checkoutPlan}
             initialTab={params.tab || "general"}
           />

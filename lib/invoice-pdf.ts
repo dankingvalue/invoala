@@ -24,11 +24,11 @@ function setColor(doc: jsPDF, c: [number, number, number]) {
   doc.setTextColor(c[0], c[1], c[2]);
 }
 
-function sectionLabel(doc: jsPDF, label: string, y: number, color: [number, number, number]): number {
+function sectionLabel(doc: jsPDF, label: string, x: number, y: number, color: [number, number, number]): number {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
   setColor(doc, color);
-  doc.text(label.toUpperCase(), 0, y, { charSpace: 0.4 });
+  doc.text(label.toUpperCase(), x, y, { charSpace: 0.4 });
   return y + 9.5;
 }
 
@@ -142,7 +142,7 @@ export async function invoicePdfBuffer(invoice: Invoice): Promise<Buffer> {
 
   // ---- Billed to ----
   const billedTop = Math.max(y, metaY - 13) + 16;
-  y = sectionLabel(doc, isReceipt ? "Received from" : "Billed to", billedTop, FAINT);
+  y = sectionLabel(doc, isReceipt ? "Received from" : "Billed to", M, billedTop, FAINT);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10.5);
   setColor(doc, INK);
@@ -275,7 +275,7 @@ export async function invoicePdfBuffer(invoice: Invoice): Promise<Buffer> {
   if (invoice.paymentInstructions) {
     y += 8;
     sectionRule(doc, M, contentW, y - 6, HAIRLINE, 0.6);
-    y = sectionLabel(doc, "How to pay", y, FAINT);
+    y = sectionLabel(doc, "How to pay", M, y, FAINT);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     setColor(doc, SUBTLE);
@@ -300,7 +300,7 @@ export async function invoicePdfBuffer(invoice: Invoice): Promise<Buffer> {
   if (invoice.notes) {
     y += 10;
     sectionRule(doc, M, contentW, y - 6, HAIRLINE, 0.6);
-    y = sectionLabel(doc, "Notes", y, FAINT);
+    y = sectionLabel(doc, "Notes", M, y, FAINT);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     setColor(doc, SUBTLE);

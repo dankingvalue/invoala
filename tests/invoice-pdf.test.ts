@@ -47,4 +47,21 @@ describe("invoicePdfBuffer", () => {
     expect(q.length).toBeGreaterThan(500);
     expect(r.length).toBeGreaterThan(500);
   });
+
+  it("renders with a logo, fixed discount, partial payment and custom fields", async () => {
+    // 1x1 transparent PNG
+    const logo =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+    const pdf = await invoicePdfBuffer(
+      sampleInvoice({
+        logoDataUrl: logo,
+        discountMode: "fixed",
+        discountAmount: 15000,
+        discount: 0,
+        amountPaid: 50000,
+        customFields: [{ id: "f", label: "PO", value: "PO-1" }],
+      }),
+    );
+    expect(pdf.length).toBeGreaterThan(500);
+  });
 });

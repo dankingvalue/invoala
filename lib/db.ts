@@ -206,6 +206,11 @@ async function ensureSchema(): Promise<void> {
     )` },
     { sql: `CREATE INDEX IF NOT EXISTS idx_promos_reminder
       ON promos(expires_at, welcome_sent, reminder_sent)` },
+    { sql: `CREATE TABLE IF NOT EXISTS fx_cache (
+      day TEXT PRIMARY KEY,
+      rates TEXT NOT NULL,
+      fetched_at INTEGER NOT NULL
+    )` },
   ]);
 
   // Migration: add viewed_at if missing (ALTER TABLE throws if column exists)
