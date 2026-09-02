@@ -8,6 +8,7 @@ import { buildInvoiceHtml } from "@/lib/invoice-html";
 // A jsPDF fallback keeps PDFs working where Chromium cannot run.
 
 let chromiumBinary: string | null | undefined;
+let chromiumError: string | undefined;
 
 async function resolveChromium(): Promise<string | null> {
   if (chromiumBinary !== undefined) return chromiumBinary;
@@ -19,10 +20,18 @@ async function resolveChromium(): Promise<string | null> {
   try {
     // @sparticuz/chromium ships a headless Linux build for serverless runtimes.
     const mod = await import("@sparticuz/chromium");
-    const path = await mod.default.executablePath().catch(() => null);
-    chromiumBinary = path || null;
-  } catch {
+    try {
+      const path = await mod.default.executablePath();
+      chromiumBinary = path || null;
+      chromiumError = undefined;
+    } catch (err) {
+      chromiumBinary = null;
+      chromiumError = err instanceof Error ? err.message.slice(0, 500) : String(err);
+      console.error("[invoice-pdf] chromium executablePath failed", chromiumError);
+    }
+  } catch (err) {
     chromiumBinary = null;
+    chromiumError = err instanceof Error ? err.message.slice(0, 500) : String(err);
   }
   return chromiumBinary;
 }
@@ -36,7 +45,12 @@ export async function invoiceEngineStatus(): Promise<{
 }> {
   try {
     const path = await resolveChromium();
-    if (!path) return { engine: "jspdf", chromiumPath: false };
+    if (!path)
+      return {
+        engine: "jspdf",
+        chromiumPath: false,
+        error: chromiumError || "no chromium executable resolved",
+      };
     try {
       const { chromium } = await import("playwright-core");
       const browser = await chromium.launch({
