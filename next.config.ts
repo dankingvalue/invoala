@@ -12,7 +12,11 @@ const securityHeaders = [
   },
 ];
 
-const CHROMIUM_INCLUDES = ["./node_modules/@sparticuz/chromium/bin/**/*", "./node_modules/@sparticuz/chromium/build/**/*"];
+const CHROMIUM_INCLUDES = [
+    "./node_modules/@sparticuz/chromium/bin/**/*",
+    "./node_modules/@sparticuz/chromium/build/**/*",
+    "./node_modules/playwright-core/**/*",
+  ];
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["playwright-core", "@sparticuz/chromium", "jspdf"],
