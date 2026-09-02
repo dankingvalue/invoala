@@ -177,6 +177,23 @@ export function InvoiceGenerator({
       } catch {
         // corrupted edit payload — fall back to draft
       }
+    } else if (!preset) {
+      // Fresh generator session: autofill dates to today (keeping the user's
+      // own due-date offset from a previously saved draft, if any).
+      const today = new Date();
+      const iso = (d: Date) => d.toISOString().slice(0, 10);
+      const issued = next.issueDate ? Date.parse(next.issueDate + "T00:00:00Z") : Number.NaN;
+      const due = next.dueDate ? Date.parse(next.dueDate + "T00:00:00Z") : Number.NaN;
+      const offsetDays =
+        Number.isFinite(issued) && Number.isFinite(due)
+          ? Math.max(1, Math.round((due - issued) / 864e5))
+          : 14;
+      if (!Number.isFinite(issued) || issued < Date.parse(iso(today) + "T00:00:00Z")) {
+        const newIssue = new Date();
+        const newDue = new Date();
+        newDue.setUTCDate(newDue.getUTCDate() + offsetDays);
+        next = { ...next, issueDate: iso(newIssue), dueDate: iso(newDue) };
+      }
     }
      
     setInvoice(next);
@@ -235,12 +252,22 @@ export function InvoiceGenerator({
       clientEmail: data.clientEmail ?? inv.clientEmail,
       clientAddress: data.clientAddress ?? inv.clientAddress,
       currency: data.currency ?? inv.currency,
+      invoiceNumber: data.invoiceNumber ?? inv.invoiceNumber,
       taxRate:
         typeof data.taxRate === "number" && !Number.isNaN(data.taxRate)
           ? data.taxRate
           : inv.taxRate,
+      discount:
+        typeof data.discount === "number" && !Number.isNaN(data.discount)
+          ? data.discount
+          : inv.discount,
+      amountPaid:
+        typeof data.amountPaid === "number" && !Number.isNaN(data.amountPaid)
+          ? data.amountPaid
+          : inv.amountPaid,
       issueDate: data.issueDate ?? inv.issueDate,
       dueDate: data.dueDate ?? inv.dueDate,
+      paymentInstructions: data.paymentInstructions ?? inv.paymentInstructions,
       notes: data.notes ?? inv.notes,
       items:
         data.items && data.items.length > 0

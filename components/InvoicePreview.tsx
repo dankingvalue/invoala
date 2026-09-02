@@ -194,6 +194,26 @@ export function InvoicePreview({
                 {formatMoney(total, invoice.currency)}
               </td>
             </tr>
+            {invoice.amountPaid && invoice.amountPaid > 0 ? (
+              <>
+                <tr>
+                  <td className="pt-2 text-xs" style={{ color: subtle }}>
+                    Paid
+                  </td>
+                  <td className="pt-2 text-right text-xs tabular-nums" style={{ color: "#00875a" }}>
+                    &minus;{formatMoney(invoice.amountPaid, invoice.currency)}
+                  </td>
+                </tr>
+                <tr className="border-t" style={{ borderColor: hairline }}>
+                  <td className="pt-2 text-xs font-semibold" style={{ color: ink }}>
+                    Balance due
+                  </td>
+                  <td className="pt-2 text-right text-xs font-semibold tabular-nums" style={{ color: ink }}>
+                    {formatMoney(Math.max(0, total - invoice.amountPaid), invoice.currency)}
+                  </td>
+                </tr>
+              </>
+            ) : null}
           </tbody>
         </table>
       </div>

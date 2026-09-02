@@ -98,9 +98,13 @@ const KNOWLEDGE_BASE: { patterns: RegExp[]; reply: string; escalate?: boolean }[
   },
 ];
 
-async function callOpenAI(message: string, conversationContext?: string[]): Promise<string | null> {
+async function callLLM(message: string, conversationContext?: string[]): Promise<string | null> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
+  const baseUrl = (process.env.AI_BASE_URL ||
+    process.env.OPENAI_BASE_URL ||
+    "https://api.deepseek.com").replace(/\/+$/, "");
+  const model = process.env.AI_MODEL || "deepseek-chat";
 
   const messages: { role: string; content: string }[] = [
     { role: "system", content: INVOALA_SYSTEM_PROMPT },
@@ -115,19 +119,19 @@ async function callOpenAI(message: string, conversationContext?: string[]): Prom
   messages.push({ role: "user", content: message });
 
   try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    const res = await fetch(`${baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model,
         messages,
         max_tokens: 500,
         temperature: 0.3,
       }),
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(8000),
     });
 
     if (!res.ok) return null;
@@ -143,7 +147,7 @@ export async function generateAiResponse(message: string): Promise<AiResponse> {
     const lower = message.toLowerCase();
 
     // Try LLM first (fast timeout, graceful fallback)
-    const llmReply = await callOpenAI(message);
+    const llmReply = await callLLM(message);
     if (llmReply) {
       // Only escalate if LLM is literally handing off to a human
       const escalate = /\bhand(ing)? ?(you|this) ?off\b|\btransferr?ing you\b|\bescalating this\b|\bconnect(ing)? you (with|to) (a )?human\b|\btalk to a human\b|\bspeak to a human\b|\bhuman (agent|support)\b/i.test(llmReply);
@@ -179,7 +183,7 @@ export async function generateSupportSuggestion(conversationMessages: { sender_t
     const context = conversationMessages.map((m) =>
       `${m.sender_type === "user" ? "User" : "Agent"}: ${m.content}`
     );
-    const llmReply = await callOpenAI(
+    const llmReply = await callLLM(
       `Based on this conversation, suggest a helpful reply for the support agent to the user's latest message. Be concise, professional, and specific to Invoala.`,
       context
     );

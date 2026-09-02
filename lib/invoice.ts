@@ -54,6 +54,8 @@ export type Invoice = {
   taxRate: number;
   discount: number;
   shipping: number;
+  /** Optional partial payment (AI-parsed invoices, deposits) shown on the preview. */
+  amountPaid?: number;
   notes: string;
   docType: DocType;
   recurring: string;

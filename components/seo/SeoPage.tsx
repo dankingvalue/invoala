@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SeoNavAuth } from "@/components/SeoNavAuth";
+import { SeoNavMobile } from "@/components/SeoNavMobile";
 import {
   breadcrumbSchema,
   faqSchema,
@@ -35,10 +36,13 @@ export function SeoNav() {
           <Link href="/pricing" className="hover:text-[#111827]">Pricing</Link>
         </div>
         <div className="flex items-center gap-3">
-          <SeoNavAuth />
+          <div className="hidden md:block">
+            <SeoNavAuth />
+          </div>
           <Link href="/invoice-generator" className="rounded-lg bg-[#14532d] px-4 py-2 text-[14px] font-semibold text-white transition hover:bg-[#0f3d22]">
             Create invoice
           </Link>
+          <SeoNavMobile />
         </div>
       </nav>
     </header>

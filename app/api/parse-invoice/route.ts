@@ -10,7 +10,10 @@ function stripNulls(obj: Record<string, unknown>): void {
 
 type Provider = "openai" | "anthropic" | "gemini" | null;
 
-function getProvider(): { provider: Provider; apiKey: string; model: string } {
+// The OPENAI_API_KEY slot now accepts any OpenAI-compatible provider key.
+// Defaults point at DeepSeek (deepseek-chat); set AI_BASE_URL/AI_MODEL to
+// target OpenAI or another compatible endpoint instead.
+function getProvider(): { provider: Provider; apiKey: string; model: string; baseUrl?: string } {
   const model = process.env.AI_MODEL || "";
 
   if (process.env.ANTHROPIC_API_KEY) {
@@ -33,7 +36,10 @@ function getProvider(): { provider: Provider; apiKey: string; model: string } {
     return {
       provider: "openai",
       apiKey: process.env.OPENAI_API_KEY,
-      model: model || "gpt-4o",
+      model: model || "deepseek-chat",
+      baseUrl: (process.env.AI_BASE_URL ||
+        process.env.OPENAI_BASE_URL ||
+        "https://api.deepseek.com").replace(/\/+$/, ""),
     };
   }
 
@@ -43,27 +49,36 @@ function getProvider(): { provider: Provider; apiKey: string; model: string } {
 function buildSystemPrompt(): string {
   const today = new Date().toISOString().slice(0, 10);
   return [
-    "You extract structured invoice data from natural language descriptions.",
+    "You extract structured invoice data from natural language or pasted invoice text.",
     `Today's date is ${today}.`,
     "Return ONLY a JSON object with this exact shape:",
-    '{"businessName":string|null,"businessEmail":string|null,"businessAddress":string|null,"clientName":string|null,"clientEmail":string|null,"clientAddress":string|null,"currency":string|null,"taxRate":number|null,"issueDate":string|null,"dueDate":string|null,"notes":string|null,"items":[{"description":string,"quantity":number,"rate":number}]}',
+    '{"businessName":string|null,"businessEmail":string|null,"businessAddress":string|null,"clientName":string|null,"clientEmail":string|null,"clientAddress":string|null,"currency":string|null,"taxRate":number|null,"discount":number|null,"invoiceNumber":string|null,"issueDate":string|null,"dueDate":string|null,"paymentInstructions":string|null,"notes":string|null,"amountPaid":number|null,"items":[{"description":string,"quantity":number,"rate":number}]}',
     "",
     "Rules:",
     "- businessName/businessEmail/businessAddress: info about the sender (the user). Extract if mentioned.",
     "- clientName/clientEmail/clientAddress: info about who is being billed.",
-    "- currency: ISO 4217 code. Default to USD if $ is used, EUR if €, GBP if £.",
-    "- taxRate: percentage number (e.g. 8.5 for 8.5% tax).",
-    "- dates: YYYY-MM-DD format.",
+    "- currency: ISO 4217 code. Default to USD if $ is used, EUR if €, GBP if £, KES if KSh/KES is used.",
+    "- taxRate: percentage number (e.g. 16 for VAT (16%)).",
+    "- discount: percentage number ONLY when the text states a percentage (e.g. '10% discount'). For a flat money discount such as 'Discount: KES 15,000', set discount to null and mention the flat discount in notes.",
+    "- invoiceNumber: any invoice number such as INV-2026-00427.",
+    "- issueDate/dueDate: YYYY-MM-DD format. Parse dates like '02 Sep 2026' or '2026-09-02'.",
+    "- amountPaid: the paid amount in the invoice's currency when the text mentions 'Amount Paid'.",
+    "- paymentInstructions: combine payment method + payment terms into a short instruction, e.g. 'Payment due within Net 14 days. Pay via M-Pesa / Bank Transfer.'",
+    "- notes: thank-you messages, references, and any text that doesn't fit elsewhere. Include flat monetary discounts here as a line like 'Discount: KES 15,000'.",
     "- items: each line item with description, quantity (default 1), and rate (per-unit price).",
     "- If a total is given for multiple units, divide by quantity to get rate.",
-    "- notes: payment terms, bank details, thank-you messages, etc.",
     "- Omit fields not mentioned by using null. Never invent facts.",
     "- If someone says 'I designed a logo for Acme', the clientName is 'Acme' and the item is the design work.",
   ].join("\n");
 }
 
-async function callOpenAI(apiKey: string, model: string, system: string, text: string): Promise<string | null> {
-  const baseUrl = (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");
+async function callOpenAICompatible(
+  apiKey: string,
+  model: string,
+  baseUrl: string,
+  system: string,
+  text: string,
+): Promise<string | null> {
   const res = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
@@ -79,9 +94,12 @@ async function callOpenAI(apiKey: string, model: string, system: string, text: s
         { role: "user", content: text },
       ],
     }),
-    signal: AbortSignal.timeout(20000),
+    signal: AbortSignal.timeout(30000),
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    console.error("[parse:ai] request failed", res.status);
+    return null;
+  }
   const json = (await res.json()) as {
     choices?: Array<{ message?: { content?: string } }>;
   };
@@ -98,12 +116,12 @@ async function callAnthropic(apiKey: string, model: string, system: string, text
     },
     body: JSON.stringify({
       model,
-      max_tokens: 1024,
+      max_tokens: 2048,
       temperature: 0,
       system,
       messages: [{ role: "user", content: text }],
     }),
-    signal: AbortSignal.timeout(20000),
+    signal: AbortSignal.timeout(30000),
   });
   if (!res.ok) return null;
   const json = (await res.json()) as {
@@ -124,7 +142,7 @@ async function callGemini(apiKey: string, model: string, system: string, text: s
         contents: [{ parts: [{ text }] }],
         generationConfig: { responseMimeType: "application/json" },
       }),
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(30000),
     },
   );
   if (!res.ok) return null;
@@ -134,9 +152,25 @@ async function callGemini(apiKey: string, model: string, system: string, text: s
   return json.candidates?.[0]?.content?.parts?.[0]?.text ?? null;
 }
 
+function parseJsonContent(content: string): Record<string, unknown> | null {
+  let cleaned = content.trim();
+  // Strip ```json fences if the model wrapped the output despite json_object.
+  const fence = cleaned.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
+  if (fence) cleaned = fence[1];
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start !== -1 && end > start) cleaned = cleaned.slice(start, end + 1);
+  try {
+    return JSON.parse(cleaned) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
 function parseResponse(content: string): ParsedInvoice | null {
   try {
-    const parsed = JSON.parse(content) as Record<string, unknown>;
+    const parsed = parseJsonContent(content);
+    if (!parsed) return null;
     stripNulls(parsed);
     const items = Array.isArray(parsed.items)
       ? (parsed.items as Array<Record<string, unknown>>)
@@ -157,9 +191,13 @@ function parseResponse(content: string): ParsedInvoice | null {
       currency:
         typeof parsed.currency === "string" ? parsed.currency.toUpperCase() : undefined,
       taxRate: typeof parsed.taxRate === "number" ? parsed.taxRate : undefined,
+      discount: typeof parsed.discount === "number" ? parsed.discount : undefined,
+      invoiceNumber: parsed.invoiceNumber as string | undefined,
       issueDate: parsed.issueDate as string | undefined,
       dueDate: parsed.dueDate as string | undefined,
+      paymentInstructions: parsed.paymentInstructions as string | undefined,
       notes: parsed.notes as string | undefined,
+      amountPaid: typeof parsed.amountPaid === "number" ? parsed.amountPaid : undefined,
       items: items && items.length > 0 ? items : undefined,
     };
   } catch {
@@ -168,7 +206,7 @@ function parseResponse(content: string): ParsedInvoice | null {
 }
 
 async function parseWithLlm(text: string): Promise<ParsedInvoice | null> {
-  const { provider, apiKey, model } = getProvider();
+  const { provider, apiKey, model, baseUrl } = getProvider();
   if (!provider || !apiKey) return null;
 
   const system = buildSystemPrompt();
@@ -178,7 +216,7 @@ async function parseWithLlm(text: string): Promise<ParsedInvoice | null> {
 
     switch (provider) {
       case "openai":
-        content = await callOpenAI(apiKey, model, system, text);
+        content = await callOpenAICompatible(apiKey, model, baseUrl || "https://api.deepseek.com", system, text);
         break;
       case "anthropic":
         content = await callAnthropic(apiKey, model, system, text);

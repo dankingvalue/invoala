@@ -13,9 +13,12 @@ export type ParsedInvoice = {
   clientAddress?: string;
   currency?: string;
   taxRate?: number;
+  discount?: number;
   invoiceNumber?: string;
   issueDate?: string;
   dueDate?: string;
+  paymentInstructions?: string;
+  amountPaid?: number;
   notes?: string;
   items?: ParsedItem[];
 };
