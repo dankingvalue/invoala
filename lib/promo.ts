@@ -35,9 +35,10 @@ export async function createUserPromo(user: {
   email: string;
   name: string;
 }): Promise<UserPromo | null> {
-  const existing = await getActivePromo(user.id);
-  if (existing) return existing;
   if (!process.env.POLAR_ACCESS_TOKEN) return null;
+
+  const existing = await getActivePromo(user.id).catch(() => null);
+  if (existing) return existing;
 
   const now = Date.now();
   try {

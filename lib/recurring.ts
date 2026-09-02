@@ -22,13 +22,13 @@ type RecurringRow = {
   recurring_next_at?: number;
 };
 
-function isoPlusDays(iso: string, days: number): string {
+export function isoPlusDays(iso: string, days: number): string {
   const ms = Date.parse(iso + "T00:00:00Z");
   if (Number.isNaN(ms)) return iso;
   return new Date(ms + days * 864e5).toISOString().slice(0, 10);
 }
 
-function isoDaysBetween(fromIso: string, toIso: string): number {
+export function isoDaysBetween(fromIso: string, toIso: string): number {
   const a = Date.parse(fromIso + "T00:00:00Z");
   const b = Date.parse(toIso + "T00:00:00Z");
   if (Number.isNaN(a) || Number.isNaN(b)) return 14;
