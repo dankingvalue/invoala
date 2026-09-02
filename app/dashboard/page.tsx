@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser, verificationRequired } from "@/lib/server-auth";
 import { getSubscription, isUserPro } from "@/lib/billing";
+import { getActivePromo } from "@/lib/promo";
 import { listClients, listInvoices } from "@/lib/data";
 import { DashboardClient } from "./DashboardClient";
 import { Nav } from "@/components/Nav";
@@ -28,6 +29,7 @@ export default async function DashboardPage({
   const clients = await listClients(user.id);
   const subscription = await getSubscription(user.id);
   const pro = await isUserPro(user.id, user.role);
+  const promo = await getActivePromo(user.id).catch(() => null);
 
   return (
     <div className="min-h-screen bg-[#f3f4f6]">
@@ -44,6 +46,7 @@ export default async function DashboardPage({
             initialClients={clients}
             subscription={subscription}
             isPro={pro}
+            promo={promo ? { code: promo.code, expires_at: promo.expires_at } : null}
             needsVerification={verificationRequired() && !user.email_verified}
             userRole={user.role}
             initialTab={params.tab || "general"}

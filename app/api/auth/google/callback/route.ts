@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { dbGet, dbRun } from "@/lib/db";
 import { createSession, USER_COOKIE } from "@/lib/server-auth";
+import { sendWelcomeEmail } from "@/lib/email";
+import { createUserPromo } from "@/lib/promo";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -67,6 +69,19 @@ export async function GET(req: Request) {
         "INSERT INTO users (id, email, password_hash, name, role, email_verified, google_id, created_at) VALUES (?, ?, '', ?, ?, 1, ?, ?)",
         userId, profile.email, role, profile.name || profile.email.split("@")[0], profile.id, Date.now()
       );
+      // Google signups previously got no welcome email — fix that and hand
+      // them the same new-account 50% Lifetime offer as password signups.
+      const promo = await createUserPromo({
+        id: userId,
+        email: profile.email,
+        name: profile.name || profile.email.split("@")[0],
+      }).catch(() => null);
+      await sendWelcomeEmail({
+        to: profile.email,
+        name: profile.name || profile.email.split("@")[0],
+        promoCode: promo?.code,
+        promoExpiresAt: promo?.expires_at,
+      }).catch(() => {});
     }
 
     const { token } = await createSession(userId);

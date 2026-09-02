@@ -31,7 +31,7 @@ const faqs = [
   {
     question: "What payment methods do you accept?",
     answer:
-      "Checkout is available once a payment provider is configured for the account. Until then, subscriptions are not charged.",
+      "Checkout is handled by Polar and accepts all major credit and debit cards, plus popular local payment methods where available.",
   },
   {
     question: "Do you offer refunds?",
@@ -55,11 +55,12 @@ export default function PricingPage() {
               Pro and Teams plans add power for growing businesses.
             </p>
           </section>
+        </div>
 
-          <section className="mb-16">
-            <ProPricing />
-          </section>
+        {/* Full-bleed pricing band — same treatment as the homepage section */}
+        <ProPricing />
 
+        <div className="mx-auto max-w-[1024px] px-6">
           <section className="mb-14">
             <FaqSection items={faqs} />
           </section>

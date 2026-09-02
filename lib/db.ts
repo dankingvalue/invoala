@@ -193,6 +193,19 @@ async function ensureSchema(): Promise<void> {
     )` },
     { sql: `CREATE INDEX IF NOT EXISTS idx_newsletter_subscribers_created
       ON newsletter_subscribers(created_at DESC)` },
+    { sql: `CREATE TABLE IF NOT EXISTS promos (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL UNIQUE,
+      code TEXT NOT NULL,
+      polar_discount_id TEXT NOT NULL,
+      percent INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL,
+      created_at INTEGER NOT NULL,
+      welcome_sent INTEGER NOT NULL DEFAULT 0,
+      reminder_sent INTEGER NOT NULL DEFAULT 0
+    )` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_promos_reminder
+      ON promos(expires_at, welcome_sent, reminder_sent)` },
   ]);
 
   // Migration: add viewed_at if missing (ALTER TABLE throws if column exists)

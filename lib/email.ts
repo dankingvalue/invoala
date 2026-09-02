@@ -131,7 +131,27 @@ export async function sendTeamInviteEmail(
 export async function sendWelcomeEmail(opts: {
   to: string;
   name: string;
+  promoCode?: string | null;
+  promoExpiresAt?: number | null;
 }): Promise<void> {
-  const text = `Hey ${opts.name || "there"},\n\nWelcome to Invoala! Your account is ready.\n\nCreate your first invoice in under a minute:\nhttps://www.invoala.com/#generate\n\nNo templates to configure. No forms to study. Just fill in the blanks and download your PDF.\n\nQuestions? Just reply to this email.\n\n— The Invoala Team`;
-  await sendEmail({ to: opts.to, subject: "Welcome to Invoala", text });
+  const codeLine = opts.promoCode
+    ? `\n\nNew-account offer: get 50% off the Lifetime plan.\nUse code ${opts.promoCode} at checkout.\n\nIt's valid for ${opts.promoExpiresAt ? `10 days (until ${new Date(opts.promoExpiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })})` : "10 days"} — one-time use.\nGrab it at https://www.invoala.com/pricing\n`
+    : "";
+  const text = `Hey ${opts.name || "there"},\n\nWelcome to Invoala! Your account is ready.\n\nCreate your first invoice in under a minute:\nhttps://www.invoala.com/#generate\n\nNo templates to configure. No forms to study. Just fill in the blanks and download your PDF.${codeLine}\nQuestions? Just reply to this email.\n\n— The Invoala Team`;
+  await sendEmail({ to: opts.to, subject: "Welcome to Invoala — 50% off Lifetime inside", text });
+}
+
+export async function sendPromoReminderEmail(opts: {
+  to: string;
+  name: string;
+  code: string;
+  expiresAt: number;
+}): Promise<void> {
+  const expiry = new Date(opts.expiresAt).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const text = `Hey ${opts.name || "there"},\n\nYou signed up for Invoala a couple of days ago but haven't picked a plan yet — no pressure, the free generator is yours forever.\n\nIf you do want lifetime access while it's on offer:\n\n→ Code: ${opts.code}\n→ 50% off the Lifetime plan ($249 instead of $499)\n→ Expires: ${expiry}\n→ Grab it: https://www.invoala.com/pricing\n\nThe code is applied automatically when you check out from your account.\n\n— The Invoala Team`;
+  await sendEmail({ to: opts.to, subject: `Your 50% Lifetime code expires ${expiry}`, text });
 }

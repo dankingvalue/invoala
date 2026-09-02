@@ -80,6 +80,35 @@ export async function getOrCreatePolarProduct(plan: PlanId): Promise<string> {
   return json.id;
 }
 
+export async function createPolarDiscount(opts: {
+  name: string;
+  code: string;
+  basisPoints: number;
+  productId: string;
+  endsAtMs: number;
+}): Promise<{ id: string; code: string }> {
+  const res = await polarFetch("/discounts/", {
+    method: "POST",
+    body: JSON.stringify({
+      name: opts.name,
+      type: "percentage",
+      duration: "once",
+      basis_points: opts.basisPoints,
+      code: opts.code,
+      ends_at: new Date(opts.endsAtMs).toISOString(),
+      max_redemptions: 1,
+      max_redemptions_per_customer: 1,
+      products: [opts.productId],
+    }),
+  });
+  const json = (await res.json().catch(() => ({}))) as { id?: string; code?: string | null };
+  if (!res.ok || !json.id) {
+    console.error("Polar discount creation failed", res.status, JSON.stringify(json).slice(0, 300));
+    throw new Error("Could not create a Polar discount.");
+  }
+  return { id: json.id, code: json.code || opts.code };
+}
+
 export async function createPolarCheckout(opts: {
   plan: PlanId;
   userId: string;
@@ -87,6 +116,7 @@ export async function createPolarCheckout(opts: {
   name?: string;
   successUrl: string;
   returnUrl: string;
+  discountId?: string | null;
 }): Promise<string> {
   const productId = await getOrCreatePolarProduct(opts.plan);
   const isLifetime = opts.plan === "lifetime";
@@ -104,7 +134,8 @@ export async function createPolarCheckout(opts: {
         userId: opts.userId,
         plan: opts.plan,
       },
-      allow_discount_codes: true,
+      allow_discount_codes: opts.discountId ? false : true,
+      ...(opts.discountId ? { discount_id: opts.discountId } : {}),
     }),
   });
 

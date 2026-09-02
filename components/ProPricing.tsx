@@ -117,7 +117,7 @@ export function ProPricing() {
 
         <Reveal delay={300}>
           <p className="mt-10 text-center text-[12px] text-[#86efac]">
-            Early adopters get 50% off their first year. No credit card required.
+            New accounts get 50% off Lifetime — your personal code lands in your welcome email.
           </p>
         </Reveal>
       </div>

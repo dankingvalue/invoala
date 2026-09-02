@@ -21,6 +21,7 @@ type Props = {
   isPro: boolean;
   needsVerification: boolean;
   userRole: string;
+  promo?: { code: string; expires_at: number } | null;
   initialTab?: string;
 };
 
@@ -178,6 +179,7 @@ export function DashboardClient({
   subscription,
   isPro,
   needsVerification,
+  promo = null,
   initialTab = "general",
 }: Props) {
   const router = useRouter();
@@ -1375,6 +1377,23 @@ export function DashboardClient({
                 <p className="mt-1 text-[13px] text-[#6b7280]">
                   Pick the plan that fits how you work. Switch or cancel anytime.
                 </p>
+                {promo && !isPro ? (
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#16a34a]/30 bg-[#f0fdf4] px-4 py-3">
+                    <p className="text-[13px] text-[#166534]">
+                      Your new-account offer: <strong>50% off Lifetime</strong> —{" "}
+                      {promo.code} · valid until{" "}
+                      {new Date(promo.expires_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void subscribe("lifetime")}
+                      disabled={busy}
+                      className="rounded-full bg-[#14532d] px-4 py-1.5 text-[12px] font-semibold text-white transition hover:bg-[#0f3d22] disabled:opacity-50"
+                    >
+                      Claim $249 Lifetime
+                    </button>
+                  </div>
+                ) : null}
                 <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   {PLAN_PITCHES.map((plan) => {
                     const active =
@@ -1401,9 +1420,13 @@ export function DashboardClient({
                           ) : null}
                         </div>
                         <p className="mt-2 text-[26px] font-extrabold leading-none text-ink">
-                          {plan.price}
+                          {promo && !isPro && plan.id === "lifetime" ? "$249" : plan.price}
                         </p>
-                        <p className="mt-1 text-[12px] text-[#6b7280]">{plan.priceNote}</p>
+                        <p className="mt-1 text-[12px] text-[#6b7280]">
+                          {promo && !isPro && plan.id === "lifetime"
+                            ? "one-time · 50% off for new accounts"
+                            : plan.priceNote}
+                        </p>
                         <ul className="mt-4 space-y-2.5 text-[13px] text-[#374151]">
                           {plan.features.map((f) => (
                             <li key={f} className="flex items-start gap-2">
