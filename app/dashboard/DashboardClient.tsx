@@ -580,7 +580,11 @@ export function DashboardClient({
   const downloadInvoicePdf = async (row: InvoiceRow) => {
     try {
       const res = await fetch(`/api/invoices/${row.id}/pdf`);
-      if (!res.ok) return;
+      if (!res.ok) {
+        const json = (await res.json().catch(() => null)) as { error?: string } | null;
+        alert(json?.error || "Could not generate the PDF right now. Please try again.");
+        return;
+      }
       const blob = await res.blob();
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);

@@ -85,19 +85,29 @@ export async function generateDueRecurringInvoice(row: RecurringRow): Promise<bo
     const { id: childId } = await upsertInvoice(row.user_id, childInvoice);
     await setInvoiceStatus(row.user_id, childId, "sent");
 
-    // Generate the styled PDF BEFORE the parent is rescheduled. If it fails
-    // (alert already fired by the renderer), record the invoice but do not
-    // advance the schedule or email a text-only substitute — retry next run.
-    const pdf = await invoicePdfBuffer(childInvoice);
+    // Generate the styled PDF first. If BOTH generators fail we still send the
+    // complete text summary (never lose a delivery) and still advance the
+    // schedule so no duplicate child is created tomorrow.
+    let pdf: Buffer | null = null;
+    try {
+      pdf = await invoicePdfBuffer(childInvoice);
+    } catch (err) {
+      console.error("[recurring] PDF generation failed — sending text summary", err);
+    }
     const amount = fmtAmount(childInvoice);
     const businessName = childInvoice.businessName?.trim() || "Invoala";
     const email = await sendEmail({
       to: clientEmail,
       subject: `Invoice ${childNumber} from ${businessName}`,
-      text: `Hi ${childInvoice.clientName?.trim() || "there"},\n\nYour recurring invoice ${childNumber} is attached.\n\nAmount due: ${amount}.\n${childInvoice.notes ? `\nNotes: ${childInvoice.notes}\n` : ""}\nThank you for your business!\n\n— ${businessName}`,
-      attachments: [
-        { filename: `${childNumber.replace(/[^\w.-]+/g, "-")}.pdf`, content: pdf.toString("base64") },
-      ],
+      text: `Hi ${childInvoice.clientName?.trim() || "there"},\n\n${pdf ? "Your recurring invoice is attached" : "Your recurring invoice is below"}:\n\nInvoice ${childNumber} — ${amount}\n${childInvoice.notes ? `\nNotes: ${childInvoice.notes}\n` : ""}\nThank you for your business!\n\n— ${businessName}`,
+      attachments: pdf
+        ? [
+            {
+              filename: `${childNumber.replace(/[^\w.-]+/g, "-")}.pdf`,
+              content: pdf.toString("base64"),
+            },
+          ]
+        : undefined,
     });
 
     // Mark the parent so the next occurrence is a full interval away (also

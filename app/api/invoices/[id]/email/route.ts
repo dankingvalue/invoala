@@ -46,10 +46,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const businessName = (invoiceData.businessName as string) || user.name || "Invoala";
   const amount = invoice.total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  // Attach a real styled PDF so the client receives the invoice, not a
-  // summary. If the styled PDF cannot be generated we do NOT send a
-  // text-only substitute — retry instead.
-  let pdfAttachment: { filename: string; content: string };
+  // Attach a real styled PDF (Chromium → styled-lite jsPDF emergency). If both
+  // generators fail we STILL send the complete text summary rather than never
+  // delivering the invoice; the incident alert has already fired.
+  let pdfAttachment: { filename: string; content: string } | undefined;
   try {
     const pdf = await invoicePdfBuffer(invoiceData as never);
     pdfAttachment = {
@@ -57,23 +57,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       content: pdf.toString("base64"),
     };
   } catch (err) {
-    console.error("[email:invoice] styled PDF generation failed — email not sent", err);
-    return Response.json(
-      { error: "Couldn't generate the invoice PDF right now. Please try again in a moment." },
-      { status: 502 },
-    );
+    console.error("[email:invoice] PDF generation failed — sending text summary only", err);
   }
 
   const result = await sendEmail({
     to: toEmail,
     subject: `Invoice #${invoice.number} from ${businessName}`,
-    text: `Hi ${invoice.client_name || "there"},\n\nPlease find attached invoice #${invoice.number} for ${amount} ${invoice.currency}.\n\n${invoiceData.notes ? `Notes: ${invoiceData.notes}\n\n` : ""}Thank you for your business!\n\n— ${businessName}`,
-    attachments: [pdfAttachment],
+    text: `Hi ${invoice.client_name || "there"},\n\n${pdfAttachment ? "Please find attached" : "Your invoice is below"}:\n\nInvoice #${invoice.number} — ${amount} ${invoice.currency}\n${invoiceData.notes ? `\nNotes: ${invoiceData.notes}\n` : ""}Thank you for your business!\n\n— ${businessName}`,
+    attachments: pdfAttachment ? [pdfAttachment] : undefined,
   });
 
   if (result.status === "failed") {
     return Response.json({ error: "Failed to send email." }, { status: 500 });
   }
 
-  return Response.json({ ok: true, status: result.status, attachedPdf: true });
+  return Response.json({ ok: true, status: result.status, attachedPdf: !!pdfAttachment });
 }
