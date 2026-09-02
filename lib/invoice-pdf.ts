@@ -344,7 +344,7 @@ async function jsPdfEmergency(invoice: Invoice): Promise<Buffer> {
     doc.setFont("helvetica", "normal");
     setC(doc, F_SUBTLE);
     doc.text(k.toUpperCase(), pageW - M - 160, my);
-    doc.setFont("helvetica", "medium");
+    doc.setFont("helvetica", "normal");
     setC(doc, F_INK);
     doc.text(v, pageW - M, my, { align: "right" });
     my += 13;
