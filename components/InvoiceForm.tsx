@@ -56,6 +56,13 @@ export function InvoiceForm({
   clients?: ClientRow[];
 }) {
   const [selectedClientId, setSelectedClientId] = useState<string>("new");
+  // Payment details section is collapsed by default; it auto-opens when an
+  // invoice already carries a payment link or instructions (e.g. a template).
+  const [payUiOpen, setPayUiOpen] = useState(false);
+  const [payMode, setPayMode] = useState<"link" | "instructions">(() =>
+    invoice.paymentLink ? "link" : "instructions",
+  );
+  const paymentSectionOpen = payUiOpen || !!invoice.paymentLink || !!invoice.paymentInstructions;
 
   function handleLogo(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -393,8 +400,8 @@ export function InvoiceForm({
         </section>
       ) : null}
 
-      <section className="grid gap-6 sm:grid-cols-2">
-        <Field label="Theme">
+      <section>
+        <Field label="Theme" id="inv-theme">
           <div className="flex items-center gap-2 rounded-xl border border-hairline bg-white px-3.5 py-2.5">
             {THEMES.map((t) => (
               <button
@@ -412,16 +419,6 @@ export function InvoiceForm({
               />
             ))}
           </div>
-        </Field>
-        <Field label="Payment link (optional)" id="inv-payment-link">
-          <input
-            id="inv-payment-link"
-            type="url"
-            className={inputCls}
-            value={invoice.paymentLink}
-            onChange={(e) => onChange({ paymentLink: e.target.value })}
-            placeholder="https://pay.example.com/…"
-          />
         </Field>
       </section>
 
@@ -494,16 +491,83 @@ export function InvoiceForm({
         )}
       </section>
 
-      <section>
-        <Field label="Payment instructions" id="inv-payment-instructions">
-          <textarea
-            id="inv-payment-instructions"
-            className={`${inputCls} min-h-[72px] resize-none`}
-            value={invoice.paymentInstructions}
-            onChange={(e) => onChange({ paymentInstructions: e.target.value })}
-            placeholder={"Bank transfer:\nAccount name: Studio Nova LLC\nIBAN: …"}
-          />
-        </Field>
+      {/* Payment details: optional, off by default */}
+      <section className="rounded-2xl border border-hairline p-4">
+        <div className="flex items-center justify-between gap-3">          <div>
+            <h3 className="text-[15px] font-semibold tracking-tight text-ink">
+              Payment details
+            </h3>
+            <p className="mt-0.5 text-[13px] text-subtle">
+              Add a pay-online link or payment instructions to your invoice.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={paymentSectionOpen}
+            onClick={() => setPayUiOpen(!payUiOpen)}
+            className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+              paymentSectionOpen ? "bg-accent" : "bg-[#e4e4e9]"
+            }`}
+            aria-label={paymentSectionOpen ? "Hide payment details" : "Add payment details"}
+          >
+            <span
+              className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${
+                paymentSectionOpen ? "left-6" : "left-1"
+              }`}
+            />
+          </button>
+        </div>
+
+        {paymentSectionOpen ? (
+          <div className="mt-4 space-y-4">
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  ["link", "Pay online with a link"],
+                  ["instructions", "Payment instructions"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setPayMode(value)}
+                  aria-pressed={payMode === value}
+                  className={`rounded-full px-4 py-2 text-[13px] font-medium transition ${
+                    payMode === value
+                      ? "bg-[#166534] text-white"
+                      : "border border-hairline bg-white text-ink hover:border-accent"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {payMode === "link" ? (
+              <Field label="Payment link" id="inv-payment-link">
+                <input
+                  id="inv-payment-link"
+                  type="url"
+                  className={inputCls}
+                  value={invoice.paymentLink}
+                  onChange={(e) => onChange({ paymentLink: e.target.value })}
+                  placeholder="https://pay.example.com/…"
+                />
+              </Field>
+            ) : (
+              <Field label="How to pay" id="inv-payment-instructions">
+                <textarea
+                  id="inv-payment-instructions"
+                  className={`${inputCls} min-h-[72px] resize-none`}
+                  value={invoice.paymentInstructions}
+                  onChange={(e) => onChange({ paymentInstructions: e.target.value })}
+                  placeholder={"Bank transfer:\nAccount name: Studio Nova LLC\nIBAN: …"}
+                />
+              </Field>
+            )}
+          </div>
+        ) : null}
       </section>
 
       <section className="grid gap-6 sm:grid-cols-[1fr_auto]">

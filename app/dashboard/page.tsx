@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser, verificationRequired } from "@/lib/server-auth";
-import { getSubscription, isUserPro } from "@/lib/billing";
+import { getSubscription, isUserPro, isPlan } from "@/lib/billing";
 import { getActivePromo } from "@/lib/promo";
 import { runRecurringPass } from "@/lib/recurring";
 import { listClients, listInvoices } from "@/lib/data";
@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; checkout?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
@@ -38,6 +38,10 @@ export default async function DashboardPage({
   if (pro) {
     await runRecurringPass(user.id, 25).catch(() => {});
   }
+
+  // A pricing-page "Get Pro/Teams" button lands here with the chosen term.
+  const checkoutPlan =
+    typeof params.checkout === "string" && isPlan(params.checkout) ? params.checkout : null;
 
   return (
     <div className="min-h-screen bg-[#f3f4f6]">
@@ -57,6 +61,7 @@ export default async function DashboardPage({
             promo={promo ? { code: promo.code, expires_at: promo.expires_at } : null}
             needsVerification={verificationRequired() && !user.email_verified}
             userRole={user.role}
+            initialCheckoutPlan={checkoutPlan}
             initialTab={params.tab || "general"}
           />
         </div>

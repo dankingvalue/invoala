@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { Reveal } from "@/components/Reveal";
 import { PLAN_PITCHES } from "@/lib/plans-content";
 
@@ -47,7 +50,19 @@ const PLAN_TARGETS: Record<string, string> = {
   lifetime: "/dashboard?tab=billing",
 };
 
+// Billing term variants shown when the Monthly/Yearly toggle is set to yearly.
+const ANNUAL_VARIANTS: Record<string, { price: string; note: string; plan: string }> = {
+  pro: { price: "$79", note: "/yr · save 27% vs monthly", plan: "pro_yearly" },
+  teams: { price: "$249", note: "/yr · save 29% vs monthly", plan: "teams_yearly" },
+};
+
+const MONTHLY_VARIANTS: Record<string, { plan: string }> = {
+  pro: { plan: "pro_monthly" },
+  teams: { plan: "teams_monthly" },
+};
+
 export function ProPricing() {
+  const [yearly, setYearly] = useState(false);
   return (
     <section id="pricing" className="scroll-mt-16 bg-[#0f3d22] px-6 py-20 text-white md:py-28">
       <div className="mx-auto max-w-[1200px]">
@@ -62,9 +77,39 @@ export function ProPricing() {
           </p>
         </Reveal>
 
-        <div className="mx-auto mt-14 grid max-w-[1100px] gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-8 flex items-center justify-center gap-2">
+          {(
+            [
+              [false, "Monthly"],
+              [true, "Yearly — save ~28%"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => setYearly(value)}
+              aria-pressed={yearly === value}
+              className={`rounded-full px-5 py-2 text-[13px] font-semibold transition ${
+                yearly === value
+                  ? "bg-[#86efac] text-[#0f3d22]"
+                  : "border border-white/20 text-[#d1fae5] hover:bg-white/10"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mx-auto mt-10 grid max-w-[1100px] gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {PLAN_PITCHES.map((plan, i) => {
             const s = STYLES[plan.id];
+            const annual = ANNUAL_VARIANTS[plan.id];
+            const monthly = MONTHLY_VARIANTS[plan.id];
+            const price = yearly && annual ? annual.price : plan.price;
+            const note = yearly && annual ? annual.note : plan.priceNote;
+            const ctaTarget = monthly
+              ? `/dashboard?tab=billing&checkout=${yearly ? annual!.plan : monthly.plan}`
+              : PLAN_TARGETS[plan.id];
             return (
               <Reveal key={plan.id} delay={i * 80}>
                 <div className={s.card}>
@@ -80,8 +125,8 @@ export function ProPricing() {
                     </span>
                   ) : null}
                   <p className={s.name}>{plan.name}</p>
-                  <p className={s.price}>{plan.price}</p>
-                  <p className={s.note}>{plan.priceNote}</p>
+                  <p className={s.price}>{price}</p>
+                  <p className={s.note}>{note}</p>
                   <ul className="mt-6 space-y-3 text-[14px]">
                     {plan.features.map((f) => (
                       <li key={f} className={`flex items-start gap-2 ${s.text}`}>
@@ -103,10 +148,7 @@ export function ProPricing() {
                       </li>
                     ))}
                   </ul>
-                  <a
-                    href={PLAN_TARGETS[plan.id]}
-                    className={`mt-auto ${s.cta}`}
-                  >
+                  <a href={ctaTarget} className={`mt-auto ${s.cta}`}>
                     {plan.cta}
                   </a>
                 </div>

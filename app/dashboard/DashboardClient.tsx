@@ -3,7 +3,7 @@ import { trackEvent } from "@/lib/analytics";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import type { InvoiceRow, ClientRow } from "@/lib/data";
 import type { Subscription } from "@/lib/billing";
 import { PLAN_PITCHES } from "@/lib/plans-content";
@@ -22,6 +22,7 @@ type Props = {
   needsVerification: boolean;
   userRole: string;
   promo?: { code: string; expires_at: number } | null;
+  initialCheckoutPlan?: string | null;
   initialTab?: string;
 };
 
@@ -180,9 +181,31 @@ export function DashboardClient({
   isPro,
   needsVerification,
   promo = null,
+  initialCheckoutPlan = null,
   initialTab = "general",
 }: Props) {
   const router = useRouter();
+  const checkoutHandled = useRef(false);
+
+  // Landing from a pricing page "Get …" button with a chosen term: start the
+  // checkout once, then drop the ?checkout= param so refresh doesn't redo it.
+  // (Guard is set inside the timeout so React StrictMode's effect double-run
+  // doesn't clear the timer after the first invocation.)
+  useEffect(() => {
+    if (!initialCheckoutPlan) return;
+    if (subscription?.plan === initialCheckoutPlan) {
+      router.replace("/dashboard?tab=billing");
+      return;
+    }
+    const t = setTimeout(() => {
+      if (checkoutHandled.current) return;
+      checkoutHandled.current = true;
+      void subscribe(initialCheckoutPlan);
+      router.replace("/dashboard?tab=billing");
+    }, 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCheckoutPlan]);
   // Teams are only available on the Teams/Lifetime plans (dev subs simulate
   // them). Mirrors the server-side canUseTeams check.
   const teamsEnabled = !!(
@@ -1468,6 +1491,25 @@ export function DashboardClient({
                           <p className="mt-5 rounded-full border border-[#e5e7eb] px-4 py-2 text-center text-[13px] text-[#6b7280]">
                             Free forever
                           </p>
+                        ) : plan.id === "pro" || plan.id === "teams" ? (
+                          <div className="mt-5 flex flex-col gap-2">
+                            <button
+                              type="button"
+                              onClick={() => void subscribe(`${plan.id}_monthly`)}
+                              disabled={busy}
+                              className="rounded-full bg-[#14532d] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0f3d22] disabled:opacity-50"
+                            >
+                              {plan.id === "pro" ? "Pro · $9/mo" : "Teams · $29/mo"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void subscribe(`${plan.id}_yearly`)}
+                              disabled={busy}
+                              className="rounded-full border border-[#166534] px-4 py-2 text-[13px] font-semibold text-[#166534] transition hover:bg-[#f0fdf4] disabled:opacity-50"
+                            >
+                              {plan.id === "pro" ? "Pro yearly · $79" : "Teams yearly · $249"}
+                            </button>
+                          </div>
                         ) : (
                           <button
                             type="button"
