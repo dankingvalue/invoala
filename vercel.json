@@ -14,19 +14,19 @@
     }
   ],
   "functions": {
-    "api/invoices/[id]/pdf/route.ts": {
+    "app/api/invoices/[id]/pdf/route.ts": {
       "memory": 1536,
       "maxDuration": 60
     },
-    "api/invoices/[id]/email/route.ts": {
+    "app/api/invoices/[id]/email/route.ts": {
       "memory": 1536,
       "maxDuration": 60
     },
-    "api/cron/recurring/route.ts": {
+    "app/api/cron/recurring/route.ts": {
       "memory": 1536,
       "maxDuration": 120
     },
-    "api/pdf-engine/route.ts": {
+    "app/api/pdf-engine/route.ts": {
       "memory": 1536,
       "maxDuration": 90
     }
