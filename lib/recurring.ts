@@ -119,7 +119,7 @@ export async function generateDueRecurringInvoice(row: RecurringRow): Promise<bo
   }
 }
 
-export async function runRecurringPass(limit = 300): Promise<{ generated: number; scanned: number }> {
+export async function runRecurringPass(userId?: string, limit = 300): Promise<{ generated: number; scanned: number }> {
   const rows = await dbAll<{
     id: string;
     user_id: string;
@@ -131,9 +131,10 @@ export async function runRecurringPass(limit = 300): Promise<{ generated: number
     `SELECT id, user_id, number, status, data, recurring_next_at
      FROM invoices
      WHERE doc_type = 'invoice' AND status IN ('sent', 'paid')
+     ${userId ? "AND user_id = ?" : ""}
      ORDER BY updated_at DESC
      LIMIT ?`,
-    limit,
+    ...(userId ? [userId, limit] : [limit]),
   );
 
   let generated = 0;

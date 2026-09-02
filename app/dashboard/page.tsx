@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getCurrentUser, verificationRequired } from "@/lib/server-auth";
 import { getSubscription, isUserPro } from "@/lib/billing";
 import { getActivePromo } from "@/lib/promo";
+import { runRecurringPass } from "@/lib/recurring";
 import { listClients, listInvoices } from "@/lib/data";
 import { DashboardClient } from "./DashboardClient";
 import { Nav } from "@/components/Nav";
@@ -30,6 +31,13 @@ export default async function DashboardPage({
   const subscription = await getSubscription(user.id);
   const pro = await isUserPro(user.id, user.role);
   const promo = await getActivePromo(user.id).catch(() => null);
+
+  // Lazy recurring trigger: generate any due recurring invoices for this
+  // account when the dashboard loads, so Pro users get them even if the
+  // daily cron isn't running (free Vercel plans don't support crons).
+  if (pro) {
+    await runRecurringPass(user.id, 25).catch(() => {});
+  }
 
   return (
     <div className="min-h-screen bg-[#f3f4f6]">
