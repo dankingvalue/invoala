@@ -21,10 +21,11 @@ const CHROMIUM_INCLUDES = [
 const nextConfig: NextConfig = {
   serverExternalPackages: ["playwright-core", "@sparticuz/chromium"],
   outputFileTracingIncludes: {
-    "/api/invoices/[id]/pdf": CHROMIUM_INCLUDES,
-    "/api/invoices/[id]/email": CHROMIUM_INCLUDES,
-    "/api/cron/recurring": CHROMIUM_INCLUDES,
-    "/api/pdf-engine": CHROMIUM_INCLUDES,
+    // Keys are glob patterns: "[id]" would be read as a character class, not a
+    // literal, so per-dynamic-route keys silently omit the Chromium binary
+    // from those bundles. Wildcards avoid that failure mode entirely.
+    "/api/**": CHROMIUM_INCLUDES,
+    // Dashboard can lazily trigger recurring (PDF) generation for Pro users.
     "/dashboard": CHROMIUM_INCLUDES,
   },
   poweredByHeader: false,
