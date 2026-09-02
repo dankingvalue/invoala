@@ -188,6 +188,22 @@ function parseResponse(content: string): ParsedInvoice | null {
             rate: Number(i.rate) || 0,
           }))
       : undefined;
+
+    const discountAmount =
+      typeof parsed.discountAmount === "number" ? parsed.discountAmount : undefined;
+    let notes = parsed.notes as string | undefined;
+    if (notes && discountAmount) {
+      // Belt-and-braces: never leak the flat discount line into notes even if
+      // the model echoes it back after a fixed discount was already captured.
+      notes = notes
+        .replace(/\s*Discount\s*:?\s*[A-Z]{3}\s?[\d,.]+/gi, "")
+        .replace(/\s*Discount\s*:\s*[\d,.]+/gi, "")
+        .replace(/\s{2,}/g, " ")
+        .replace(/^[\s.,;|]+|[\s.,;|]+$/g, "")
+        .trim();
+      if (!notes) notes = undefined;
+    }
+
     return {
       businessName: parsed.businessName as string | undefined,
       businessEmail: parsed.businessEmail as string | undefined,
@@ -199,13 +215,12 @@ function parseResponse(content: string): ParsedInvoice | null {
         typeof parsed.currency === "string" ? parsed.currency.toUpperCase() : undefined,
       taxRate: typeof parsed.taxRate === "number" ? parsed.taxRate : undefined,
       discount: typeof parsed.discount === "number" ? parsed.discount : undefined,
-      discountAmount:
-        typeof parsed.discountAmount === "number" ? parsed.discountAmount : undefined,
+      discountAmount,
       invoiceNumber: parsed.invoiceNumber as string | undefined,
       issueDate: parsed.issueDate as string | undefined,
       dueDate: parsed.dueDate as string | undefined,
       paymentInstructions: parsed.paymentInstructions as string | undefined,
-      notes: parsed.notes as string | undefined,
+      notes,
       amountPaid: typeof parsed.amountPaid === "number" ? parsed.amountPaid : undefined,
       items: items && items.length > 0 ? items : undefined,
     };
