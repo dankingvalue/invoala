@@ -89,6 +89,14 @@ export default async function EstimateGeneratorPage() {
             Invoala
           </Link>
           <div className="flex items-center gap-3">
+            {user ? (
+              <Link
+                href="/dashboard?tab=general"
+                className="hidden rounded-lg border border-[#e5e7eb] px-4 py-2 text-[14px] font-semibold text-[#111827] transition hover:border-[#166534] hover:text-[#166534] md:block"
+              >
+                Dashboard
+              </Link>
+            ) : null}
             <Link
               href="/#generate"
               className="rounded-lg bg-[#14532d] px-5 py-2 text-[14px] font-semibold text-white transition hover:bg-[#0f3d22]"

@@ -66,7 +66,7 @@ export function NavAuthActions({ role }: { role: string }) {
                 <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
                 <circle cx="12" cy="7" r="4" />
               </svg>
-              My account
+              Dashboard
             </Link>
             {adminLink && (
               <Link
@@ -175,12 +175,14 @@ export function MobileMenuButton({ role }: { role: string }) {
             FAQ
           </Link>
           <div className="my-1 border-t border-[#e5e7eb]" />
-          <Link href="/dashboard?tab=general" onClick={() => setOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium text-ink transition hover:bg-fog">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
+          <Link href="/dashboard?tab=general" onClick={() => setOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-[13px] font-semibold text-[#14532d] transition hover:bg-fog">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#14532d" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="9" rx="1.5" />
+              <rect x="14" y="3" width="7" height="5" rx="1.5" />
+              <rect x="14" y="12" width="7" height="9" rx="1.5" />
+              <rect x="3" y="16" width="7" height="5" rx="1.5" />
             </svg>
-            My account
+            Dashboard
           </Link>
           <Link href="/dashboard?tab=documents" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-[13px] text-ink transition hover:bg-fog">
             Documents

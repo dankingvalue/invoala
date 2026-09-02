@@ -34,6 +34,9 @@ export async function Nav() {
                 FAQ
               </Link>
               <span className="h-4 w-px bg-[#e5e7eb]" />
+              <Link href="/dashboard?tab=general" className="text-subtle transition-colors hover:text-ink">
+                Dashboard
+              </Link>
               <Link href="/dashboard?tab=documents" className="text-subtle transition-colors hover:text-ink">
                 Documents
               </Link>

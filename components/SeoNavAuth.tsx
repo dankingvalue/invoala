@@ -31,8 +31,14 @@ export function SeoNavAuth() {
   return signedIn ? (
     <Link
       href="/dashboard?tab=general"
-      className="hidden text-[14px] font-medium text-[#14532d] hover:underline sm:block"
+      className="hidden items-center gap-1.5 rounded-lg border border-[#e5e7eb] px-3.5 py-2 text-[13px] font-semibold text-[#14532d] transition hover:border-[#166534] sm:flex"
     >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <rect x="3" y="3" width="7" height="9" rx="1.5" />
+        <rect x="14" y="3" width="7" height="5" rx="1.5" />
+        <rect x="14" y="12" width="7" height="9" rx="1.5" />
+        <rect x="3" y="16" width="7" height="5" rx="1.5" />
+      </svg>
       Dashboard
     </Link>
   ) : (
