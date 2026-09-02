@@ -592,8 +592,13 @@ export function DashboardClient({
 
   const printInvoicePdf = async (row: InvoiceRow) => {
     try {
+      // Direct PDF in a hidden iframe; Chrome's PDF viewer fires 'load' when
+      // the document is ready, then we print the frame.
       const res = await fetch(`/api/invoices/${row.id}/pdf?inline=1`);
-      if (!res.ok) return;
+      if (!res.ok) {
+        alert("Could not load the PDF for printing.");
+        return;
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const iframe = document.createElement("iframe");
@@ -603,24 +608,53 @@ export function DashboardClient({
       iframe.style.width = "0";
       iframe.style.height = "0";
       iframe.style.border = "0";
+      iframe.style.visibility = "hidden";
       document.body.appendChild(iframe);
-      const doc = iframe.contentDocument;
-      if (!doc) return;
-      doc.open();
-      doc.write(
-        `<html><body style="margin:0"><embed src="${url}" type="application/pdf" width="100%" height="100%"></body></html>`,
-      );
-      doc.close();
-      const win = iframe.contentWindow;
-      const trigger = () => {
-        if (win) {
-          win.focus();
-          win.print();
-        }
-        setTimeout(() => iframe.remove(), 2000);
+      const cleanup = () => {
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+          iframe.remove();
+        }, 60_000);
       };
-      setTimeout(trigger, 600);
-    } catch {}
+      iframe.onload = () => {
+        setTimeout(() => {
+          const win = iframe.contentWindow;
+          if (win) {
+            win.focus();
+            win.print();
+          }
+          cleanup();
+        }, 350);
+      };
+      iframe.onerror = () => {
+        iframe.remove();
+        URL.revokeObjectURL(url);
+        alert("Could not load the PDF for printing.");
+      };
+      iframe.src = url;
+    } catch {
+      alert("Something went wrong preparing the print view.");
+    }
+  };
+
+  const emailInvoice = async (row: InvoiceRow) => {
+    const toEmail = window.prompt(
+      `Send invoice ${row.number || ""} to (client email):`,
+      (row.data?.clientEmail as string | undefined) || "",
+    );
+    if (!toEmail || !toEmail.includes("@")) return;
+    try {
+      const res = await fetch(`/api/invoices/${row.id}/email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: toEmail }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (json.ok) alert("Invoice sent!");
+      else alert(json.error || "Failed to send email.");
+    } catch {
+      alert("Network error while emailing the invoice.");
+    }
   };
 
   async function applyRowStatus(row: InvoiceRow, status: string) {
@@ -1048,6 +1082,14 @@ export function DashboardClient({
                                   title="Print PDF"
                                 >
                                   Print
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void emailInvoice(row)}
+                                  className="text-[#6b7280] hover:text-[#166534]"
+                                  title="Email invoice as PDF"
+                                >
+                                  Email
                                 </button>
                                 <button
                                   type="button"
