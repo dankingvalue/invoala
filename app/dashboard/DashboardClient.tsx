@@ -183,6 +183,16 @@ export function DashboardClient({
   initialTab = "general",
 }: Props) {
   const router = useRouter();
+  // Teams are only available on the Teams/Lifetime plans (dev subs simulate
+  // them). Mirrors the server-side canUseTeams check.
+  const teamsEnabled = !!(
+    subscription &&
+    subscription.status === "active" &&
+    (subscription.provider === "dev" ||
+      subscription.plan === "teams_monthly" ||
+      subscription.plan === "teams_yearly" ||
+      subscription.plan === "lifetime")
+  );
   const [tab, setTab] = useState<Tab>(VALID_TABS.includes(initialTab as Tab) ? (initialTab as Tab) : "general");
   // Keep the active tab in sync with ?tab= in the URL (top-nav links like
   // "Clients" navigate to /dashboard?tab=clients without remounting us).
@@ -962,7 +972,7 @@ export function DashboardClient({
               <div className="rounded-lg border border-[#e5e7eb] p-6">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <h3 className="text-[16px] font-bold text-ink">My Teams</h3>
-                  {isPro && (
+                  {teamsEnabled && (
                     <div className="flex items-center gap-2">
                       <input
                         type="text"
@@ -1003,10 +1013,12 @@ export function DashboardClient({
                   )}
                 </div>
 
-                {!isPro && (
+                {!teamsEnabled && (
                   <div className="mt-3">
                     <p className="text-[13px] text-[#6b7280]">
-                      Upgrade to Teams plan to create and manage teams.
+                      {isPro
+                        ? "Your current plan doesn't include teams. Upgrade to the Teams plan to create and manage teams."
+                        : "Upgrade to Teams plan to create and manage teams."}
                     </p>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <button
@@ -1030,7 +1042,7 @@ export function DashboardClient({
                   </div>
                 )}
 
-                {teams.length === 0 && isPro ? (
+                {teams.length === 0 && teamsEnabled ? (
                   <div className="mt-4 rounded-lg border border-dashed border-[#e5e7eb] p-6 text-center">
                     <p className="text-[14px] text-[#6b7280]">No teams yet.</p>
                     <p className="mt-1 text-[12px] text-[#9ca3af]">
@@ -1098,7 +1110,7 @@ export function DashboardClient({
                   <h3 className="text-[16px] font-bold text-ink">Team Members</h3>
 
                   {/* Invite form */}
-                  {isPro && (
+                  {teamsEnabled && (
                     <div className="mt-4 flex flex-wrap gap-2">
                       <input
                         type="email"

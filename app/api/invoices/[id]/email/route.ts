@@ -1,6 +1,7 @@
 import { getSessionUser } from "@/lib/server-auth";
 import { dbGet } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
+import { invoicePdfBuffer } from "@/lib/invoice-pdf";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser(req);
@@ -44,15 +45,28 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const businessName = (invoiceData.businessName as string) || user.name || "Invoala";
   const amount = invoice.total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+  // Attach a real PDF so the client receives the invoice, not just a summary.
+  let pdfAttachment: { filename: string; content: string } | undefined;
+  try {
+    const pdf = await invoicePdfBuffer(invoiceData as never);
+    pdfAttachment = {
+      filename: `Invoice-${invoice.number.replace(/[^\w.-]+/g, "-")}.pdf`,
+      content: pdf.toString("base64"),
+    };
+  } catch (err) {
+    console.error("[email:invoice] PDF generation failed", err);
+  }
+
   const result = await sendEmail({
     to: toEmail,
     subject: `Invoice #${invoice.number} from ${businessName}`,
     text: `Hi ${invoice.client_name || "there"},\n\nPlease find attached invoice #${invoice.number} for ${amount} ${invoice.currency}.\n\n${invoiceData.notes ? `Notes: ${invoiceData.notes}\n\n` : ""}Thank you for your business!\n\n— ${businessName}`,
+    attachments: pdfAttachment ? [pdfAttachment] : undefined,
   });
 
   if (result.status === "failed") {
     return Response.json({ error: "Failed to send email." }, { status: 500 });
   }
 
-  return Response.json({ ok: true, status: result.status });
+  return Response.json({ ok: true, status: result.status, attachedPdf: !!pdfAttachment });
 }

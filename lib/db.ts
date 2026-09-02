@@ -218,6 +218,11 @@ async function ensureSchema(): Promise<void> {
     await db.execute("ALTER TABLE invoices ADD COLUMN share_token TEXT");
   } catch {}
 
+  // Migration: next scheduled run for recurring invoices
+  try {
+    await db.execute("ALTER TABLE invoices ADD COLUMN recurring_next_at INTEGER");
+  } catch {}
+
   try {
     await db.execute(`CREATE TABLE IF NOT EXISTS seo_redirects (
       id TEXT PRIMARY KEY,

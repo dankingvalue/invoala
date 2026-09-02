@@ -57,6 +57,10 @@ export type Invoice = {
   notes: string;
   docType: DocType;
   recurring: string;
+  /** Internal: last date a recurring occurrence was generated (server-side). */
+  recurring_last_generated?: string;
+  /** Internal: how many occurrences have been generated from this invoice. */
+  recurring_count?: number;
   customFields: CustomField[];
   paymentInstructions: string;
   paymentLink: string;

@@ -1,5 +1,6 @@
 import { getSessionUser } from "@/lib/server-auth";
 import { createTeam, getUserTeams, getUserInvites } from "@/lib/teams";
+import { canUseTeams } from "@/lib/billing";
 
 export async function GET(req: Request) {
   const user = await getSessionUser(req);
@@ -30,6 +31,13 @@ export async function POST(req: Request) {
   const existingTeams = await getUserTeams(user.id);
   if (existingTeams.length >= 3) {
     return Response.json({ error: "Maximum 3 teams per user." }, { status: 400 });
+  }
+
+  if (!(await canUseTeams(user.id, user.role))) {
+    return Response.json(
+      { error: "Teams require the Teams or Lifetime plan. Upgrade from your dashboard's billing tab." },
+      { status: 403 },
+    );
   }
 
   const team = await createTeam(user.id, name);

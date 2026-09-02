@@ -7,6 +7,7 @@ export async function sendEmail(opts: {
   to: string;
   subject: string;
   text: string;
+  attachments?: Array<{ filename: string; content: string }>;
 }): Promise<{ status: "sent" | "simulated" | "failed"; error?: string }> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM || "Invoala <noreply@invoala.com>";
@@ -15,6 +16,15 @@ export async function sendEmail(opts: {
   let error: string | undefined;
 
   if (apiKey) {
+    const body: Record<string, unknown> = {
+      from: fromHeader,
+      to: [opts.to],
+      subject: opts.subject,
+      text: opts.text,
+    };
+    if (opts.attachments && opts.attachments.length > 0) {
+      body.attachments = opts.attachments.map((a) => ({ filename: a.filename, content: a.content }));
+    }
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
         const res = await fetch(RESEND_ENDPOINT, {
@@ -23,7 +33,7 @@ export async function sendEmail(opts: {
             Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ from: fromHeader, to: [opts.to], subject: opts.subject, text: opts.text }),
+          body: JSON.stringify(body),
           signal: AbortSignal.timeout(30000),
         });
         if (res.ok) {

@@ -78,6 +78,18 @@ export async function isUserPro(userId: string, role: string): Promise<boolean> 
   return !!sub && sub.status === "active";
 }
 
+// Teams are a paid entitlement: Teams plans and Lifetime include them, dev
+// subscriptions simulate them for testing, staff roles are always allowed.
+const TEAMS_PLANS = new Set(["teams_monthly", "teams_yearly", "lifetime"]);
+
+export async function canUseTeams(userId: string, role?: string): Promise<boolean> {
+  if (role && (role === "admin" || role === "superadmin" || role === "support")) return true;
+  const sub = await getSubscription(userId);
+  if (!sub || sub.status !== "active") return false;
+  if (sub.provider === "dev") return true;
+  return TEAMS_PLANS.has(sub.plan);
+}
+
 export async function activateDevSubscription(userId: string, plan: PlanId): Promise<Subscription> {
   const now = Date.now();
   const existing = await dbGet<{ id: string }>("SELECT id FROM subscriptions WHERE user_id = ?", userId);

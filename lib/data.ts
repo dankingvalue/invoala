@@ -37,7 +37,7 @@ export async function getInvoice(userId: string, id: string): Promise<InvoiceRow
 export async function upsertInvoice(
   userId: string,
   invoice: Invoice,
-  opts: { id?: string; status?: string },
+  opts: { id?: string; status?: string } = {},
 ): Promise<{ id: string }> {
   const now = Date.now();
   const total = computeTotals(invoice).total;
