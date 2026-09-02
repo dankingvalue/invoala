@@ -85,19 +85,23 @@ export async function generateDueRecurringInvoice(row: RecurringRow): Promise<bo
     const { id: childId } = await upsertInvoice(row.user_id, childInvoice);
     await setInvoiceStatus(row.user_id, childId, "sent");
 
+    // Generate the styled PDF BEFORE the parent is rescheduled. If it fails
+    // (alert already fired by the renderer), record the invoice but do not
+    // advance the schedule or email a text-only substitute — retry next run.
+    const pdf = await invoicePdfBuffer(childInvoice);
     const amount = fmtAmount(childInvoice);
     const businessName = childInvoice.businessName?.trim() || "Invoala";
-    const pdf = await invoicePdfBuffer(childInvoice).catch(() => null);
-    await sendEmail({
+    const email = await sendEmail({
       to: clientEmail,
       subject: `Invoice ${childNumber} from ${businessName}`,
       text: `Hi ${childInvoice.clientName?.trim() || "there"},\n\nYour recurring invoice ${childNumber} is attached.\n\nAmount due: ${amount}.\n${childInvoice.notes ? `\nNotes: ${childInvoice.notes}\n` : ""}\nThank you for your business!\n\n— ${businessName}`,
-      attachments: pdf
-        ? [{ filename: `${childNumber.replace(/[^\w.-]+/g, "-")}.pdf`, content: pdf.toString("base64") }]
-        : undefined,
+      attachments: [
+        { filename: `${childNumber.replace(/[^\w.-]+/g, "-")}.pdf`, content: pdf.toString("base64") },
+      ],
     });
 
-    // Mark the parent so the next occurrence is a full interval away.
+    // Mark the parent so the next occurrence is a full interval away (also
+    // prevents a duplicate child if the mail delivery failed).
     const updatedData: Invoice = { ...row.data, recurring_last_generated: nextDate, recurring_count: count + 1 };
     const nextAt = Date.parse(nextDate + "T00:00:00") + intervalDays * 864e5;
     await dbRun(
@@ -108,6 +112,9 @@ export async function generateDueRecurringInvoice(row: RecurringRow): Promise<bo
       row.id,
       row.user_id,
     );
+    if (email.status === "failed") {
+      console.error("[recurring] invoice generated but email delivery failed", row.id, childId);
+    }
     return true;
   } catch (err) {
     console.error("[recurring] generation failed", row.id, err);

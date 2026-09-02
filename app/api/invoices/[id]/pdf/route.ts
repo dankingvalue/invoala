@@ -26,7 +26,17 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   const url = new URL(req.url);
   const inline = url.searchParams.get("inline") === "1";
-  const pdf = await invoicePdfBuffer(invoice as never);
+
+  let pdf: Buffer;
+  try {
+    pdf = await invoicePdfBuffer(invoice as never);
+  } catch (err) {
+    console.error("[pdf] styled render failed", err);
+    return Response.json(
+      { error: "Couldn't generate the invoice PDF right now. Please try again in a moment." },
+      { status: 503 },
+    );
+  }
   const name = `Invoice-${(row.number || "invoice").replace(/[^\w.-]+/g, "-")}.pdf`;
   return new Response(new Uint8Array(pdf), {
     headers: {

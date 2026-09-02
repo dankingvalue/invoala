@@ -19,7 +19,7 @@ const CHROMIUM_INCLUDES = [
   ];
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["playwright-core", "@sparticuz/chromium", "jspdf"],
+  serverExternalPackages: ["playwright-core", "@sparticuz/chromium"],
   outputFileTracingIncludes: {
     "/api/invoices/[id]/pdf": CHROMIUM_INCLUDES,
     "/api/invoices/[id]/email": CHROMIUM_INCLUDES,
