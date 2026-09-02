@@ -9,59 +9,105 @@ import { buildInvoiceHtml } from "@/lib/invoice-html";
 
 let chromiumBinary: string | null | undefined;
 let chromiumError: string | undefined;
+let chromiumArgs: string[] = ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"];
 
-async function resolveChromium(): Promise<string | null> {
-  if (chromiumBinary !== undefined) return chromiumBinary;
+async function resolveChromium(): Promise<{ path: string; args: string[] } | null> {
+  if (chromiumBinary !== undefined && chromiumError === "resolved") {
+    return { path: chromiumBinary as string, args: chromiumArgs };
+  }
   // Local/CI override first: point at a real installed Chrome/Chromium.
   if (process.env.CHROME_PATH) {
     chromiumBinary = process.env.CHROME_PATH;
-    return chromiumBinary;
+    chromiumError = "resolved";
+    return { path: chromiumBinary, args: chromiumArgs };
   }
   try {
     // @sparticuz/chromium ships a headless Linux build for serverless runtimes.
     const mod = await import("@sparticuz/chromium");
     try {
       const path = await mod.default.executablePath();
+      // The serverless flag set (--single-process etc.) is required for the
+      // browser to survive page creation in constrained containers.
+      chromiumArgs = [...mod.default.args, "--no-sandbox"];
       chromiumBinary = path || null;
-      chromiumError = undefined;
+      chromiumError = chromiumBinary ? "resolved" : undefined;
+      if (!chromiumBinary) {
+        console.error("[invoice-pdf] chromium executablePath resolved empty");
+      }
+      return chromiumBinary ? { path: chromiumBinary, args: chromiumArgs } : null;
     } catch (err) {
       chromiumBinary = null;
       chromiumError = err instanceof Error ? err.message.slice(0, 500) : String(err);
       console.error("[invoice-pdf] chromium executablePath failed", chromiumError);
+      return null;
     }
   } catch (err) {
     chromiumBinary = null;
     chromiumError = err instanceof Error ? err.message.slice(0, 500) : String(err);
+    return null;
   }
-  return chromiumBinary;
 }
 
-// Public status for the /api/pdf-engine diagnostic + tests.
+async function launchChromium(): Promise<
+  { browser: import("playwright-core").Browser; path: string } | null
+> {
+  const resolved = await resolveChromium();
+  if (!resolved) return null;
+  try {
+    const { chromium } = await import("playwright-core");
+    const browser = await chromium.launch({
+      executablePath: resolved.path,
+      args: resolved.args,
+      headless: true,
+    });
+    return { browser, path: resolved.path };
+  } catch (err) {
+    console.error("[invoice-pdf] chromium launch failed", err);
+    return null;
+  }
+}
+
+// Public status for the /api/pdf-engine diagnostic + tests. Performs a real
+// render (new page + PDF) so it proves the whole path, not just a launch.
 export async function invoiceEngineStatus(): Promise<{
   engine: "chromium" | "jspdf";
   chromiumPath: boolean;
   launchable?: boolean;
   error?: string;
 }> {
+  const resolved = await resolveChromium();
+  if (!resolved)
+    return {
+      engine: "jspdf",
+      chromiumPath: false,
+      error: chromiumError || "no chromium executable resolved",
+    };
   try {
-    const path = await resolveChromium();
-    if (!path)
+    const launched = await launchChromium();
+    if (!launched) {
       return {
         engine: "jspdf",
-        chromiumPath: false,
-        error: chromiumError || "no chromium executable resolved",
+        chromiumPath: true,
+        launchable: false,
+        error: chromiumError || "chromium launch failed",
       };
+    }
     try {
-      const { chromium } = await import("playwright-core");
-      const browser = await chromium.launch({
-        executablePath: path,
-        args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
-        headless: true,
-      });
-      await browser.close().catch(() => {});
-      return { engine: "chromium", chromiumPath: true, launchable: true };
+      const page = await launched.browser.newPage();
+      await page.setContent(
+        "<html><head><style>body{font-family:sans-serif}</style></head><body>probe</body></html>",
+      );
+      await page.waitForTimeout(50);
+      const pdf = await page.pdf({ format: "A4" });
+      await launched.browser.close().catch(() => {});
+      return {
+        engine: pdf && pdf.length > 500 ? "chromium" : "jspdf",
+        chromiumPath: true,
+        launchable: true,
+      };
     } catch (err) {
-      console.error("[invoice-pdf] chromium launch probe failed", err);
+      await launched.browser.close().catch(() => {});
+      console.error("[invoice-pdf] chromium render probe failed", err);
       return {
         engine: "jspdf",
         chromiumPath: true,
@@ -80,39 +126,32 @@ export async function invoiceEngineStatus(): Promise<{
 }
 
 export async function invoicePdfBuffer(invoice: Invoice): Promise<Buffer> {
-  const executablePath = await resolveChromium();
+  const launched = await launchChromium();
 
   // Primary path: real HTML/CSS layout printed by Chromium.
   const html = buildInvoiceHtml(invoice, {
     money: (n) => formatMoney(n, invoice.currency || "USD"),
   });
 
-  if (executablePath) {
+  if (launched) {
     try {
-      // playwright-core has no browser download of its own; we point it at
-      // the @sparticuz/chromium binary (or CHROME_PATH).
-      const { chromium } = await import("playwright-core");
-      const browser = await chromium.launch({
-        executablePath,
-        args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
-        headless: true,
-      });
+      const page = await launched.browser.newPage({ viewport: { width: 794, height: 1123 } });
+      await page.setContent(html, { waitUntil: "load" });
+      // Wait for layout + any web font to settle before printing.
       try {
-        const page = await browser.newPage({ viewport: { width: 794, height: 1123 } });
-        await page.setContent(html, { waitUntil: "load" });
-        // Give layout a beat for data-URL logos.
-        await page.waitForTimeout(120);
-        const pdf = await page.pdf({
-          format: "A4",
-          printBackground: true,
-          preferCSSPageSize: true,
-        });
-        return Buffer.from(pdf);
-      } finally {
-        await browser.close().catch(() => {});
-      }
+        await page.evaluate(() => (document as Document).fonts.ready);
+      } catch {}
+      await page.waitForTimeout(150);
+      const pdf = await page.pdf({
+        format: "A4",
+        printBackground: true,
+        preferCSSPageSize: true,
+      });
+      return Buffer.from(pdf);
     } catch (err) {
       console.error("[invoice-pdf] chromium render failed, falling back to jsPDF", err);
+    } finally {
+      await launched.browser.close().catch(() => {});
     }
   }
 

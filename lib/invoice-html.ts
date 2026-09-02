@@ -154,6 +154,8 @@ export function buildInvoiceHtml(invoice: Invoice, { money }: { money: (n: numbe
   .field-value { margin-top: 0.6mm; font-size: 9pt; color: ${INK}; }
   .recurring { margin-top: 6mm; text-align: right; }
   .recurring span { display: inline-block; padding: 1.2mm 3.5mm; border-radius: 999px; background: #f5f5f7; color: ${SUBTLE}; font-size: 8.5pt; }
+  .promo-footer { margin-top: 10mm; padding-top: 2.5mm; border-top: 0.4pt solid ${HAIRLINE}; text-align: center; color: ${FAINT}; font-size: 7pt; }
+  .promo-footer a { color: ${FAINT}; text-decoration: none; }
 </style>
 </head>
 <body>
@@ -209,6 +211,10 @@ export function buildInvoiceHtml(invoice: Invoice, { money }: { money: (n: numbe
     </div>` : ""}
 
   ${invoice.notes ? `<div class="notes"><div class="sec">Notes</div><div class="body">${esc(invoice.notes)}</div></div>` : ""}
+
+  <div class="promo-footer">
+    Made with Invoala — free invoice generator · <a href="https://invoala.com">invoala.com</a>
+  </div>
 </div>
 </body>
 </html>`;
