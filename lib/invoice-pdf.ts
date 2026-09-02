@@ -32,21 +32,36 @@ export async function invoiceEngineStatus(): Promise<{
   engine: "chromium" | "jspdf";
   chromiumPath: boolean;
   launchable?: boolean;
+  error?: string;
 }> {
-  const path = await resolveChromium();
-  if (!path) return { engine: "jspdf", chromiumPath: false };
   try {
-    const { chromium } = await import("playwright-core");
-    const browser = await chromium.launch({
-      executablePath: path,
-      args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
-      headless: true,
-    });
-    await browser.close().catch(() => {});
-    return { engine: "chromium", chromiumPath: true, launchable: true };
+    const path = await resolveChromium();
+    if (!path) return { engine: "jspdf", chromiumPath: false };
+    try {
+      const { chromium } = await import("playwright-core");
+      const browser = await chromium.launch({
+        executablePath: path,
+        args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+        headless: true,
+      });
+      await browser.close().catch(() => {});
+      return { engine: "chromium", chromiumPath: true, launchable: true };
+    } catch (err) {
+      console.error("[invoice-pdf] chromium launch probe failed", err);
+      return {
+        engine: "jspdf",
+        chromiumPath: true,
+        launchable: false,
+        error: err instanceof Error ? err.message.slice(0, 300) : String(err),
+      };
+    }
   } catch (err) {
-    console.error("[invoice-pdf] chromium launch probe failed", err);
-    return { engine: "jspdf", chromiumPath: true, launchable: false };
+    console.error("[invoice-pdf] engine probe error", err);
+    return {
+      engine: "jspdf",
+      chromiumPath: false,
+      error: err instanceof Error ? err.message.slice(0, 300) : String(err),
+    };
   }
 }
 
