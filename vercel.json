@@ -14,11 +14,11 @@
     }
   ],
   "functions": {
-    "app/api/invoices/[id]/pdf/route.ts": {
+    "app/api/invoices/*/pdf/route.ts": {
       "memory": 1536,
       "maxDuration": 60
     },
-    "app/api/invoices/[id]/email/route.ts": {
+    "app/api/invoices/*/email/route.ts": {
       "memory": 1536,
       "maxDuration": 60
     },
