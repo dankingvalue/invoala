@@ -3,6 +3,7 @@ import { dbGet } from "@/lib/db";
 import { invoicePdfBuffer } from "@/lib/invoice-pdf";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser(req);

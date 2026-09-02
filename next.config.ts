@@ -13,6 +13,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["playwright-core", "@sparticuz/chromium", "jspdf"],
   poweredByHeader: false,
   reactStrictMode: true,
   async redirects() {

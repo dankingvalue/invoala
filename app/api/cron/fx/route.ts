@@ -1,6 +1,7 @@
 import { ensureLatestRates } from "@/lib/fx";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 
 // Daily job (see vercel.json): snapshot FX rates so invoice totals can be
 // converted using the rate near each invoice's creation date.

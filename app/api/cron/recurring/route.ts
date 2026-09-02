@@ -1,6 +1,7 @@
 import { runRecurringPass } from "@/lib/recurring";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 // Daily job (see vercel.json): generates + emails due recurring invoices for
 // paying users and stores the new invoice in their dashboard.

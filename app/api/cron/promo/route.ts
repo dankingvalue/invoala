@@ -4,6 +4,7 @@ import { createUserPromo, getLatestPromo, markPromoReminderSent, markPromoWelcom
 import { sendPromoReminderEmail, sendWelcomeEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 // Daily job (see vercel.json). Two passes:
 //  1. Catch users whose promo exists but whose welcome email never went out

@@ -1,11 +1,76 @@
-import type { jsPDF } from "jspdf";
 import type { Invoice } from "@/lib/invoice";
+import { formatMoney } from "@/lib/invoice";
+import { buildInvoiceHtml } from "@/lib/invoice-html";
 
-// ---- Shared design tokens (mirror InvoicePreview / the downloaded PDF) ----
-const INK: [number, number, number] = [29, 29, 31]; // #1d1d1f
-const SUBTLE: [number, number, number] = [110, 110, 115]; // #6e6e73
-const FAINT: [number, number, number] = [199, 199, 204]; // #c7c7cc
-const HAIRLINE: [number, number, number] = [232, 232, 237]; // #e8e8ed
+// One renderer for every PDF output. The primary path prints the same
+// HTML/CSS design as the generator preview via headless Chromium — identical
+// output for the dashboard download, email attachments and recurring sends.
+// A jsPDF fallback keeps PDFs working where Chromium cannot run.
+
+let chromiumBinary: string | null | undefined;
+
+async function resolveChromium(): Promise<string | null> {
+  if (chromiumBinary !== undefined) return chromiumBinary;
+  // Local/CI override first: point at a real installed Chrome/Chromium.
+  if (process.env.CHROME_PATH) {
+    chromiumBinary = process.env.CHROME_PATH;
+    return chromiumBinary;
+  }
+  try {
+    // @sparticuz/chromium ships a headless Linux build for serverless runtimes.
+    const mod = await import("@sparticuz/chromium");
+    const path = await mod.default.executablePath().catch(() => null);
+    chromiumBinary = path || null;
+  } catch {
+    chromiumBinary = null;
+  }
+  return chromiumBinary;
+}
+
+export async function invoicePdfBuffer(invoice: Invoice): Promise<Buffer> {
+  const executablePath = await resolveChromium();
+
+  // Primary path: real HTML/CSS layout printed by Chromium.
+  const html = buildInvoiceHtml(invoice, {
+    money: (n) => formatMoney(n, invoice.currency || "USD"),
+  });
+
+  if (executablePath) {
+    try {
+      // playwright-core has no browser download of its own; we point it at
+      // the @sparticuz/chromium binary (or CHROME_PATH).
+      const { chromium } = await import("playwright-core");
+      const browser = await chromium.launch({
+        executablePath,
+        args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+        headless: true,
+      });
+      try {
+        const page = await browser.newPage({ viewport: { width: 794, height: 1123 } });
+        await page.setContent(html, { waitUntil: "load" });
+        // Give layout a beat for data-URL logos.
+        await page.waitForTimeout(120);
+        const pdf = await page.pdf({
+          format: "A4",
+          printBackground: true,
+          preferCSSPageSize: true,
+        });
+        return Buffer.from(pdf);
+      } finally {
+        await browser.close().catch(() => {});
+      }
+    } catch (err) {
+      console.error("[invoice-pdf] chromium render failed, falling back to jsPDF", err);
+    }
+  }
+
+  return jsPdfFallback(invoice);
+}
+
+// ---------------------------------------------------------------------------
+// Fallback: jsPDF approximation (only used when Chromium is unavailable).
+// ---------------------------------------------------------------------------
+import type { jsPDF } from "jspdf";
 
 function rgb(hex: string): [number, number, number] {
   const h = hex.replace("#", "");
@@ -13,305 +78,231 @@ function rgb(hex: string): [number, number, number] {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
-function fmtDate(iso: string): string {
+const F_INK: [number, number, number] = [29, 29, 31];
+const F_SUBTLE: [number, number, number] = [110, 110, 115];
+const F_FAINT: [number, number, number] = [199, 199, 204];
+const F_HAIR: [number, number, number] = [232, 232, 237];
+
+function setC(doc: jsPDF, c: [number, number, number]) {
+  doc.setTextColor(c[0], c[1], c[2]);
+}
+
+function rule(doc: jsPDF, x: number, w: number, y: number, c: [number, number, number], t = 0.7) {
+  doc.setDrawColor(c[0], c[1], c[2]);
+  doc.setLineWidth(t);
+  doc.line(x, y, x + w, y);
+}
+
+function fdate(iso?: string): string {
+  if (!iso) return "—";
   const d = new Date(iso + "T00:00:00");
   return Number.isNaN(d.getTime())
     ? iso
     : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function setColor(doc: jsPDF, c: [number, number, number]) {
-  doc.setTextColor(c[0], c[1], c[2]);
-}
-
-function sectionLabel(doc: jsPDF, label: string, x: number, y: number, color: [number, number, number]): number {
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.5);
-  setColor(doc, color);
-  doc.text(label.toUpperCase(), x, y, { charSpace: 0.4 });
-  return y + 9.5;
-}
-
-function sectionRule(doc: jsPDF, x: number, width: number, y: number, color: [number, number, number], thickness = 0.7): void {
-  doc.setDrawColor(color[0], color[1], color[2]);
-  doc.setLineWidth(thickness);
-  doc.line(x, y, x + width, y);
-}
-
-// Server-side A4 PDF used for email attachments. Structured to mirror the
-// downloaded generator PDF: same accents, logo, tables, totals and spacing —
-// no watermark or promotional footer on any account.
-export async function invoicePdfBuffer(invoice: Invoice): Promise<Buffer> {
+async function jsPdfFallback(invoice: Invoice): Promise<Buffer> {
   const { jsPDF } = await import("jspdf");
-  const { computeTotals, formatMoney, docTitle, themeColor } = await import("@/lib/invoice");
+  const { computeTotals, themeColor } = await import("@/lib/invoice");
   const doc: jsPDF = new jsPDF({ unit: "pt", format: "a4", compress: true });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const M = 48;
+  const M = 40;
   const contentW = pageW - M * 2;
   const accent = rgb(themeColor(invoice.theme || "green"));
-  const accentSoft: [number, number, number] = [
-    accent[0],
-    accent[1],
-    accent[2],
-  ];
-  void accentSoft;
-
-  const { subtotal, taxAmount, total, discountAmount, shipping } = computeTotals(invoice);
-  const fmt = (n: number) => formatMoney(n, invoice.currency);
+  const fmt = (n: number) => formatMoney(n, invoice.currency || "USD");
   const isQuote = invoice.docType === "quote" || invoice.docType === "estimate";
   const isReceipt = invoice.docType === "receipt";
-  const title = docTitle(invoice.docType);
-  const metaLabel = isReceipt ? "RECEIPT #" : `${title.toUpperCase()} #`;
-  const dueLabel = isQuote ? "VALID UNTIL" : isReceipt ? "RECEIVED" : "DUE";
+  const title = (invoice.docType === "invoice" ? "Invoice" : isQuote ? invoice.docType === "quote" ? "Quote" : "Estimate" : "Receipt").toUpperCase();
 
-  let y = M + 6;
-
-  // ---- Header: logo + business left, document title + meta right ----
+  let y = M + 10;
   if (invoice.logoDataUrl) {
     try {
-      const format = invoice.logoDataUrl.startsWith("data:image/png") ? "PNG" : "JPEG";
-      const ratio = 160 / 42; // max width 160px@96dpi ≈ 120pt, max height 56px ≈ 42pt
-      void ratio;
-      // Compute scaled dims from the source image is not possible directly;
-      // draw at the max box with proportional guess via JS-side dims below.
       const img = doc.getImageProperties(invoice.logoDataUrl);
-      const maxW = 120;
-      const maxH = 42;
-      const scale = Math.min(maxW / img.width, maxH / img.height);
-      const w = img.width * scale;
-      const h = img.height * scale;
-      doc.addImage(invoice.logoDataUrl, format, M, y, w, h);
-      y += h + 12;
-    } catch {
-      // invalid image data — continue without the logo
-    }
+      const scale = Math.min(110 / img.width, 34 / img.height);
+      doc.addImage(invoice.logoDataUrl, "PNG", M, y - 10, img.width * scale, img.height * scale);
+    } catch {}
   }
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(15); // text-xl ≈ 20px → 15pt
-  setColor(doc, INK);
-  const bizText = invoice.businessName.trim() || "Your Company";
-  doc.text(bizText, M, y);
-  const bizBaseline = y;
-
-  const bizLines = (invoice.businessAddress || "").split("\n").filter(Boolean);
-  if (invoice.businessEmail) bizLines.push(invoice.businessEmail);
-  const shownBizLines = bizLines.length > 0 ? bizLines : ["Your address", "you@example.com"];
-  let lineY = bizBaseline + 6;
-  for (const line of shownBizLines) {
+  doc.setFontSize(16);
+  setC(doc, F_INK);
+  doc.text(invoice.businessName.trim() || "Your Company", M, y + 10);
+  const lines = ((invoice.businessAddress || "Your address") + (invoice.businessEmail ? `\n${invoice.businessEmail}` : "")).split("\n").filter(Boolean);
+  let ly = y + 10;
+  for (const line of lines) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    setColor(doc, SUBTLE);
-    doc.text(line, M, lineY);
-    lineY += 11;
+    setC(doc, F_SUBTLE);
+    doc.text(line, M, (ly += 11));
   }
-  y = Math.max(y + 14, lineY - 1);
+  y = Math.max(y + 10, ly) + 6;
 
-  // Meta block (right side)
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(21); // [28px] ≈ 21pt
-  setColor(doc, accent);
-  doc.text(title.toUpperCase(), pageW - M, M + 12, { align: "right" });
-  if (isReceipt && total > 0) {
-    const badge = "PAID";
-    const bw = doc.getTextWidth(badge) + 14;
-    doc.setFillColor(accent[0], accent[1], accent[2]);
-    doc.roundedRect(pageW - M - bw, M + 18, bw, 14, 7, 7, "F");
-    doc.setFontSize(7);
-    setColor(doc, [255, 255, 255]);
-    doc.text(badge, pageW - M - bw / 2, M + 27.5, { align: "center" });
-  }
+  doc.setFontSize(22);
+  setC(doc, accent);
+  doc.text(title, pageW - M, M + 8, { align: "right" });
   doc.setFontSize(9);
-  const metaRows: Array<[string, string]> = [
-    [metaLabel, invoice.invoiceNumber || "—"],
-    [isReceipt ? "Date paid" : "Issued", fmtDate(invoice.issueDate) || "—"],
-    [dueLabel, fmtDate(invoice.dueDate) || "—"],
+  const meta: Array<[string, string]> = [
+    [`${isReceipt ? "Receipt" : title.replace(/\s+/g, " ")} #`, invoice.invoiceNumber || "—"],
+    [isReceipt ? "Date paid" : "Issued", fdate(invoice.issueDate)],
+    [isQuote ? "Valid until" : isReceipt ? "Received" : "Due", fdate(isReceipt ? invoice.dueDate || invoice.issueDate : invoice.dueDate)],
   ];
-  const metaX = pageW - M;
-  let metaY = M + 46;
-  for (const [leftRaw, rightRaw] of metaRows) {
+  let my = M + 34;
+  for (const [k, v] of meta) {
     doc.setFont("helvetica", "normal");
-    setColor(doc, SUBTLE);
-    doc.text(leftRaw.toUpperCase(), metaX - 150, metaY);
+    setC(doc, F_SUBTLE);
+    doc.text(k.toUpperCase(), pageW - M - 160, my);
     doc.setFont("helvetica", "medium");
-    setColor(doc, INK);
-    doc.text(rightRaw, metaX, metaY, { align: "right" });
-    metaY += 13;
+    setC(doc, F_INK);
+    doc.text(v, pageW - M, my, { align: "right" });
+    my += 13;
   }
 
-  // ---- Billed to ----
-  const billedTop = Math.max(y, metaY - 13) + 16;
-  y = sectionLabel(doc, isReceipt ? "Received from" : "Billed to", M, billedTop, FAINT);
+  const billedY = Math.max(y, my - 6) + 14;
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(10.5);
-  setColor(doc, INK);
-  doc.text(invoice.clientName.trim() || "Client Name", M, y);
-  y += 14;
-  const clientLines = (invoice.clientAddress || "Client address").split("\n").filter(Boolean);
-  if (invoice.clientEmail) clientLines.push(invoice.clientEmail);
-  for (const line of clientLines) {
+  doc.setFontSize(7.5);
+  setC(doc, F_FAINT);
+  doc.text((isReceipt ? "Received from" : "Billed to").toUpperCase(), M, billedY);
+  doc.setFontSize(11);
+  setC(doc, F_INK);
+  doc.text(invoice.clientName.trim() || "Client Name", M, billedY + 13);
+  const cLines = ((invoice.clientAddress || "Client address") + (invoice.clientEmail ? `\n${invoice.clientEmail}` : "")).split("\n").filter(Boolean);
+  let cy = billedY + 13;
+  for (const line of cLines) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    setColor(doc, SUBTLE);
-    doc.text(line, M, y);
-    y += 11;
+    setC(doc, F_SUBTLE);
+    doc.text(line, M, (cy += 11));
   }
-  y += 18;
+  y = cy + 12;
 
-  // ---- Items table ----
-  const colQty = pageW - M - 205;
-  const colRate = pageW - M - 140;
-  const colAmt = pageW - M - 40;
+  const colQ = pageW - M - 200;
+  const colR = pageW - M - 132;
+  const colA = pageW - M - 36;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
-  setColor(doc, SUBTLE);
-  doc.text("DESCRIPTION", M, y);
-  doc.text("QTY", colQty + 25, y, { align: "right" });
-  doc.text("RATE", colRate + 18, y, { align: "right" });
-  doc.text("AMOUNT", colAmt, y, { align: "right" });
-  sectionRule(doc, M, contentW, y + 3, accent, 1.4); // thead border in accent
-  y += 14;
+  setC(doc, F_SUBTLE);
+  doc.text("Description", M, y);
+  doc.text("Qty", colQ + 26, y, { align: "right" });
+  doc.text("Rate", colR + 18, y, { align: "right" });
+  doc.text("Amount", colA, y, { align: "right" });
+  rule(doc, M, contentW, y + 3, accent, 1.4);
+  y += 15;
 
-  const rows = invoice.items.length > 0 ? invoice.items : [{ description: "", quantity: 1, rate: 0 }];
-  for (const item of rows) {
+  const items = invoice.items.length > 0 ? invoice.items : [{ description: "", quantity: 1, rate: 0 }];
+  for (const item of items) {
     const desc = item.description || "Item description";
-    const descLines = doc.splitTextToSize(desc, colQty - M - 12);
-    if (y + descLines.length * 12 > pageH - 120) {
+    const wrapped = doc.splitTextToSize(desc, colQ - M - 10);
+    if (y + wrapped.length * 12 > pageH - 110) {
       doc.addPage();
-      y = M + 20;
-      sectionRule(doc, M, contentW, y - 6, accent, 1.4);
+      y = M + 16;
     }
-    for (const line of descLines) {
+    for (const line of wrapped) {
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      setColor(doc, item.description ? INK : FAINT);
+      doc.setFontSize(9.5);
+      setC(doc, item.description ? F_INK : F_FAINT);
       doc.text(line, M, y);
-      y += 11.5;
+      y += 12;
     }
-    y -= 11.5;
-    doc.setFont("helvetica", "normal");
+    y -= 12;
     doc.setFontSize(9);
-    setColor(doc, SUBTLE);
-    doc.text(String(item.quantity), colQty + 25, y, { align: "right" });
-    doc.text(fmt(Number(item.rate) || 0), colRate + 18, y, { align: "right" });
-    setColor(doc, INK);
-    doc.text(fmt((Number(item.quantity) || 0) * (Number(item.rate) || 0)), colAmt, y, { align: "right" });
+    setC(doc, F_SUBTLE);
+    doc.text(String(item.quantity), colQ + 26, y, { align: "right" });
+    doc.text(fmt(Number(item.rate) || 0), colR + 18, y, { align: "right" });
+    setC(doc, F_INK);
+    doc.text(fmt((Number(item.quantity) || 0) * (Number(item.rate) || 0)), colA, y, { align: "right" });
     y += 17;
-    sectionRule(doc, M, contentW, y - 8, HAIRLINE, 0.6);
+    rule(doc, M, contentW, y - 8, F_HAIR, 0.5);
   }
-  y += 12;
+  y += 10;
 
-  // ---- Totals (right, max ~240px ≈ 180pt wide) ----
-  const sumW = 180;
-  const sumX = pageW - M - sumW;
-  const totalRows: Array<{ label: string; amount: number; strong: boolean; red?: boolean }> = [
-    { label: "Subtotal", amount: subtotal, strong: false },
+  const { taxAmount, discountAmount, total, shipping } = computeTotals(invoice);
+  const paid = Number(invoice.amountPaid) || 0;
+  const balance = Math.max(0, total - paid);
+  const sumX = pageW - M - 175;
+  const rows: Array<{ label: string; amount: number; strong: boolean; color?: [number, number, number] }> = [
+    { label: "Subtotal", amount: invoice.items.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.rate) || 0), 0), strong: false },
     ...(discountAmount > 0
-      ? [{
-          label:
-            invoice.discountMode === "fixed"
-              ? `Discount (${fmt(discountAmount)})`
-              : `Discount (${invoice.discount}%)`,
-          amount: -discountAmount,
-          strong: false,
-        }]
+      ? [{ label: invoice.discountMode === "fixed" ? "Discount" : `Discount (${invoice.discount}%)`, amount: -discountAmount, strong: false }]
       : []),
     ...(shipping > 0 ? [{ label: "Shipping", amount: shipping, strong: false }] : []),
     ...(taxAmount > 0 ? [{ label: `Tax (${invoice.taxRate}%)`, amount: taxAmount, strong: false }] : []),
     { label: isReceipt ? "Amount received" : "Total due", amount: total, strong: true },
-    ...(invoice.amountPaid && invoice.amountPaid > 0
-      ? [{ label: "Paid", amount: -invoice.amountPaid, strong: false, red: true },
-         { label: "Balance due", amount: Math.max(0, total - invoice.amountPaid), strong: true }]
+    ...(paid > 0 && !isReceipt
+      ? [
+          { label: "Paid", amount: -paid, strong: false, color: [0, 134, 90] as [number, number, number] },
+          { label: "Balance due", amount: balance, strong: true },
+        ]
       : []),
   ];
-  for (const row of totalRows) {
-    if (y > pageH - 90) {
-      doc.addPage();
-      y = M + 20;
-    }
-    if (row.strong && row.label !== "Paid") {
-      sectionRule(doc, sumX, sumW, y - 6, INK, 1.6);
-    }
+  for (const row of rows) {
+    if (row.strong && row.label !== "Paid") rule(doc, sumX, 175, y - 6, F_INK, 1.6);
     doc.setFont("helvetica", row.strong ? "bold" : "normal");
-    doc.setFontSize(row.strong ? 10.5 : 9);
-    setColor(doc, row.strong ? INK : SUBTLE);
+    doc.setFontSize(row.strong ? 10 : 9);
+    setC(doc, row.strong ? F_INK : F_SUBTLE);
     doc.text(row.label.toUpperCase(), sumX, y);
-    setColor(doc, row.red ? [0, 134, 90] : INK);
+    setC(doc, row.color ?? F_INK);
     doc.text(fmt(row.amount), pageW - M, y, { align: "right" });
-    y += row.strong ? 18 : 14;
+    y += row.strong ? 17 : 13;
   }
 
-  // ---- Custom fields (2 columns, like the preview) ----
-  const fields = (invoice.customFields ?? []).filter((f) => f.label.trim() || f.value.trim());
+  const fields = (invoice.customFields || []).filter((f) => f.label.trim() || f.value.trim());
   if (fields.length > 0) {
-    y += 12;
-    sectionRule(doc, M, contentW, y - 6, HAIRLINE, 0.6);
-    const halfW = contentW / 2 - 16;
+    y += 10;
+    rule(doc, M, contentW, y - 6, F_HAIR, 0.6);
+    const half = contentW / 2 - 14;
     for (let i = 0; i < fields.length; i++) {
       const f = fields[i];
-      const col = i % 2;
-      const rowIdx = Math.floor(i / 2);
-      const colX = col === 0 ? M : M + contentW / 2;
-      const rowY = y + rowIdx * 34;
+      const x = i % 2 === 0 ? M : M + contentW / 2;
+      const ry = y + Math.floor(i / 2) * 30;
       doc.setFont("helvetica", "bold");
       doc.setFontSize(7.5);
-      setColor(doc, FAINT);
-      doc.text((f.label.trim() || "Field").toUpperCase(), colX, rowY, { charSpace: 0.3 });
+      setC(doc, F_FAINT);
+      doc.text((f.label.trim() || "Field").toUpperCase(), x, ry);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
-      setColor(doc, INK);
-      const lines = doc.splitTextToSize(f.value.trim() || "—", halfW);
-      let ly = rowY + 11;
-      for (const line of lines.slice(0, 2)) {
-        doc.text(line, colX, ly);
-        ly += 11;
+      setC(doc, F_INK);
+      const vl = doc.splitTextToSize(f.value.trim() || "—", half);
+      let vy = ry + 11;
+      for (const l of vl.slice(0, 2)) {
+        doc.text(l, x, vy);
+        vy += 11;
       }
     }
-    y += Math.ceil(fields.length / 2) * 34 + 8;
+    y += Math.ceil(fields.length / 2) * 30 + 8;
   }
 
-  // ---- Payment instructions (mirrors preview block incl. Pay online pill) ----
-  if (invoice.paymentInstructions) {
-    y += 8;
-    sectionRule(doc, M, contentW, y - 6, HAIRLINE, 0.6);
-    y = sectionLabel(doc, "How to pay", M, y, FAINT);
+  const block = (label: string, body: string, color = F_SUBTLE) => {
+    if (y > pageH - 110) {
+      doc.addPage();
+      y = M + 16;
+    }
+    rule(doc, M, contentW, y - 6, F_HAIR, 0.6);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    setC(doc, F_FAINT);
+    doc.text(label.toUpperCase(), M, y + 2);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    setColor(doc, SUBTLE);
-    for (const line of doc.splitTextToSize(invoice.paymentInstructions, contentW - 40)) {
-      doc.text(line, M, y);
-      y += 11.5;
-    }
-    y += 4;
-    if (invoice.paymentLink) {
-      const linkW = doc.getTextWidth("Pay online") + 22;
-      doc.setFillColor(accent[0], accent[1], accent[2]);
-      doc.roundedRect(M, y, linkW, 17, 8.5, 8.5, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      setColor(doc, [255, 255, 255]);
-      doc.text("Pay online", M + linkW / 2, y + 11.5, { align: "center" });
-      y += 24;
-    }
-  }
-
-  // ---- Notes ----
-  if (invoice.notes) {
-    y += 10;
-    sectionRule(doc, M, contentW, y - 6, HAIRLINE, 0.6);
-    y = sectionLabel(doc, "Notes", M, y, FAINT);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    setColor(doc, SUBTLE);
-    for (const line of doc.splitTextToSize(invoice.notes, contentW - 40)) {
-      if (y > pageH - 60) {
+    setC(doc, color);
+    let yy = y + 12;
+    for (const l of doc.splitTextToSize(body, contentW - 20)) {
+      if (yy > pageH - 70) {
         doc.addPage();
-        y = M + 20;
+        yy = M + 16;
       }
-      doc.text(line, M, y);
-      y += 11.5;
+      doc.text(l, M, yy);
+      yy += 12;
     }
+    return yy + 6;
+  };
+
+  if (invoice.paymentInstructions || invoice.paymentLink) {
+    y = block("How to pay", invoice.paymentInstructions || "Pay online");
+  }
+  if (invoice.notes) {
+    y = block("Notes", invoice.notes);
   }
 
   return Buffer.from(doc.output("arraybuffer") as ArrayBuffer);

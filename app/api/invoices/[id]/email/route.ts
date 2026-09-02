@@ -1,3 +1,4 @@
+export const maxDuration = 30;
 import { getSessionUser } from "@/lib/server-auth";
 import { dbGet } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
