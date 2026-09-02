@@ -1,6 +1,7 @@
 import type { Invoice } from "@/lib/invoice";
 import { formatMoney } from "@/lib/invoice";
 import { buildInvoiceHtml } from "@/lib/invoice-html";
+import { dbGet, dbRun } from "@/lib/db";
 
 // One styled renderer for every customer-facing PDF output (dashboard
 // download, email attachments, recurring sends). Rendered from the same
@@ -67,25 +68,71 @@ async function launchChromium(): Promise<Engine | null> {
 }
 
 // ---- Incident alerting -----------------------------------------------------
-let lastAlertAt = 0;
-const ALERT_COOLDOWN_MS = 5 * 60 * 1000;
+// Alerts are throttled GLOBALLY via the database (billing_config key), because
+// Vercel runs many function instances and a per-instance timer does nothing to
+// stop N instances all alerting for the same incident.
+
+const ALERT_MIN_INTERVAL_MS = 60 * 60 * 1000; // max 1 Telegram alert per hour
+const ALERT_MAX_PER_DAY = 8;
+
+async function alertBlockedGlobal(): Promise<boolean> {
+  try {
+    const now = Date.now();
+    const row = await dbGet<{ value: string }>(
+      "SELECT value FROM billing_config WHERE key = 'pdf_alert_state'",
+    ).catch(() => null);
+    let lastSent = 0;
+    let dayStart = 0;
+    let sentToday = 0;
+    if (row) {
+      try {
+        const parsed = JSON.parse(row.value) as { last: number; day: number; count: number };
+        lastSent = parsed.last || 0;
+        dayStart = parsed.day || 0;
+        sentToday = parsed.count || 0;
+      } catch {}
+    }
+    const day = Math.floor(now / 864e5);
+    if (dayStart !== day) {
+      sentToday = 0;
+      dayStart = day;
+    }
+    if (now - lastSent < ALERT_MIN_INTERVAL_MS) return true;
+    if (sentToday >= ALERT_MAX_PER_DAY) return true;
+    await dbRun(
+      "INSERT INTO billing_config (key, value, created_at) VALUES ('pdf_alert_state', ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+      JSON.stringify({ last: now, day, count: sentToday + 1 }),
+      now,
+    ).catch(() => {});
+    return false;
+  } catch {
+    // DB unavailable: fall back to the process-local timer only.
+    return false;
+  }
+}
+
+let processLastAlertAt = 0;
+const PROCESS_COOLDOWN_MS = 5 * 60 * 1000;
 
 async function notifyPdfIncident(detail: string): Promise<void> {
-  // Error-level log always.
-  console.error("[invoice-pdf:INCIDENT] styled PDF generation failed — no unstyled fallback was shipped", detail);
+  // Error-level log always (per incident, not per instance flood).
+  console.error("[invoice-pdf:INCIDENT] styled PDF engine degraded — emergency/plain path used", detail);
+
+  if (process.env.PDF_INCIDENT_ALERTS === "0") return;
+  const now = Date.now();
+  if (now - processLastAlertAt < PROCESS_COOLDOWN_MS) return;
+  processLastAlertAt = now;
+  if (await alertBlockedGlobal()) return;
+
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
-  const now = Date.now();
-  if (now - lastAlertAt < ALERT_COOLDOWN_MS) return;
-  lastAlertAt = now;
-  const text = `[Invoala] PDF engine incident: styled invoice render failed after retries. ${detail.slice(0, 200)} No plain-text PDF was sent.`;
-  if (botToken && chatId) {
-    fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text }),
-    }).catch(() => {});
-  }
+  if (!botToken || !chatId) return;
+  const text = `[Invoala] PDF engine degraded: ${detail.slice(0, 160)}`;
+  fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, text }),
+  }).catch(() => {});
 }
 
 // ---- Render (retry with fresh browser + backoff) --------------------------
