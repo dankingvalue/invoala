@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import type { InvoiceRow, ClientRow } from "@/lib/data";
 import type { Subscription } from "@/lib/billing";
+import { PLAN_PITCHES } from "@/lib/plans-content";
 import { formatMoney, type Invoice, type LineItem } from "@/lib/invoice";
 
 type Props = {
@@ -24,6 +25,18 @@ type Props = {
 };
 
 type Tab = "general" | "documents" | "clients" | "teams" | "billing" | "security" | "messages";
+
+const VALID_TABS: Tab[] = ["general", "documents", "clients", "teams", "billing", "security"];
+
+const PLAN_KEY_FOR: Record<string, string> = {
+  pro: "pro_monthly",
+  teams: "teams_monthly",
+  lifetime: "lifetime",
+};
+
+function planKeyFor(id: string): string {
+  return PLAN_KEY_FOR[id] ?? "pro_monthly";
+}
 
 const STATUS_STYLES: Record<string, string> = {
   draft: "bg-fog text-subtle",
@@ -168,8 +181,16 @@ export function DashboardClient({
   initialTab = "general",
 }: Props) {
   const router = useRouter();
-  const validTabs: Tab[] = ["general", "documents", "clients", "teams", "billing", "security"];
-  const [tab, setTab] = useState<Tab>(validTabs.includes(initialTab as Tab) ? (initialTab as Tab) : "general");
+  const [tab, setTab] = useState<Tab>(VALID_TABS.includes(initialTab as Tab) ? (initialTab as Tab) : "general");
+  // Keep the active tab in sync with ?tab= in the URL (top-nav links like
+  // "Clients" navigate to /dashboard?tab=clients without remounting us).
+  const [urlTab, setUrlTab] = useState(initialTab);
+  if (urlTab !== initialTab) {
+    setUrlTab(initialTab);
+    if (VALID_TABS.includes(initialTab as Tab)) {
+      setTab(initialTab as Tab);
+    }
+  }
   const [invoices, setInvoices] = useState(initialInvoices);
   const [clients, setClients] = useState(initialClients);
   const [busy, setBusy] = useState(false);
@@ -981,9 +1002,30 @@ export function DashboardClient({
                 </div>
 
                 {!isPro && (
-                  <p className="mt-3 text-[13px] text-[#6b7280]">
-                    Upgrade to Teams plan to create and manage teams.
-                  </p>
+                  <div className="mt-3">
+                    <p className="text-[13px] text-[#6b7280]">
+                      Upgrade to Teams plan to create and manage teams.
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void subscribe("teams_monthly")}
+                        disabled={busy}
+                        className="rounded-lg bg-[#14532d] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0f3d22] disabled:opacity-50"
+                      >
+                        Upgrade to Teams — $29/mo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void subscribe("teams_yearly")}
+                        disabled={busy}
+                        className="rounded-lg border border-[#166534] px-4 py-2 text-[13px] font-semibold text-[#166534] transition hover:bg-[#f0fdf4] disabled:opacity-50"
+                      >
+                        Teams $249/yr
+                      </button>
+                      {notice ? <span className="text-[13px] text-[#166534]">{notice}</span> : null}
+                    </div>
+                  </div>
                 )}
 
                 {teams.length === 0 && isPro ? (
@@ -1326,6 +1368,87 @@ export function DashboardClient({
                   ))}
                 </div>
               )}
+
+              {/* Plans compared */}
+              <div>
+                <h3 className="text-[16px] font-bold text-ink">Compare plans</h3>
+                <p className="mt-1 text-[13px] text-[#6b7280]">
+                  Pick the plan that fits how you work. Switch or cancel anytime.
+                </p>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {PLAN_PITCHES.map((plan) => {
+                    const active =
+                      plan.id === "free"
+                        ? !isPro
+                        : plan.id === "lifetime"
+                          ? subscription?.plan === "lifetime"
+                          : subscription?.plan?.startsWith(plan.id);
+                    return (
+                      <div
+                        key={plan.id}
+                        className={`flex flex-col rounded-xl border p-5 ${
+                          active
+                            ? "border-[#166534] bg-[#f0fdf4] ring-1 ring-[#166534]/40"
+                            : "border-[#e5e7eb] bg-white"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[14px] font-bold text-ink">{plan.name}</p>
+                          {plan.tag ? (
+                            <span className="rounded-full bg-[#166534] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                              {plan.tag}
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-2 text-[26px] font-extrabold leading-none text-ink">
+                          {plan.price}
+                        </p>
+                        <p className="mt-1 text-[12px] text-[#6b7280]">{plan.priceNote}</p>
+                        <ul className="mt-4 space-y-2.5 text-[13px] text-[#374151]">
+                          {plan.features.map((f) => (
+                            <li key={f} className="flex items-start gap-2">
+                              <svg
+                                width="13"
+                                height="13"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="#166534"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="mt-0.5 shrink-0"
+                                aria-hidden="true"
+                              >
+                                <path d="M20 6 9 17l-5-5" />
+                              </svg>
+                              <span>{f}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        {active ? (
+                          <p className="mt-5 rounded-full bg-[#dcfce7] px-4 py-2 text-center text-[13px] font-semibold text-[#166534]">
+                            Current plan
+                          </p>
+                        ) : plan.id === "free" ? (
+                          <p className="mt-5 rounded-full border border-[#e5e7eb] px-4 py-2 text-center text-[13px] text-[#6b7280]">
+                            Free forever
+                          </p>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => void subscribe(planKeyFor(plan.id))}
+                            disabled={busy}
+                            className="mt-5 rounded-full bg-[#14532d] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0f3d22] disabled:opacity-50"
+                          >
+                            {plan.cta}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {notice ? <p className="mt-3 text-[13px] text-[#166534]">{notice}</p> : null}
+              </div>
             </div>
           )}
 

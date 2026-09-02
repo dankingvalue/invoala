@@ -27,6 +27,9 @@ export async function Nav() {
               <Link href="/#how" className="text-subtle transition-colors hover:text-ink">
                 How it works
               </Link>
+              <Link href="/pricing" className="text-subtle transition-colors hover:text-ink">
+                Pricing
+              </Link>
               <Link href="/#faq" className="text-subtle transition-colors hover:text-ink">
                 FAQ
               </Link>
@@ -54,6 +57,9 @@ export async function Nav() {
               </a>
               <a href="#how" className="text-subtle transition-colors hover:text-ink">
                 How it works
+              </a>
+              <a href="#pricing" className="text-subtle transition-colors hover:text-ink">
+                Pricing
               </a>
               <a href="#faq" className="text-subtle transition-colors hover:text-ink">
                 FAQ

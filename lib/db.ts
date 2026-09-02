@@ -186,6 +186,13 @@ async function ensureSchema(): Promise<void> {
       value TEXT NOT NULL,
       created_at INTEGER NOT NULL
     )` },
+    { sql: `CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+      email TEXT PRIMARY KEY,
+      source TEXT NOT NULL DEFAULT 'website',
+      created_at INTEGER NOT NULL
+    )` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_newsletter_subscribers_created
+      ON newsletter_subscribers(created_at DESC)` },
   ]);
 
   // Migration: add viewed_at if missing (ALTER TABLE throws if column exists)

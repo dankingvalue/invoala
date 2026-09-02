@@ -28,7 +28,7 @@ export function NavAuthActions({ role }: { role: string }) {
   return (
     <div className="hidden items-center gap-3 md:flex">
       <Link
-        href="/#pricing"
+        href="/pricing"
         className="hidden items-center gap-2 rounded-[6px] bg-[#14532d] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0f3d22] md:flex"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -197,7 +197,7 @@ export function MobileMenuButton({ role }: { role: string }) {
             </Link>
           )}
           <div className="my-1 border-t border-[#e5e7eb]" />
-          <Link href="/#pricing" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-[13px] text-ink transition hover:bg-fog">
+          <Link href="/pricing" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-[13px] text-ink transition hover:bg-fog">
             Upgrade
           </Link>
           <div className="my-1 border-t border-[#e5e7eb]" />
