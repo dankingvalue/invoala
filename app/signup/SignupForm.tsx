@@ -139,7 +139,7 @@ export function SignupForm({ googleEnabled }: { googleEnabled: boolean }) {
             </div>
           </div>
           <a
-            href="/api/auth/google"
+            href={next ? `/api/auth/google?next=${encodeURIComponent(next)}` : "/api/auth/google"}
             className="flex w-full items-center justify-center gap-3 rounded-full border border-hairline bg-white px-6 py-3 text-[15px] font-medium text-ink transition hover:bg-fog active:scale-[0.99]"
           >
             <svg width="18" height="18" viewBox="0 0 24 24">

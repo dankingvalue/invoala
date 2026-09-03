@@ -46,6 +46,7 @@ export function PaymentHistoryModal({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState("");
   const [editMethod, setEditMethod] = useState<PaymentMethod>("other");
+  const [editOtherLabel, setEditOtherLabel] = useState("");
   const [editDate, setEditDate] = useState("");
   const [editReference, setEditReference] = useState("");
   const [editNotes, setEditNotes] = useState("");
@@ -68,7 +69,9 @@ export function PaymentHistoryModal({
   function startEdit(p: PaymentRow) {
     setEditingId(p.id);
     setEditAmount(String(p.amount));
-    setEditMethod((PAYMENT_METHODS as readonly string[]).includes(p.payment_method) ? (p.payment_method as PaymentMethod) : "other");
+    const known = (PAYMENT_METHODS as readonly string[]).includes(p.payment_method);
+    setEditMethod(known ? (p.payment_method as PaymentMethod) : "other");
+    setEditOtherLabel(known ? "" : p.payment_method);
     setEditDate(p.payment_date);
     setEditReference(p.reference || "");
     setEditNotes(p.notes || "");
@@ -94,7 +97,7 @@ export function PaymentHistoryModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount,
-          paymentMethod: editMethod,
+          paymentMethod: editMethod === "other" && editOtherLabel.trim() ? editOtherLabel.trim() : editMethod,
           paymentDate: editDate,
           reference: editReference,
           notes: editNotes,
@@ -209,6 +212,17 @@ export function PaymentHistoryModal({
                           aria-label="Reference"
                         />
                       </div>
+                      {editMethod === "other" ? (
+                        <input
+                          type="text"
+                          value={editOtherLabel}
+                          onChange={(e) => setEditOtherLabel(e.target.value)}
+                          placeholder="Specify method (optional)"
+                          maxLength={60}
+                          className="w-full rounded-lg border border-[#e5e7eb] px-3 py-2 text-[14px] outline-none placeholder:text-[#9ca3af] focus:border-[#166534]"
+                          aria-label="Specify method"
+                        />
+                      ) : null}
                       <textarea
                         value={editNotes}
                         onChange={(e) => setEditNotes(e.target.value)}

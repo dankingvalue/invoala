@@ -10,6 +10,9 @@ export async function GET(req: Request) {
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const storedState = req.headers.get("cookie")?.match(/g_state=([^;]+)/)?.[1];
+  const rawNext = req.headers.get("cookie")?.match(/g_next=([^;]+)/)?.[1];
+  const next = rawNext ? decodeURIComponent(rawNext) : null;
+  const redirectTo = next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
 
   if (!code || !state || state !== storedState) {
     return NextResponse.redirect(new URL("/login?error=google_failed", req.url));
@@ -85,7 +88,7 @@ export async function GET(req: Request) {
     }
 
     const { token } = await createSession(userId);
-    const res = NextResponse.redirect(new URL("/dashboard", req.url));
+    const res = NextResponse.redirect(new URL(redirectTo, req.url));
     res.cookies.set(USER_COOKIE, token, {
       httpOnly: true,
       sameSite: "lax",
@@ -93,6 +96,7 @@ export async function GET(req: Request) {
       path: "/",
       maxAge: 30 * 24 * 60 * 60,
     });
+    res.cookies.delete("g_next");
     return res;
   } catch {
     return NextResponse.redirect(new URL("/login?error=google_failed", req.url));

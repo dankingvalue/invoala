@@ -29,7 +29,16 @@ const DEFAULT_FLAGS: PublicFlags = {
 function hasPendingEdit(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    return !!window.localStorage.getItem("invoala.edit");
+    if (window.localStorage.getItem("invoala.edit")) return true;
+  } catch {
+    // ignore
+  }
+  // Returning from /signup or /login after clicking "Save invoice" while
+  // logged out (see InvoiceGenerator's signupHref) — mount immediately so
+  // the generator's own autosave-on-return effect can run without first
+  // requiring the user to scroll to it or interact with the page.
+  try {
+    return new URLSearchParams(window.location.search).get("autosave") === "1";
   } catch {
     return false;
   }

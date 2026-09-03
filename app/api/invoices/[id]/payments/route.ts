@@ -1,6 +1,6 @@
 import { getSessionUser } from "@/lib/server-auth";
 import { createPayment, listPayments, type PaymentInput } from "@/lib/data";
-import { isPaymentMethod } from "@/lib/invoice-status";
+import { sanitizePaymentMethod } from "@/lib/invoice-status";
 
 const ERROR_MESSAGES: Record<string, string> = {
   "not-found": "Invoice not found.",
@@ -35,7 +35,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!Number.isFinite(amount)) {
     return Response.json({ error: ERROR_MESSAGES["invalid-amount"] }, { status: 400 });
   }
-  const paymentMethod = isPaymentMethod(body.paymentMethod) ? body.paymentMethod : "other";
+  const paymentMethod = sanitizePaymentMethod(body.paymentMethod);
   const paymentDate =
     typeof body.paymentDate === "string" && body.paymentDate
       ? body.paymentDate

@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
-import { getSessionUser, USER_COOKIE } from "@/lib/server-auth";
+import { getSessionUser, getUserByToken, destroySession, USER_COOKIE, IMPERSONATOR_COOKIE } from "@/lib/server-auth";
 import { dbGet, dbRun } from "@/lib/db";
 import { randomUUID, createHash } from "crypto";
 import { logAudit } from "@/lib/audit";
+
+function cookieValue(req: Request, name: string): string | undefined {
+  return req.headers.get("cookie")?.match(new RegExp(`${name}=([^;]+)`))?.[1];
+}
 
 export async function POST(req: Request) {
   const admin = await getSessionUser(req);
@@ -61,5 +65,60 @@ export async function POST(req: Request) {
     path: "/",
     maxAge: 60 * 60,
   });
+  // Stash the admin's own still-valid session token so "Stop impersonating"
+  // can swap straight back to it instead of forcing a re-login.
+  const adminToken = cookieValue(req, USER_COOKIE);
+  if (adminToken) {
+    res.cookies.set(IMPERSONATOR_COOKIE, adminToken, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60,
+    });
+  }
+  return res;
+}
+
+export async function DELETE(req: Request) {
+  const impersonatorToken = cookieValue(req, IMPERSONATOR_COOKIE);
+  if (!impersonatorToken) {
+    return Response.json({ error: "Not currently impersonating." }, { status: 400 });
+  }
+
+  const admin = await getUserByToken(impersonatorToken);
+  if (!admin) {
+    const res = NextResponse.json(
+      { error: "Your original session has expired. Please sign in again." },
+      { status: 401 },
+    );
+    res.cookies.delete(USER_COOKIE);
+    res.cookies.delete(IMPERSONATOR_COOKIE);
+    return res;
+  }
+
+  // Revoke the impersonation session outright rather than just abandoning it,
+  // so it can't be replayed after "Stop impersonating".
+  const impersonatedToken = cookieValue(req, USER_COOKIE);
+  const impersonated = impersonatedToken ? await getUserByToken(impersonatedToken) : null;
+  if (impersonatedToken) await destroySession(impersonatedToken);
+
+  await logAudit({
+    action: "stop_impersonate",
+    actor: { id: admin.id, email: admin.email, role: admin.role },
+    targetType: "user",
+    targetId: impersonated?.id,
+    details: impersonated ? { targetEmail: impersonated.email } : undefined,
+  });
+
+  const res = NextResponse.json({ ok: true });
+  res.cookies.set(USER_COOKIE, impersonatorToken, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 30 * 24 * 60 * 60,
+  });
+  res.cookies.delete(IMPERSONATOR_COOKIE);
   return res;
 }

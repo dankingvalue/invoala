@@ -1,11 +1,13 @@
-import { getCurrentUser } from "@/lib/server-auth";
+import { getCurrentUser, getImpersonatorAdmin } from "@/lib/server-auth";
 import { NavAuthActions, NavAuthLinks, MobileMenuButton } from "./NavAuth";
+import { ImpersonationBar } from "./ImpersonationBar";
 import Link from "next/link";
 
 export async function Nav() {
-  const user = await getCurrentUser();
+  const [user, impersonator] = await Promise.all([getCurrentUser(), getImpersonatorAdmin()]);
 
   return (
+    <>
     <header className="fixed inset-x-0 top-0 z-50 h-[72px] border-b border-[#e5e7eb] bg-white">
       <nav className="mx-auto flex h-full max-w-[1400px] items-center px-5 sm:px-8">
         <Link href="/" className="flex shrink-0 items-center gap-2.5">
@@ -23,21 +25,12 @@ export async function Nav() {
             {/* A real flex-1 layout item, not an absolutely-centered overlay —
                 it shares space with the logo and account cluster instead of
                 floating over them, so it can't visually collide the way an
-                absolute/translate-centered nav can at in-between widths. */}
-            <nav className="hidden flex-1 items-center justify-center gap-8 text-[14px] font-medium xl:flex">
-              <Link href="/#features" className="text-subtle transition-colors hover:text-ink">
-                Features
-              </Link>
-              <Link href="/#how" className="text-subtle transition-colors hover:text-ink">
-                How it works
-              </Link>
-              <Link href="/pricing" className="text-subtle transition-colors hover:text-ink">
-                Pricing
-              </Link>
-              <Link href="/#faq" className="text-subtle transition-colors hover:text-ink">
-                FAQ
-              </Link>
-              <span className="h-4 w-px bg-[#e5e7eb]" />
+                absolute/translate-centered nav can at in-between widths.
+                Only the app's own sections show here — marketing links
+                (Features/Pricing/FAQ) belong on the marketing site, not
+                inside the dashboard — which keeps this short enough to fit
+                (and skip the hamburger) at ordinary laptop widths. */}
+            <nav className="hidden flex-1 items-center justify-center gap-8 text-[14px] font-medium lg:flex">
               <Link href="/dashboard?tab=general" className="text-subtle transition-colors hover:text-ink">
                 Dashboard
               </Link>
@@ -51,7 +44,7 @@ export async function Nav() {
                 Settings
               </Link>
             </nav>
-            <div className="ml-auto flex shrink-0 items-center gap-3 xl:ml-0">
+            <div className="ml-auto flex shrink-0 items-center gap-3 lg:ml-0">
               <NavAuthActions role={user.role} />
               <MobileMenuButton role={user.role} />
             </div>
@@ -79,5 +72,9 @@ export async function Nav() {
         )}
       </nav>
     </header>
+    {user && impersonator ? (
+      <ImpersonationBar targetEmail={user.email} adminEmail={impersonator.email} />
+    ) : null}
+    </>
   );
 }

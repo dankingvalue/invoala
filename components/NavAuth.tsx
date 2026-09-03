@@ -26,7 +26,7 @@ export function NavAuthActions({ role }: { role: string }) {
   }
 
   return (
-    <div className="hidden items-center gap-3 xl:flex">
+    <div className="hidden items-center gap-3 lg:flex">
       <Link
         href="/pricing"
         className="flex items-center gap-2 rounded-[6px] bg-[#14532d] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0f3d22]"
@@ -142,7 +142,7 @@ export function MobileMenuButton({ role }: { role: string }) {
   }
 
   return (
-    <div className="relative xl:hidden" ref={menuRef}>
+    <div className="relative lg:hidden" ref={menuRef}>
       <button
         type="button"
         onClick={() => setOpen(!open)}

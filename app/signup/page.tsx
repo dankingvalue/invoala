@@ -9,9 +9,15 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function SignupPage() {
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
   if (await getCurrentUser()) redirect("/dashboard");
 
+  const { next } = await searchParams;
+  const loginHref = next ? `/login?next=${encodeURIComponent(next)}` : "/login";
   const googleEnabled = !!process.env.GOOGLE_CLIENT_ID;
 
   return (
@@ -35,7 +41,7 @@ export default async function SignupPage() {
         </div>
         <p className="mt-6 text-center text-sm text-subtle">
           Already have an account?{" "}
-          <Link href="/login" className="font-medium text-link hover:underline">
+          <Link href={loginHref} className="font-medium text-link hover:underline">
             Sign in
           </Link>
         </p>

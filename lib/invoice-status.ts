@@ -15,8 +15,11 @@ export function isLedgerStatus(value: unknown): value is LedgerStatus {
   return typeof value === "string" && (LEDGER_STATUSES as readonly string[]).includes(value);
 }
 
+// Invoala is used across many countries, so the method list stays limited to
+// genuinely universal rails — no region-specific mobile-money schemes (those
+// don't apply outside their home market). "Other" covers everything else,
+// paired with a free-text field so the client can note what was actually used.
 const PAYMENT_METHOD_DEFS = [
-  { value: "mpesa", label: "M-Pesa" },
   { value: "bank_transfer", label: "Bank transfer" },
   { value: "card", label: "Card" },
   { value: "cash", label: "Cash" },
@@ -32,6 +35,16 @@ export function isPaymentMethod(value: unknown): value is PaymentMethod {
 
 export function paymentMethodLabel(method: string): string {
   return PAYMENT_METHOD_DEFS.find((m) => m.value === method)?.label ?? method;
+}
+
+// payments.payment_method is a plain TEXT column (no CHECK constraint), so a
+// free-text label typed for "Other" (e.g. "Mobile money", "Cheque") is stored
+// verbatim instead of being collapsed to the literal word "other" — that's
+// what lets the UI show what the client actually wrote.
+export function sanitizePaymentMethod(value: unknown): string {
+  if (isPaymentMethod(value)) return value;
+  if (typeof value === "string" && value.trim()) return value.trim().slice(0, 60);
+  return "other";
 }
 
 // Round to cents so repeated add/subtract across payment records can't drift

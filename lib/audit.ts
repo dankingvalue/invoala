@@ -12,7 +12,8 @@ export type AuditAction =
   | "conversation_reply"
   | "settings_change"
   | "danger_reset"
-  | "impersonate";
+  | "impersonate"
+  | "stop_impersonate";
 
 export async function logAudit(opts: {
   action: AuditAction;

@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { dbGet, dbAll, dbRun } from "@/lib/db";
 import { computeTotals, type Invoice } from "@/lib/invoice";
-import { ledgerStatusForAmount, round2, type PaymentMethod } from "@/lib/invoice-status";
+import { ledgerStatusForAmount, round2 } from "@/lib/invoice-status";
 
 export type InvoiceRow = {
   id: string;
@@ -94,17 +94,22 @@ export async function upsertInvoice(
         : null;
 
   if (id) {
-    const owned = await dbGet(
-      "SELECT id FROM invoices WHERE id = ? AND user_id = ?",
+    const owned = await dbGet<{ id: string; status: string }>(
+      "SELECT id, status FROM invoices WHERE id = ? AND user_id = ?",
       id, userId
     );
     if (!owned) throw new Error("not-found");
+    // Editing an invoice's content (line items, client, etc.) must not touch
+    // its lifecycle status — that's ledger-derived (see lib/invoice-status.ts)
+    // and only ever changed explicitly via setInvoiceStatus/voidInvoice/the
+    // payments endpoints. Defaulting this to "draft" would silently demote a
+    // sent/paid/void invoice back to draft on every content-only save.
     await dbRun(
       `UPDATE invoices SET doc_type=?, number=?, currency=?, status=?, client_name=?, client_id=?, total=?, data=?, updated_at=? WHERE id=? AND user_id=?`,
       invoice.docType,
       invoice.invoiceNumber,
       invoice.currency,
-      opts.status || "draft",
+      opts.status || owned.status,
       invoice.clientName,
       clientId,
       total,
@@ -317,7 +322,10 @@ export async function listPayments(userId: string, invoiceId: string): Promise<P
 
 export type PaymentInput = {
   amount: number;
-  paymentMethod: PaymentMethod;
+  // payments.payment_method is a plain TEXT column — sanitizePaymentMethod()
+  // allows a free-text label (for "Other") through verbatim, so this isn't
+  // narrowed to the fixed PaymentMethod union.
+  paymentMethod: string;
   paymentDate: string;
   reference?: string;
   notes?: string;

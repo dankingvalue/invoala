@@ -3,7 +3,7 @@ import { trackEvent } from "@/lib/analytics";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { InvoiceRow } from "@/lib/data";
 import type { Subscription } from "@/lib/billing";
 import { PLAN_PITCHES } from "@/lib/plans-content";
@@ -13,7 +13,7 @@ import { RecordPaymentModal, type PaymentResult } from "@/components/dashboard/R
 import { PaymentHistoryModal } from "@/components/dashboard/PaymentHistoryModal";
 import { ConfirmDialog } from "@/components/dashboard/Modal";
 import { InvoiceRowMenu } from "@/components/dashboard/InvoiceRowMenu";
-import { DownloadIcon, EmailIcon, RecordPaymentIcon, EditIcon, SendIcon } from "@/components/dashboard/icons";
+import { DownloadIcon, EmailIcon, RecordPaymentIcon, EditIcon, SendIcon, SearchIcon } from "@/components/dashboard/icons";
 import { ClientsTab } from "@/components/dashboard/ClientsTab";
 
 type Props = {
@@ -22,6 +22,7 @@ type Props = {
   name: string;
   timezone: string;
   emailVerified: number;
+  hasPassword: boolean;
   initialInvoices: InvoiceRow[];
   subscription: Subscription | null;
   isPro: boolean;
@@ -211,6 +212,7 @@ export function DashboardClient({
   name: initialName,
   timezone: initialTimezone,
   emailVerified,
+  hasPassword: initialHasPassword,
   initialInvoices,
   subscription,
   isPro,
@@ -278,6 +280,7 @@ export function DashboardClient({
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [pwStatus, setPwStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [hasPassword, setHasPassword] = useState(initialHasPassword);
   const [pwMsg, setPwMsg] = useState("");
 
   const [deleteConfirm, setDeleteConfirm] = useState("");
@@ -520,7 +523,12 @@ export function DashboardClient({
       const json = (await res.json()) as { ok?: boolean; error?: string };
       if (res.ok && json.ok) {
         setPwStatus("done");
-        setPwMsg("Password updated. You've been signed in with a new session.");
+        setPwMsg(
+          hasPassword
+            ? "Password updated. You've been signed in with a new session."
+            : "Password set. You can now sign in with your email and this password, in addition to Google.",
+        );
+        setHasPassword(true);
         setCurrentPw("");
         setNewPw("");
       } else {
@@ -567,6 +575,8 @@ export function DashboardClient({
     return "USD";
   });
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [docSearch, setDocSearch] = useState("");
+  const [docStatusFilter, setDocStatusFilter] = useState<"all" | DisplayStatus>("all");
   const [rowBusy, setRowBusy] = useState<string | null>(null);
   const [recordPaymentRow, setRecordPaymentRow] = useState<InvoiceRow | null>(null);
   const [paymentHistoryRow, setPaymentHistoryRow] = useState<InvoiceRow | null>(null);
@@ -593,6 +603,20 @@ export function DashboardClient({
   const usdValue = (row: InvoiceRow, amount: number) =>
     amount * (fxInvoice?.[row.id]?.usd ?? 1);
   const inDisplay = (usd: number) => convertFx(usd, "USD", displayCcy, fxRates);
+
+  const filteredInvoices = useMemo(() => {
+    const q = docSearch.trim().toLowerCase();
+    return invoices.filter((row) => {
+      if (docStatusFilter !== "all" && displayStatusOf(row) !== docStatusFilter) return false;
+      if (!q) return true;
+      return (
+        (row.number || "").toLowerCase().includes(q) ||
+        (row.client_name || "").toLowerCase().includes(q) ||
+        (row.data?.clientEmail || "").toLowerCase().includes(q)
+      );
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invoices, docSearch, docStatusFilter]);
 
   const paidCount = invoices.filter((i) => i.status === "paid").length;
   const outstandingUsd = invoices.reduce((sum, i) => sum + usdValue(i, balanceOf(i)), 0);
@@ -757,6 +781,47 @@ export function DashboardClient({
       setNotice(json.ok ? "Reminder sent" : json.error || "Could not send the reminder.");
     } catch {
       setNotice("Network error while sending the reminder.");
+    }
+    setRowBusy(null);
+    setTimeout(() => setNotice(""), 3000);
+  }
+
+  async function saveRowClient(row: InvoiceRow) {
+    if (!row.client_name?.trim()) {
+      setNotice("This invoice has no client name to save.");
+      setTimeout(() => setNotice(""), 3000);
+      return;
+    }
+    setRowBusy(row.id);
+    try {
+      const res = await fetch("/api/clients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: row.client_name,
+          email: row.data?.clientEmail || "",
+          address: row.data?.clientAddress || "",
+          quickSave: true,
+        }),
+      });
+      const json = (await res.json()) as { ok?: boolean; client?: { id: string }; error?: string };
+      if (!res.ok || !json.ok || !json.client) {
+        setNotice(json.error || "Could not save this client.");
+      } else {
+        const linkRes = await fetch("/api/invoices", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: row.id, invoice: row.data, clientId: json.client.id }),
+        });
+        if (linkRes.ok) {
+          setInvoices((rows) => rows.map((r) => (r.id === row.id ? { ...r, client_id: json.client!.id } : r)));
+          setNotice("Client saved to your client book");
+        } else {
+          setNotice("Client saved, but could not link it to this invoice.");
+        }
+      }
+    } catch {
+      setNotice("Network error while saving this client.");
     }
     setRowBusy(null);
     setTimeout(() => setNotice(""), 3000);
@@ -1017,6 +1082,48 @@ export function DashboardClient({
                 </Link>
               </div>
 
+              <div className="mb-4 flex flex-wrap items-center gap-3">
+                <div className="relative min-w-[220px] flex-1">
+                  <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#9ca3af]" />
+                  <input
+                    type="text"
+                    value={docSearch}
+                    onChange={(e) => setDocSearch(e.target.value)}
+                    placeholder="Search by number, client, or email…"
+                    aria-label="Search documents"
+                    className="w-full rounded-lg border border-[#e5e7eb] bg-white py-2 pl-9 pr-3 text-[13px] text-ink outline-none focus:border-[#166534] focus:ring-[3px] focus:ring-[#166534]/20"
+                  />
+                </div>
+                <select
+                  aria-label="Filter by status"
+                  value={docStatusFilter}
+                  onChange={(e) => setDocStatusFilter(e.target.value as "all" | DisplayStatus)}
+                  className="rounded-lg border border-[#e5e7eb] bg-white px-3 py-2 text-[13px] font-medium text-ink outline-none focus:border-[#166534]"
+                >
+                  <option value="all">All statuses</option>
+                  {(Object.keys(STATUS_LABELS) as DisplayStatus[]).map((s) => (
+                    <option key={s} value={s}>
+                      {STATUS_LABELS[s]}
+                    </option>
+                  ))}
+                </select>
+                {docSearch || docStatusFilter !== "all" ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDocSearch("");
+                      setDocStatusFilter("all");
+                    }}
+                    className="text-[12px] font-medium text-[#6b7280] hover:text-ink"
+                  >
+                    Clear filters
+                  </button>
+                ) : null}
+                <p className="ml-auto text-[12px] text-[#6b7280]">
+                  {filteredInvoices.length} of {invoices.length}
+                </p>
+              </div>
+
               {selected.size > 0 ? (
                 <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-[#166534]/30 bg-[#f0fdf4] px-4 py-3">
                   <p className="text-[13px] font-medium text-[#166534]">
@@ -1065,6 +1172,20 @@ export function DashboardClient({
                     Create your first invoice →
                   </Link>
                 </div>
+              ) : filteredInvoices.length === 0 ? (
+                <div className="py-16 text-center">
+                  <p className="text-[15px] text-[#6b7280]">No documents match your search.</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDocSearch("");
+                      setDocStatusFilter("all");
+                    }}
+                    className="mt-3 inline-block text-[14px] font-medium text-[#166534] hover:underline"
+                  >
+                    Clear filters
+                  </button>
+                </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[820px] text-left text-[13px]">
@@ -1074,8 +1195,8 @@ export function DashboardClient({
                           <input
                             type="checkbox"
                             aria-label="Select all invoices"
-                            checked={invoices.length > 0 && selected.size === invoices.length}
-                            onChange={() => selectAllVisible(invoices)}
+                            checked={filteredInvoices.length > 0 && selected.size === filteredInvoices.length}
+                            onChange={() => selectAllVisible(filteredInvoices)}
                             className="h-4 w-4 accent-[#166534]"
                           />
                         </th>
@@ -1088,7 +1209,7 @@ export function DashboardClient({
                       </tr>
                     </thead>
                     <tbody>
-                      {invoices.map((row) => {
+                      {filteredInvoices.map((row) => {
                         const rowPaid = paidAmt(row);
                         const rowBalance = balanceOf(row);
                         const rowStatus = displayStatusOf(row);
@@ -1191,6 +1312,7 @@ export function DashboardClient({
                                   isDraft={isDraft}
                                   isVoid={isVoid}
                                   canReceipt={row.status === "paid"}
+                                  hasClient={!!row.client_id}
                                   busy={rowBusy === row.id}
                                   onView={() => void viewInvoice(row)}
                                   onDuplicate={() => void duplicateInvoiceRow(row)}
@@ -1199,6 +1321,7 @@ export function DashboardClient({
                                   onPaymentHistory={() => setPaymentHistoryRow(row)}
                                   onRemind={() => void sendReminder(row)}
                                   onReceipt={() => makeReceipt(row)}
+                                  onSaveClient={() => void saveRowClient(row)}
                                   onVoid={() => setConfirmAction({ type: "void", row })}
                                   onReopen={() => void reopenInvoiceRow(row)}
                                   onDelete={() => setConfirmAction({ type: "delete", row })}
@@ -1922,17 +2045,24 @@ export function DashboardClient({
               {/* Password */}
               <section>
                 <h2 className="text-[16px] font-bold text-ink">Password</h2>
+                {!hasPassword ? (
+                  <p className="mt-1 text-[13px] text-[#6b7280]">
+                    You signed up with Google, so there&apos;s no password on this account yet. Set one below to also be able to sign in with your email address.
+                  </p>
+                ) : null}
                 <form onSubmit={changePassword} className="mt-4 space-y-3">
-                  <div>
-                    <label className="mb-1.5 block text-[13px] font-medium text-[#6b7280]">Current password</label>
-                    <input
-                      type="password"
-                      required
-                      value={currentPw}
-                      onChange={(e) => setCurrentPw(e.target.value)}
-                      className={inputCls}
-                    />
-                  </div>
+                  {hasPassword ? (
+                    <div>
+                      <label className="mb-1.5 block text-[13px] font-medium text-[#6b7280]">Current password</label>
+                      <input
+                        type="password"
+                        required
+                        value={currentPw}
+                        onChange={(e) => setCurrentPw(e.target.value)}
+                        className={inputCls}
+                      />
+                    </div>
+                  ) : null}
                   <div>
                     <label className="mb-1.5 block text-[13px] font-medium text-[#6b7280]">New password (8+ characters)</label>
                     <input
@@ -1950,7 +2080,7 @@ export function DashboardClient({
                     disabled={pwStatus === "loading"}
                     className="rounded-lg bg-[#14532d] px-5 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0f3d22] disabled:opacity-50"
                   >
-                    {pwStatus === "loading" ? "Saving…" : "Change password"}
+                    {pwStatus === "loading" ? "Saving…" : hasPassword ? "Change password" : "Set password"}
                   </button>
                 </form>
               </section>

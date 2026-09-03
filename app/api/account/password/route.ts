@@ -25,8 +25,15 @@ export async function POST(req: Request) {
     "SELECT password_hash FROM users WHERE id = ?",
     user.id
   );
+  if (!row) {
+    return Response.json({ error: "Account not found." }, { status: 404 });
+  }
 
-  if (!row || !verifyPassword(currentPassword, row.password_hash)) {
+  // Google-only accounts have password_hash = '' (see
+  // app/api/auth/google/callback) — there's no current password to check,
+  // so the first password they set doesn't need one.
+  const hasPassword = !!row.password_hash;
+  if (hasPassword && !verifyPassword(currentPassword, row.password_hash)) {
     return Response.json({ error: "Current password is incorrect." }, { status: 400 });
   }
 

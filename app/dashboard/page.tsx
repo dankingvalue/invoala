@@ -90,6 +90,7 @@ export default async function DashboardPage({
             name={user.name}
             timezone={user.timezone}
             emailVerified={user.email_verified}
+            hasPassword={user.has_password}
             initialInvoices={invoices}
             subscription={subscription}
             isPro={pro}

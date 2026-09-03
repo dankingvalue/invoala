@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { jsPDF } from "jspdf";
 import {
   clearDraft,
@@ -157,9 +157,15 @@ export function InvoiceGenerator({
   // the second pass find the key already gone and silently reset the form
   // to blank right after the first pass correctly loaded it.
   const hydratedOnceRef = useRef(false);
+  const autosaveHandledRef = useRef(false);
   const router = useRouter();
   const pathname = usePathname();
-  const signupHref = `/signup?next=${encodeURIComponent(pathname || "/invoice-generator")}`;
+  const searchParams = useSearchParams();
+  // "autosave=1" round-trips through /signup and /login (both preserve
+  // `next` verbatim) so that landing back here — logged in — can finish the
+  // save the user actually asked for, instead of just showing them their
+  // draft again and leaving them to notice it wasn't saved.
+  const signupHref = `/signup?next=${encodeURIComponent(`${pathname || "/invoice-generator"}?autosave=1`)}`;
 
   useEffect(() => {
     trackEvent("invoice_started");
@@ -215,6 +221,23 @@ export function InvoiceGenerator({
      
     setHydrated(true);
   }, [preset]);
+
+  // Finishes the save a logged-out user asked for before being sent to
+  // /signup or /login — see signupHref. Their draft survives the round trip
+  // in localStorage regardless (loadDraft, above), but without this they'd
+  // land back here still logged in with an unsaved form and no indication
+  // anything was left to do.
+  useEffect(() => {
+    if (!hydrated || !user || autosaveHandledRef.current) return;
+    if (searchParams?.get("autosave") !== "1") return;
+    autosaveHandledRef.current = true;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("autosave");
+    const qs = params.toString();
+    router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+    void saveToAccount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, user, searchParams, pathname, router]);
 
   useEffect(() => {
     if (!user) return;

@@ -9,9 +9,15 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
   if (await getCurrentUser()) redirect("/dashboard");
 
+  const { next } = await searchParams;
+  const signupHref = next ? `/signup?next=${encodeURIComponent(next)}` : "/signup";
   const googleEnabled = !!process.env.GOOGLE_CLIENT_ID;
 
   return (
@@ -33,7 +39,7 @@ export default async function LoginPage() {
         </div>
         <p className="mt-6 text-center text-sm text-subtle">
           New to Invoala?{" "}
-          <Link href="/signup" className="font-medium text-link hover:underline">
+          <Link href={signupHref} className="font-medium text-link hover:underline">
             Create an account
           </Link>
         </p>

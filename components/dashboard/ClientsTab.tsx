@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatMoney, newId } from "@/lib/invoice";
 import { remainingBalance } from "@/lib/invoice-status";
 import type { ClientRow, ClientFinancials } from "@/lib/data";
 import { ConfirmDialog } from "@/components/dashboard/Modal";
 import { ClientModal } from "@/components/dashboard/ClientModal";
 import { ClientProfile } from "@/components/dashboard/ClientProfile";
-import { PlusIcon, SearchIcon, ViewIcon, EditIcon, ArchiveIcon, DeleteIcon, EmailIcon, MoreIcon, ReceiptIcon, HistoryIcon, SendIcon, BuildingIcon } from "@/components/dashboard/icons";
+import { PlusIcon, SearchIcon, ViewIcon, EditIcon, ArchiveIcon, DeleteIcon, EmailIcon, ReceiptIcon, HistoryIcon, SendIcon, BuildingIcon } from "@/components/dashboard/icons";
+import { RowMenu, type RowMenuItem } from "@/components/dashboard/RowMenu";
 
 type Team = { id: string; name: string };
 
@@ -39,70 +40,24 @@ function ClientRowMenu({
   onArchiveToggle: () => void;
   onDelete: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function close(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    if (open) document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [open]);
-
-  function pick(fn: () => void) {
-    return () => {
-      setOpen(false);
-      fn();
-    };
-  }
-
-  const items = [
-    { key: "view", label: "View client", icon: <ViewIcon />, onClick: pick(onView) },
-    { key: "invoice", label: "Create invoice", icon: <PlusIcon />, onClick: pick(onNewInvoice) },
-    { key: "quote", label: "Create quote", icon: <ReceiptIcon />, onClick: pick(onNewQuote) },
-    { key: "statement", label: "Send statement", icon: <SendIcon />, onClick: pick(onStatement) },
-    { key: "history", label: "View payments", icon: <HistoryIcon />, onClick: pick(onView) },
-    { key: "email", label: "Email client", icon: <EmailIcon />, onClick: pick(onEmail) },
-    { key: "edit", label: "Edit client", icon: <EditIcon />, onClick: pick(onEdit) },
+  const items: RowMenuItem[] = [
+    { key: "view", label: "View client", icon: <ViewIcon />, onClick: onView },
+    { key: "invoice", label: "Create invoice", icon: <PlusIcon />, onClick: onNewInvoice },
+    { key: "quote", label: "Create quote", icon: <ReceiptIcon />, onClick: onNewQuote },
+    { key: "statement", label: "Send statement", icon: <SendIcon />, onClick: onStatement },
+    { key: "history", label: "View payments", icon: <HistoryIcon />, onClick: onView },
+    { key: "email", label: "Email client", icon: <EmailIcon />, onClick: onEmail },
+    { key: "edit", label: "Edit client", icon: <EditIcon />, onClick: onEdit },
     {
       key: "archive",
       label: client.status === "archived" ? "Reactivate client" : "Archive client",
       icon: <ArchiveIcon />,
-      onClick: pick(onArchiveToggle),
+      onClick: onArchiveToggle,
     },
-    { key: "delete", label: "Delete client", icon: <DeleteIcon />, onClick: pick(onDelete), danger: true },
+    { key: "delete", label: "Delete client", icon: <DeleteIcon />, onClick: onDelete, danger: true },
   ];
 
-  return (
-    <div className="relative inline-block" ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-label="More actions"
-        className="flex h-7 w-7 items-center justify-center rounded-full text-[#6b7280] transition hover:bg-[#f3f4f6] hover:text-ink"
-      >
-        <MoreIcon />
-      </button>
-      {open ? (
-        <div role="menu" className="absolute right-0 top-full z-20 mt-1 w-52 rounded-xl border border-[#e5e7eb] bg-white py-1 shadow-lg">
-          {items.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              onClick={item.onClick}
-              className={`flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-[13px] transition ${
-                item.danger ? "text-[#d70015] hover:bg-[#fef2f2]" : "text-ink hover:bg-[#f3f4f6]"
-              }`}
-            >
-              {item.icon}
-              {item.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
+  return <RowMenu items={items} />;
 }
 
 export function ClientsTab({ teams }: { teams: Team[] }) {

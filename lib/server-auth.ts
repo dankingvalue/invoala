@@ -3,6 +3,11 @@ import { cookies } from "next/headers";
 import { dbGet, dbRun } from "@/lib/db";
 
 export const USER_COOKIE = "invoala_session";
+// Holds the admin's own session token while they're impersonating someone
+// else (whose session then occupies USER_COOKIE) — see
+// app/api/admin/impersonate/route.ts. Lets "Stop impersonating" swap back to
+// the admin's real session instead of requiring them to log in again.
+export const IMPERSONATOR_COOKIE = "invoala_impersonator";
 export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 export type SessionUser = {
@@ -12,6 +17,10 @@ export type SessionUser = {
   role: string;
   email_verified: number;
   timezone: string;
+  // Google signups get password_hash = '' (see app/api/auth/google/callback) —
+  // they have no password to verify a "current password" against, so the
+  // Security tab needs to know to offer "set a password" instead of "change".
+  has_password: boolean;
 };
 
 export function validatePassword(password: string): string | null {
@@ -63,14 +72,22 @@ export async function destroyAllSessions(userId: string): Promise<void> {
 
 export async function getUserByToken(token: string | undefined): Promise<SessionUser | null> {
   if (!token) return null;
-  const row = await dbGet<{ id: string; email: string; name: string; role: string; email_verified: number; timezone: string; expires_at: number }>(
-    `SELECT u.id, u.email, u.name, u.role, u.email_verified, u.timezone, s.expires_at
+  const row = await dbGet<{ id: string; email: string; name: string; role: string; email_verified: number; timezone: string; password_hash: string; expires_at: number }>(
+    `SELECT u.id, u.email, u.name, u.role, u.email_verified, u.timezone, u.password_hash, s.expires_at
      FROM sessions s JOIN users u ON u.id = s.user_id
      WHERE s.token_hash = ?`,
     hashToken(token)
   );
   if (!row || row.expires_at < Date.now()) return null;
-  return { id: row.id, email: row.email, name: row.name, role: row.role, email_verified: row.email_verified, timezone: row.timezone };
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    role: row.role,
+    email_verified: row.email_verified,
+    timezone: row.timezone,
+    has_password: !!row.password_hash,
+  };
 }
 
 export async function getSessionUser(req: Request): Promise<SessionUser | null> {
@@ -81,6 +98,13 @@ export async function getSessionUser(req: Request): Promise<SessionUser | null> 
 export async function getCurrentUser(): Promise<SessionUser | null> {
   const store = await cookies();
   return getUserByToken(store.get(USER_COOKIE)?.value);
+}
+
+// Non-null only while the current session is an admin impersonating someone
+// else — see IMPERSONATOR_COOKIE. Used to show the "Impersonating…" banner.
+export async function getImpersonatorAdmin(): Promise<SessionUser | null> {
+  const store = await cookies();
+  return getUserByToken(store.get(IMPERSONATOR_COOKIE)?.value);
 }
 
 export function hasRole(user: SessionUser | null, roles: string[]): boolean {

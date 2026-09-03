@@ -28,7 +28,8 @@ export function RecordPaymentModal({
 }) {
   const remaining = remainingBalance(total, amountPaid);
   const [amount, setAmount] = useState(() => (remaining > 0 ? String(remaining) : ""));
-  const [method, setMethod] = useState<PaymentMethod>("mpesa");
+  const [method, setMethod] = useState<PaymentMethod>("bank_transfer");
+  const [otherLabel, setOtherLabel] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
@@ -37,7 +38,8 @@ export function RecordPaymentModal({
 
   function reset() {
     setAmount(remaining > 0 ? String(remaining) : "");
-    setMethod("mpesa");
+    setMethod("bank_transfer");
+    setOtherLabel("");
     setDate(new Date().toISOString().slice(0, 10));
     setReference("");
     setNotes("");
@@ -78,7 +80,7 @@ export function RecordPaymentModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: parsedAmount,
-          paymentMethod: method,
+          paymentMethod: method === "other" && otherLabel.trim() ? otherLabel.trim() : method,
           paymentDate: date,
           reference,
           notes,
@@ -171,6 +173,23 @@ export function RecordPaymentModal({
           </div>
         </div>
 
+        {method === "other" ? (
+          <div>
+            <label htmlFor="pay-method-other" className="mb-1 block text-[13px] font-medium text-[#374151]">
+              Specify method <span className="text-[#9ca3af]">(optional)</span>
+            </label>
+            <input
+              id="pay-method-other"
+              type="text"
+              value={otherLabel}
+              onChange={(e) => setOtherLabel(e.target.value)}
+              placeholder="e.g. Mobile money, cheque, crypto…"
+              maxLength={60}
+              className="w-full rounded-xl border border-[#e5e7eb] px-3.5 py-2.5 text-[15px] text-ink outline-none placeholder:text-[#9ca3af] focus:border-[#166534] focus:ring-[3px] focus:ring-[#166534]/20"
+            />
+          </div>
+        ) : null}
+
         <div>
           <label htmlFor="pay-ref" className="mb-1 block text-[13px] font-medium text-[#374151]">
             Payment reference <span className="text-[#9ca3af]">(optional)</span>
@@ -180,7 +199,7 @@ export function RecordPaymentModal({
             type="text"
             value={reference}
             onChange={(e) => setReference(e.target.value)}
-            placeholder="M-Pesa code, transfer ref…"
+            placeholder="Transaction ID, transfer ref…"
             className="w-full rounded-xl border border-[#e5e7eb] px-3.5 py-2.5 text-[15px] text-ink outline-none placeholder:text-[#9ca3af] focus:border-[#166534] focus:ring-[3px] focus:ring-[#166534]/20"
           />
         </div>
