@@ -6,7 +6,7 @@ import { getSubscription, isUserPro, isPlan } from "@/lib/billing";
 import { getActivePromo } from "@/lib/promo";
 import { runRecurringPass } from "@/lib/recurring";
 import { ensureLatestRates, ratesForDay } from "@/lib/fx";
-import { listClients, listInvoices, type InvoiceRow } from "@/lib/data";
+import { listInvoices, type InvoiceRow } from "@/lib/data";
 import { DashboardClient } from "./DashboardClient";
 import { Nav } from "@/components/Nav";
 import { TrustStrip } from "@/components/TrustStrip";
@@ -28,7 +28,6 @@ export default async function DashboardPage({
 
   const params = await searchParams;
   const invoices = await listInvoices(user.id);
-  const clients = await listClients(user.id);
   const subscription = await getSubscription(user.id);
   const pro = await isUserPro(user.id, user.role);
   const promo = await getActivePromo(user.id).catch(() => null);
@@ -92,7 +91,6 @@ export default async function DashboardPage({
             timezone={user.timezone}
             emailVerified={user.email_verified}
             initialInvoices={invoices}
-            initialClients={clients}
             subscription={subscription}
             isPro={pro}
             promo={promo ? { code: promo.code, expires_at: promo.expires_at } : null}

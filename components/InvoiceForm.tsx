@@ -44,6 +44,8 @@ export function InvoiceForm({
   showQuoteMode = false,
   showRecurring = false,
   clients = [],
+  onClientSelect,
+  onClientSaved,
 }: {
   invoice: Invoice;
   onChange: (patch: Partial<Invoice>) => void;
@@ -54,15 +56,23 @@ export function InvoiceForm({
   showQuoteMode?: boolean;
   showRecurring?: boolean;
   clients?: ClientRow[];
+  /** Which saved client (if any) the invoice's Bill-to fields currently match — so the invoice can be linked by ID, not just by name, when saved. */
+  onClientSelect?: (clientId: string | null) => void;
+  /** Fires after "Save as new client" succeeds, so the caller can add it to its own client list without a refetch. */
+  onClientSaved?: (client: ClientRow) => void;
 }) {
   const [selectedClientId, setSelectedClientId] = useState<string>("new");
-  // Payment details section is collapsed by default; it auto-opens when an
-  // invoice already carries a payment link or instructions (e.g. a template).
-  const [payUiOpen, setPayUiOpen] = useState(false);
+  const [savingClient, setSavingClient] = useState(false);
+  const [clientSaveNote, setClientSaveNote] = useState("");
+  // Whether the payment section is shown on the invoice itself (preview/PDF)
+  // is real invoice data (`paymentEnabled`), not local UI state — otherwise
+  // toggling it off still leaves the underlying text rendering on the
+  // document. Off by default; a saved invoice/template restores whatever it
+  // was last set to.
+  const payUiOpen = invoice.paymentEnabled;
   const [payMode, setPayMode] = useState<"link" | "instructions">(() =>
     invoice.paymentLink ? "link" : "instructions",
   );
-  const paymentSectionOpen = payUiOpen || !!invoice.paymentLink || !!invoice.paymentInstructions;
 
   function handleLogo(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -76,18 +86,69 @@ export function InvoiceForm({
 
   function selectClient(id: string) {
     setSelectedClientId(id);
+    setClientSaveNote("");
     if (id === "new") {
       onChange({ clientName: "", clientEmail: "", clientAddress: "" });
+      onClientSelect?.(null);
     } else {
       const client = clients.find((c) => c.id === id);
       if (client) {
-        onChange({
+        const patch: Partial<Invoice> = {
           clientName: client.name,
           clientEmail: client.email,
           clientAddress: client.address,
-        });
+        };
+        // Client-level billing defaults auto-fill the invoice; the user can
+        // still change anything below afterward.
+        if (client.currency) patch.currency = client.currency;
+        if (typeof client.default_tax_rate === "number") patch.taxRate = client.default_tax_rate;
+        if (typeof client.default_discount === "number") patch.discount = client.default_discount;
+        if (client.default_notes) patch.notes = client.default_notes;
+        if (client.default_payment_instructions) {
+          patch.paymentInstructions = client.default_payment_instructions;
+          patch.paymentEnabled = true;
+        }
+        if (typeof client.payment_terms_days === "number") {
+          const issue = invoice.issueDate ? new Date(invoice.issueDate + "T00:00:00Z") : new Date();
+          const due = new Date(issue);
+          due.setUTCDate(due.getUTCDate() + client.payment_terms_days);
+          patch.dueDate = due.toISOString().slice(0, 10);
+        }
+        onChange(patch);
       }
+      onClientSelect?.(id);
     }
+  }
+
+  async function saveAsNewClient() {
+    if (!invoice.clientName.trim() || savingClient) return;
+    setSavingClient(true);
+    setClientSaveNote("");
+    try {
+      const res = await fetch("/api/clients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: invoice.clientName,
+          email: invoice.clientEmail,
+          address: invoice.clientAddress,
+          quickSave: true,
+        }),
+      });
+      const json = (await res.json()) as { ok?: boolean; client?: ClientRow; error?: string };
+      if (res.ok && json.ok && json.client) {
+        setSelectedClientId(json.client.id);
+        onClientSelect?.(json.client.id);
+        onClientSaved?.(json.client);
+        setClientSaveNote("Saved to your client book.");
+      } else {
+        setClientSaveNote(json.error || "Could not save this client.");
+      }
+    } catch {
+      setClientSaveNote("Network error while saving.");
+    }
+    setSavingClient(false);
+    setTimeout(() => setClientSaveNote(""), 3000);
   }
 
   return (
@@ -202,7 +263,7 @@ export function InvoiceForm({
               value={invoice.clientName}
               onChange={(e) => {
                 onChange({ clientName: e.target.value });
-                if (selectedClientId !== "new") setSelectedClientId("new");
+                if (selectedClientId !== "new") { setSelectedClientId("new"); onClientSelect?.(null); }
               }}
               placeholder="Acme Inc."
             />
@@ -215,7 +276,7 @@ export function InvoiceForm({
               value={invoice.clientEmail}
               onChange={(e) => {
                 onChange({ clientEmail: e.target.value });
-                if (selectedClientId !== "new") setSelectedClientId("new");
+                if (selectedClientId !== "new") { setSelectedClientId("new"); onClientSelect?.(null); }
               }}
               placeholder="ap@acme.com"
             />
@@ -227,11 +288,24 @@ export function InvoiceForm({
               value={invoice.clientAddress}
               onChange={(e) => {
                 onChange({ clientAddress: e.target.value });
-                if (selectedClientId !== "new") setSelectedClientId("new");
+                if (selectedClientId !== "new") { setSelectedClientId("new"); onClientSelect?.(null); }
               }}
               placeholder={"456 Broadway\nNew York, NY 10013"}
             />
           </Field>
+          {selectedClientId === "new" && invoice.clientName.trim() ? (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void saveAsNewClient()}
+                disabled={savingClient}
+                className="text-sm font-medium text-link transition-opacity hover:opacity-70 disabled:opacity-50"
+              >
+                {savingClient ? "Saving…" : "+ Save as new client"}
+              </button>
+              {clientSaveNote ? <span className="text-xs text-subtle">{clientSaveNote}</span> : null}
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -542,14 +616,14 @@ export function InvoiceForm({
       {/* Payment details: optional, off by default */}
       <section
         className={`rounded-2xl border p-4 transition-colors ${
-          paymentSectionOpen ? "border-accent/30 bg-white" : "border-hairline bg-white"
+          payUiOpen ? "border-accent/30 bg-white" : "border-hairline bg-white"
         }`}
       >
         <button
           type="button"
           role="switch"
-          aria-checked={paymentSectionOpen}
-          onClick={() => setPayUiOpen((v) => !v)}
+          aria-checked={payUiOpen}
+          onClick={() => onChange({ paymentEnabled: !payUiOpen })}
           className="flex w-full items-center justify-between gap-3 rounded-xl text-left"
         >
           <span>
@@ -557,7 +631,7 @@ export function InvoiceForm({
               Payment details
             </span>
             <span className="mt-0.5 block text-[13px] text-subtle">
-              {paymentSectionOpen
+              {payUiOpen
                 ? "Pay-online link or bank/payment instructions shown on the invoice."
                 : "Add a pay-online link or payment instructions to your invoice."}
             </span>
@@ -565,15 +639,15 @@ export function InvoiceForm({
           <span
             aria-hidden="true"
             className={`relative h-8 w-14 shrink-0 rounded-full transition-colors ${
-              paymentSectionOpen ? "bg-accent" : "bg-[#e4e4e9]"
+              payUiOpen ? "bg-accent" : "bg-[#e4e4e9]"
             }`}
           >
             <span
               className={`absolute top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow transition-all ${
-                paymentSectionOpen ? "left-7" : "left-1"
+                payUiOpen ? "left-7" : "left-1"
               }`}
             >
-              {paymentSectionOpen ? (
+              {payUiOpen ? (
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#166534" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M20 6 9 17l-5-5" />
                 </svg>
@@ -587,7 +661,7 @@ export function InvoiceForm({
           </span>
         </button>
 
-        {paymentSectionOpen ? (
+        {payUiOpen ? (
           <div className="mt-4 space-y-4">
             <div className="flex flex-wrap gap-2">
               {(

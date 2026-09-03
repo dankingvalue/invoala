@@ -211,6 +211,36 @@ async function ensureSchema(): Promise<void> {
       rates TEXT NOT NULL,
       fetched_at INTEGER NOT NULL
     )` },
+    { sql: `CREATE TABLE IF NOT EXISTS payments (
+      id TEXT PRIMARY KEY,
+      invoice_id TEXT NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      amount REAL NOT NULL,
+      payment_method TEXT NOT NULL DEFAULT 'other',
+      payment_date TEXT NOT NULL,
+      reference TEXT NOT NULL DEFAULT '',
+      notes TEXT NOT NULL DEFAULT '',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_payments_invoice ON payments(invoice_id, payment_date)` },
+    { sql: `CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at INTEGER NOT NULL
+    )` },
+    { sql: `CREATE TABLE IF NOT EXISTS usage_events (
+      id TEXT PRIMARY KEY,
+      event TEXT NOT NULL,
+      visitor_id TEXT NOT NULL,
+      user_id TEXT,
+      ip_hash TEXT,
+      meta TEXT,
+      created_at INTEGER NOT NULL
+    )` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_usage_events_created ON usage_events(created_at)` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_usage_events_visitor ON usage_events(visitor_id, created_at)` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_usage_events_event ON usage_events(event, created_at)` },
   ]);
 
   // Migration: add viewed_at if missing (ALTER TABLE throws if column exists)
@@ -226,6 +256,58 @@ async function ensureSchema(): Promise<void> {
   // Migration: next scheduled run for recurring invoices
   try {
     await db.execute("ALTER TABLE invoices ADD COLUMN recurring_next_at INTEGER");
+  } catch {}
+
+  // Migration: client management fields (extends the existing clients table
+  // rather than a second customer table — see lib/data.ts client functions).
+  for (const col of [
+    "status TEXT NOT NULL DEFAULT 'active'",
+    "contact_name TEXT NOT NULL DEFAULT ''",
+    "phone TEXT NOT NULL DEFAULT ''",
+    "website TEXT NOT NULL DEFAULT ''",
+    "city TEXT NOT NULL DEFAULT ''",
+    "state TEXT NOT NULL DEFAULT ''",
+    "country TEXT NOT NULL DEFAULT ''",
+    "postal_code TEXT NOT NULL DEFAULT ''",
+    "tax_number TEXT NOT NULL DEFAULT ''",
+    "business_reg_number TEXT NOT NULL DEFAULT ''",
+    "currency TEXT NOT NULL DEFAULT ''",
+    "payment_terms_days INTEGER",
+    "default_tax_rate REAL",
+    "default_discount REAL",
+    "default_notes TEXT NOT NULL DEFAULT ''",
+    "default_payment_instructions TEXT NOT NULL DEFAULT ''",
+    "internal_notes TEXT NOT NULL DEFAULT ''",
+    "updated_at INTEGER",
+  ]) {
+    try {
+      await db.execute(`ALTER TABLE clients ADD COLUMN ${col}`);
+    } catch {}
+  }
+  try {
+    await db.execute("CREATE INDEX IF NOT EXISTS idx_clients_status ON clients(user_id, status)");
+  } catch {}
+
+  // Migration: a real client_id link on invoices. Previously invoices only
+  // stored a denormalized client_name string, which can't support accurate
+  // per-client totals (name edits/typos silently break the link). Nullable +
+  // ON DELETE SET NULL so archiving/deleting a client never touches its
+  // historical invoices.
+  try {
+    await db.execute("ALTER TABLE invoices ADD COLUMN client_id TEXT REFERENCES clients(id) ON DELETE SET NULL");
+  } catch {}
+  try {
+    await db.execute("CREATE INDEX IF NOT EXISTS idx_invoices_client ON invoices(client_id)");
+  } catch {}
+  // One-time best-effort backfill for invoices created before client_id
+  // existed: link by exact (case-insensitive) name match for the same user.
+  // Safe to re-run — it only ever fills NULLs.
+  try {
+    await db.execute(`UPDATE invoices SET client_id = (
+      SELECT c.id FROM clients c
+      WHERE c.user_id = invoices.user_id AND c.name = invoices.client_name COLLATE NOCASE
+      LIMIT 1
+    ) WHERE client_id IS NULL AND client_name != ''`);
   } catch {}
 
   try {
@@ -262,7 +344,15 @@ export async function dbAll<T = Record<string, unknown>>(sql: string, ...args: u
   await ensureSchemaOnce();
   const db = getDb();
   const result = await db.execute({ sql, args: args as (string | number | null)[] });
-  return result.rows as T[];
+  // libsql's Row objects behave like plain objects for property access but
+  // aren't recognized as one by React's Server->Client serialization check
+  // ("Only plain objects can be passed to Client Components... Classes or
+  // other objects with methods are not supported") whenever a query result
+  // is passed straight through as a prop (e.g. app/dashboard/page.tsx's
+  // initialInvoices/initialClients). Spreading rebuilds each row as a real
+  // Object.prototype object with the same data, which fixes that everywhere
+  // this function is used instead of patching every call site.
+  return result.rows.map((row) => ({ ...row })) as T[];
 }
 
 export async function dbGet<T = Record<string, unknown>>(sql: string, ...args: unknown[]): Promise<T | undefined> {

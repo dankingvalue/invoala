@@ -26,10 +26,10 @@ export function NavAuthActions({ role }: { role: string }) {
   }
 
   return (
-    <div className="hidden items-center gap-3 md:flex">
+    <div className="hidden items-center gap-3 xl:flex">
       <Link
         href="/pricing"
-        className="hidden items-center gap-2 rounded-[6px] bg-[#14532d] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0f3d22] md:flex"
+        className="flex items-center gap-2 rounded-[6px] bg-[#14532d] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0f3d22]"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
@@ -142,7 +142,7 @@ export function MobileMenuButton({ role }: { role: string }) {
   }
 
   return (
-    <div className="relative md:hidden" ref={menuRef}>
+    <div className="relative xl:hidden" ref={menuRef}>
       <button
         type="button"
         onClick={() => setOpen(!open)}

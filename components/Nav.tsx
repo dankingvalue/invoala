@@ -7,8 +7,8 @@ export async function Nav() {
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 h-[72px] border-b border-[#e5e7eb] bg-white">
-      <nav className="mx-auto flex h-full max-w-[1400px] items-center justify-between px-5 sm:px-8">
-        <Link href="/" className="flex items-center gap-2.5">
+      <nav className="mx-auto flex h-full max-w-[1400px] items-center px-5 sm:px-8">
+        <Link href="/" className="flex shrink-0 items-center gap-2.5">
           <svg width="28" height="28" viewBox="0 0 64 64" aria-hidden="true">
             <rect width="64" height="64" rx="14.5" fill="#166534" />
             <path d="M35.5 10 19 37h9.5l-3 17L43 27h-9.5l2-17z" fill="#fff" />
@@ -20,7 +20,11 @@ export async function Nav() {
 
         {user ? (
           <>
-            <nav className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden items-center gap-8 text-[14px] font-medium md:flex">
+            {/* A real flex-1 layout item, not an absolutely-centered overlay —
+                it shares space with the logo and account cluster instead of
+                floating over them, so it can't visually collide the way an
+                absolute/translate-centered nav can at in-between widths. */}
+            <nav className="hidden flex-1 items-center justify-center gap-8 text-[14px] font-medium xl:flex">
               <Link href="/#features" className="text-subtle transition-colors hover:text-ink">
                 Features
               </Link>
@@ -47,14 +51,14 @@ export async function Nav() {
                 Settings
               </Link>
             </nav>
-            <div className="flex items-center gap-3">
+            <div className="ml-auto flex shrink-0 items-center gap-3 xl:ml-0">
               <NavAuthActions role={user.role} />
               <MobileMenuButton role={user.role} />
             </div>
           </>
         ) : (
           <>
-            <nav className="hidden items-center gap-8 text-[14px] font-medium md:flex">
+            <nav className="hidden flex-1 items-center justify-center gap-8 text-[14px] font-medium md:flex">
               <a href="#features" className="text-subtle transition-colors hover:text-ink">
                 Features
               </a>
@@ -68,7 +72,9 @@ export async function Nav() {
                 FAQ
               </a>
             </nav>
-            <NavAuthLinks />
+            <div className="ml-auto shrink-0 md:ml-0">
+              <NavAuthLinks />
+            </div>
           </>
         )}
       </nav>

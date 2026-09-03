@@ -42,6 +42,13 @@ export async function POST(req: Request) {
   if (audience === "one") {
     if (!toEmail) return Response.json({ error: "Recipient email required." }, { status: 400 });
     recipients = [toEmail];
+  } else if (audience === "newsletter") {
+    // Newsletter subscribers are captured emails, not necessarily registered
+    // accounts, so they live in their own table rather than `users`.
+    const rows = await dbAll<{ email: string }>(
+      `SELECT email FROM newsletter_subscribers LIMIT ${MAX_BATCH}`
+    );
+    recipients = rows.map((r) => r.email);
   } else {
     const filter =
       audience === "pro"

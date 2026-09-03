@@ -1,9 +1,19 @@
 import { themeColor, type Invoice } from "@/lib/invoice";
+import { INTER_400_BASE64, INTER_600_BASE64, INTER_700_BASE64 } from "@/lib/invoice-font";
 
 // One source of truth for the *printed* invoice design — the same layout
 // language as the generator preview / homepage download. Rendered to PDF via
 // headless Chromium, so every output (dashboard download, email attachment,
 // recurring) is identical.
+//
+// The homepage/generator PDF is a screenshot of the browser's own rendering,
+// so it always gets a real system font (SF Pro, Segoe UI, Roboto — whatever
+// the visitor's OS provides). Headless Chromium on Vercel's Linux runtime has
+// none of those installed, so without this it silently falls back to a
+// generic default font and looks noticeably plainer. Embedding Inter as a
+// base64 @font-face (lib/invoice-font.ts) fixes that consistently, with zero
+// network dependency during render — matching how deliberately this pipeline
+// avoids anything that could make PDF generation flaky.
 
 const INK = "#1d1d1f";
 const SUBTLE = "#6e6e73";
@@ -100,13 +110,31 @@ export function buildInvoiceHtml(invoice: Invoice, { money }: { money: (n: numbe
 <meta charset="utf-8" />
 <style>
   @page { size: A4; margin: 0; }
+  @font-face {
+    font-family: "Inter";
+    font-weight: 400;
+    font-style: normal;
+    src: url(data:font/woff2;base64,${INTER_400_BASE64}) format("woff2");
+  }
+  @font-face {
+    font-family: "Inter";
+    font-weight: 600;
+    font-style: normal;
+    src: url(data:font/woff2;base64,${INTER_600_BASE64}) format("woff2");
+  }
+  @font-face {
+    font-family: "Inter";
+    font-weight: 700;
+    font-style: normal;
+    src: url(data:font/woff2;base64,${INTER_700_BASE64}) format("woff2");
+  }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   body {
     width: 210mm;
     min-height: 297mm;
     color: ${INK};
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
   .sheet { padding: 11mm 13mm 14mm; }
@@ -203,7 +231,7 @@ export function buildInvoiceHtml(invoice: Invoice, { money }: { money: (n: numbe
 
   ${customFields.length > 0 ? `<div class="fields">${fieldsHtml}</div>` : ""}
 
-  ${invoice.paymentInstructions || invoice.paymentLink ? `
+  ${invoice.paymentEnabled && (invoice.paymentInstructions || invoice.paymentLink) ? `
     <div class="pay">
       <div class="sec">How to pay</div>
       ${invoice.paymentInstructions ? `<div class="body">${esc(invoice.paymentInstructions)}</div>` : ""}

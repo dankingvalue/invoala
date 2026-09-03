@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { dbGet, dbRun } from "@/lib/db";
 import { getSessionUser } from "@/lib/server-auth";
-import { createNotification } from "@/lib/notifications";
+import { getSharedInvoice } from "@/lib/invoice-share";
 
 export const dynamic = "force-dynamic";
 
@@ -22,10 +22,16 @@ export async function POST(
 
   const token = randomUUID();
   await dbRun("UPDATE invoices SET share_token = ? WHERE id = ?", token, id);
-  const url = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.invoala.com"}/api/invoices/${id}/share?token=${token}`;
+  // Points at the styled public view page, not this API route directly — a
+  // recipient clicking the link should see a real invoice, not raw JSON.
+  const url = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.invoala.com"}/i/${id}?token=${token}`;
   return Response.json({ ok: true, url });
 }
 
+// JSON form of the same share link, kept for any existing/external
+// integrations that fetch this route directly. The public-facing link is
+// /i/[id]?token=... (app/i/[id]/page.tsx), which renders this same data
+// through the styled invoice preview instead of raw JSON.
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -34,71 +40,21 @@ export async function GET(
   const url = new URL(req.url);
   const token = url.searchParams.get("token") || "";
 
-  // A share link is only valid with its secret token. Without one (or with a
-  // wrong one) the invoice is treated as not found so nothing is leaked.
-  if (!token) {
+  const result = await getSharedInvoice(id, token);
+  if (!result) {
     return new Response("Invoice not found", {
       status: 404,
       headers: { "X-Robots-Tag": "noindex, nofollow" },
     });
   }
-
-  const invoice = await dbGet<{
-    id: string;
-    user_id: string;
-    number: string;
-    status: string;
-    client_name: string;
-    total: number;
-    currency: string;
-    data: string;
-    viewed_at: number | null;
-    share_token: string | null;
-  }>(
-    "SELECT id, user_id, number, status, client_name, total, currency, data, viewed_at, share_token FROM invoices WHERE id = ?",
-    id
-  );
-
-  if (!invoice || !invoice.share_token || invoice.share_token !== token) {
-    return new Response("Invoice not found", {
-      status: 404,
-      headers: { "X-Robots-Tag": "noindex, nofollow" },
-    });
-  }
-
-  // Track first view (only notify once)
-  if (!invoice.viewed_at) {
-    const now = Date.now();
-    const { changes } = await dbRun(
-      "UPDATE invoices SET viewed_at = ? WHERE id = ? AND viewed_at IS NULL",
-      now,
-      id
-    );
-    if (changes > 0) {
-      await createNotification({
-        userId: invoice.user_id,
-        type: "invoice_viewed",
-        title: `Invoice #${invoice.number} was viewed`,
-        body: `Your invoice for ${invoice.client_name || "a client"} (${invoice.total.toLocaleString("en-US", { minimumFractionDigits: 2 })} ${invoice.currency}) was just opened.`,
-        meta: { invoiceId: id },
-      });
-    }
-  }
-
-  let invoiceData: Record<string, unknown> = {};
-  try {
-    invoiceData = JSON.parse(invoice.data);
-  } catch {}
 
   return Response.json(
     {
-      id: invoice.id,
-      number: invoice.number,
-      status: invoice.status,
-      clientName: invoice.client_name,
-      total: invoice.total,
-      currency: invoice.currency,
-      ...invoiceData,
+      id,
+      number: result.meta.number,
+      status: result.meta.status,
+      total: result.meta.total,
+      ...result.invoice,
     },
     {
       headers: { "X-Robots-Tag": "noindex, nofollow" },

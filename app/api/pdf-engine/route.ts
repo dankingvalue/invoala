@@ -34,6 +34,7 @@ export async function GET() {
     discountAmount: 15000,
     shipping: 0,
     notes: "Thank you for your business. Please include invoice number INV-2026-00427 as your payment reference.",
+    paymentEnabled: true,
     paymentInstructions: "Payment due within Net 14 days. Pay via M-Pesa / Bank Transfer.",
     paymentLink: "",
     docType: "invoice",

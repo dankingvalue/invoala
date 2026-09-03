@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { jsPDF } from "jspdf";
 import {
+  clearDraft,
   createDefaultInvoice,
   loadDraft,
   newId,
@@ -145,9 +146,17 @@ export function InvoiceGenerator({
   const [savedId, setSavedId] = useState<string | null>(null);
   const [saveNote, setSaveNote] = useState("");
   const [clients, setClients] = useState<ClientRow[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailNote, setEmailNote] = useState("");
+  const [formKey, setFormKey] = useState(0);
   const previewRef = useRef<HTMLDivElement>(null);
+  // Guards the hydration effect below against React's dev-mode double-invoke
+  // of mount effects: that effect does a destructive read (get-then-remove)
+  // of the "invoala.edit" localStorage key, so running it twice would have
+  // the second pass find the key already gone and silently reset the form
+  // to blank right after the first pass correctly loaded it.
+  const hydratedOnceRef = useRef(false);
   const router = useRouter();
   const pathname = usePathname();
   const signupHref = `/signup?next=${encodeURIComponent(pathname || "/invoice-generator")}`;
@@ -157,6 +166,8 @@ export function InvoiceGenerator({
   }, []);
 
   useEffect(() => {
+    if (hydratedOnceRef.current) return;
+    hydratedOnceRef.current = true;
     const base = preset
       ? { ...createDefaultInvoice(), ...preset }
       : (loadDraft() ?? createDefaultInvoice());
@@ -166,12 +177,16 @@ export function InvoiceGenerator({
     if (editRaw) {
       window.localStorage.removeItem("invoala.edit");
       try {
-        const parsed = JSON.parse(editRaw) as { id?: string; invoice?: Partial<Invoice> };
+        const parsed = JSON.parse(editRaw) as { id?: string; invoice?: Partial<Invoice>; clientId?: string | null };
         if (parsed.invoice && Array.isArray(parsed.invoice.items)) {
           next = { ...base, ...parsed.invoice };
           if (parsed.id) {
             // eslint-disable-next-line react-hooks/set-state-in-effect
             setSavedId(parsed.id);
+          }
+          if (parsed.clientId !== undefined) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setSelectedClientId(parsed.clientId);
           }
         }
       } catch {
@@ -278,6 +293,9 @@ export function InvoiceGenerator({
       issueDate: data.issueDate ?? inv.issueDate,
       dueDate: data.dueDate ?? inv.dueDate,
       paymentInstructions: data.paymentInstructions ?? inv.paymentInstructions,
+      // The AI only fills this in when the user actually described payment
+      // terms, so surface the section instead of leaving it silently hidden.
+      paymentEnabled: data.paymentInstructions ? true : inv.paymentEnabled,
       notes: data.notes ?? inv.notes,
       items:
         data.items && data.items.length > 0
@@ -302,7 +320,7 @@ export function InvoiceGenerator({
       const res = await fetch("/api/invoices", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: savedId ?? undefined, invoice }),
+        body: JSON.stringify({ id: savedId ?? undefined, invoice, clientId: selectedClientId }),
       });
       if (res.status === 401) {
         setSaveNote("");
@@ -337,7 +355,7 @@ export function InvoiceGenerator({
         const saveRes = await fetch("/api/invoices", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoice }),
+          body: JSON.stringify({ invoice, clientId: selectedClientId }),
         });
         const saveJson = (await saveRes.json()) as { id?: string };
         if (saveJson.id) {
@@ -359,6 +377,20 @@ export function InvoiceGenerator({
     }
     setTimeout(() => setEmailNote(""), 4000);
     setSendingEmail(false);
+  }
+
+  function clearInvoice() {
+    if (!confirm("Clear all fields and start a new invoice? This can't be undone.")) return;
+    clearDraft();
+    setInvoice(createDefaultInvoice());
+    setSavedId(null);
+    setSaveNote("");
+    setEmailNote("");
+    setSelectedClientId(null);
+    // Remounts InvoiceForm so its own internal state (selected client,
+    // payment-details toggle) resets along with the invoice data.
+    setFormKey((k) => k + 1);
+    trackEvent("invoice_cleared");
   }
 
   function convertToInvoice() {
@@ -441,6 +473,8 @@ export function InvoiceGenerator({
           return `<img src="${p.dataUrl}" alt="" style="display:block;width:${p.widthMm.toFixed(2)}mm;height:${p.heightMm.toFixed(2)}mm;margin:0 auto;${brk}"/>`;
         })
         .join("");
+
+      trackEvent("invoice_printed", { invoiceNumber: invoice.invoiceNumber });
 
       // Print from a hidden iframe (not a popup) so popup blockers never
       // swallow the print window on mobile browsers.
@@ -559,8 +593,18 @@ export function InvoiceGenerator({
     <div id="generate" className="scroll-mt-20">
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_420px]">
         <div className="rounded-[28px] bg-white p-6 shadow-sm ring-1 ring-black/5 sm:p-10">
+          <div className="mb-4 flex justify-end">
+            <button
+              type="button"
+              onClick={clearInvoice}
+              className="rounded-full border border-hairline px-4 py-2 text-sm font-medium text-subtle transition hover:border-accent hover:text-accent"
+            >
+              New invoice
+            </button>
+          </div>
           <div className="mb-10">{ai ? <AiComposer onResult={applyParsed} /> : null}</div>
           <InvoiceForm
+            key={formKey}
             invoice={invoice}
             onChange={update}
             onItemChange={updateItem}
@@ -570,6 +614,8 @@ export function InvoiceGenerator({
             showQuoteMode={quoteMode}
             showRecurring={recurringTerms}
             clients={clients}
+            onClientSelect={setSelectedClientId}
+            onClientSaved={(client) => setClients((rows) => [...rows, client].sort((a, b) => a.name.localeCompare(b.name)))}
           />
         </div>
 

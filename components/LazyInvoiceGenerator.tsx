@@ -18,9 +18,26 @@ const DEFAULT_FLAGS: PublicFlags = {
   recurringTerms: true,
 };
 
+// Dashboard "Edit"/"Receipt" hand off an invoice to edit via this
+// localStorage key, then client-side navigate here. That navigation doesn't
+// reliably trigger the hash-scroll needed for the IntersectionObserver below
+// to fire, so the generator was staying unmounted — the edit payload sat in
+// localStorage, never read, and the user saw a blank form. Computed directly
+// as the initial state (not set from an effect) so it mounts immediately on
+// first render whenever there's a pending edit, instead of waiting to be
+// scrolled into view.
+function hasPendingEdit(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return !!window.localStorage.getItem("invoala.edit");
+  } catch {
+    return false;
+  }
+}
+
 export function LazyInvoiceGenerator() {
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const [shouldMount, setShouldMount] = useState(false);
+  const [shouldMount, setShouldMount] = useState(hasPendingEdit);
   const [flags, setFlags] = useState<PublicFlags>(DEFAULT_FLAGS);
   const [user, setUser] = useState<{ email: string; isPro?: boolean } | null>(null);
   const [Comp, setComp] = useState<React.ComponentType<{

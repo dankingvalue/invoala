@@ -1,5 +1,5 @@
 import { getSessionUser } from "@/lib/server-auth";
-import { listInvoices, setInvoiceStatusWithPayment, upsertInvoice } from "@/lib/data";
+import { listInvoices, setInvoiceStatus, upsertInvoice } from "@/lib/data";
 import type { Invoice } from "@/lib/invoice";
 
 function isValidInvoice(v: unknown): v is Invoice {
@@ -26,7 +26,7 @@ export async function PUT(req: Request) {
     invoice?: unknown;
     id?: string;
     status?: string;
-    amountPaid?: number | null;
+    clientId?: string | null;
   };
   try {
     body = await req.json();
@@ -35,16 +35,15 @@ export async function PUT(req: Request) {
   }
 
   if (body.id && typeof body.status === "string" && !body.invoice) {
-    if (!["draft", "sent", "paid", "partial"].includes(body.status)) {
+    // "paid"/"partial" are derived from the payments ledger (see
+    // /api/invoices/[id]/payments) and can't be set directly here — that
+    // would let the stored status disagree with the actual payments sum.
+    if (!["draft", "sent", "void"].includes(body.status)) {
       return Response.json({ error: "Invalid status." }, { status: 400 });
     }
-    try {
-      const ok = await setInvoiceStatusWithPayment(user.id, body.id, body.status, body.amountPaid);
-      if (!ok) return Response.json({ error: "Invoice not found." }, { status: 404 });
-      return Response.json({ ok: true, id: body.id });
-    } catch {
-      return Response.json({ error: "Invoice not found." }, { status: 404 });
-    }
+    const ok = await setInvoiceStatus(user.id, body.id, body.status);
+    if (!ok) return Response.json({ error: "Invoice not found." }, { status: 404 });
+    return Response.json({ ok: true, id: body.id });
   }
 
   if (!isValidInvoice(body.invoice)) {
@@ -52,7 +51,10 @@ export async function PUT(req: Request) {
   }
 
   try {
-    const result = await upsertInvoice(user.id, body.invoice, { id: body.id });
+    const result = await upsertInvoice(user.id, body.invoice, {
+      id: body.id,
+      clientId: typeof body.clientId === "string" || body.clientId === null ? body.clientId : undefined,
+    });
     return Response.json({ ok: true, ...result });
   } catch (err) {
     if (err instanceof Error && err.message === "not-found") {

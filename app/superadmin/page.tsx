@@ -12,6 +12,14 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
+// Product launched 2026-09-03. Day count is 1-indexed (launch day itself is Day 1).
+const LAUNCH_DATE = Date.UTC(2026, 8, 3);
+
+function daysSinceLaunch(): number {
+  const today = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate());
+  return Math.max(1, Math.floor((today - LAUNCH_DATE) / 86_400_000) + 1);
+}
+
 export default async function SuperAdminPage() {
   const store = await cookies();
   const user = await getUserByToken(store.get(USER_COOKIE)?.value);
@@ -32,9 +40,14 @@ export default async function SuperAdminPage() {
             </svg>
             Invoala
           </Link>
-          <span className="text-xs uppercase tracking-wider text-subtle">
-            Super Admin
-          </span>
+          <div className="flex items-center gap-4">
+            <span className="text-xs text-subtle">
+              Launched Sep 3, 2026 · Day {daysSinceLaunch()}
+            </span>
+            <span className="text-xs uppercase tracking-wider text-subtle">
+              Super Admin
+            </span>
+          </div>
         </header>
         <SuperAdminDashboard />
       </div>

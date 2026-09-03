@@ -1,4 +1,5 @@
 import { parseInvoiceText, type ParsedInvoice } from "@/lib/parseInvoice";
+import { callChat } from "@/lib/ai-provider";
 
 function stripNulls(obj: Record<string, unknown>): void {
   for (const key of Object.keys(obj)) {
@@ -6,44 +7,6 @@ function stripNulls(obj: Record<string, unknown>): void {
       delete obj[key];
     }
   }
-}
-
-type Provider = "openai" | "anthropic" | "gemini" | null;
-
-// The OPENAI_API_KEY slot now accepts any OpenAI-compatible provider key.
-// Defaults point at DeepSeek (deepseek-chat); set AI_BASE_URL/AI_MODEL to
-// target OpenAI or another compatible endpoint instead.
-function getProvider(): { provider: Provider; apiKey: string; model: string; baseUrl?: string } {
-  const model = process.env.AI_MODEL || "";
-
-  if (process.env.ANTHROPIC_API_KEY) {
-    return {
-      provider: "anthropic",
-      apiKey: process.env.ANTHROPIC_API_KEY,
-      model: model || "claude-sonnet-4-20250514",
-    };
-  }
-
-  if (process.env.GEMINI_API_KEY) {
-    return {
-      provider: "gemini",
-      apiKey: process.env.GEMINI_API_KEY,
-      model: model || "gemini-2.5-flash",
-    };
-  }
-
-  if (process.env.OPENAI_API_KEY) {
-    return {
-      provider: "openai",
-      apiKey: process.env.OPENAI_API_KEY,
-      model: model || "deepseek-chat",
-      baseUrl: (process.env.AI_BASE_URL ||
-        process.env.OPENAI_BASE_URL ||
-        "https://api.deepseek.com").replace(/\/+$/, ""),
-    };
-  }
-
-  return { provider: null, apiKey: "", model: "" };
 }
 
 function buildSystemPrompt(): string {
@@ -70,93 +33,6 @@ function buildSystemPrompt(): string {
     "- Omit fields not mentioned by using null. Never invent facts.",
     "- If someone says 'I designed a logo for Acme', the clientName is 'Acme' and the item is the design work.",
   ].join("\n");
-}
-
-async function callOpenAICompatible(
-  apiKey: string,
-  model: string,
-  baseUrl: string,
-  system: string,
-  text: string,
-  isReasoner = false,
-): Promise<string | null> {
-  const body: Record<string, unknown> = {
-    model,
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: text },
-    ],
-  };
-  if (!isReasoner) {
-    // Reasoner models don't accept response_format or temperature.
-    body.temperature = 0;
-    body.response_format = { type: "json_object" };
-  } else {
-    body.max_tokens = 4000;
-  }
-  const res = await fetch(`${baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(90000),
-  });
-  if (!res.ok) {
-    console.error("[parse:ai] request failed", res.status);
-    return null;
-  }
-  const json = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  return json.choices?.[0]?.message?.content ?? null;
-}
-
-async function callAnthropic(apiKey: string, model: string, system: string, text: string): Promise<string | null> {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 2048,
-      temperature: 0,
-      system,
-      messages: [{ role: "user", content: text }],
-    }),
-    signal: AbortSignal.timeout(30000),
-  });
-  if (!res.ok) return null;
-  const json = (await res.json()) as {
-    content?: Array<{ type?: string; text?: string }>;
-  };
-  return json.content?.[0]?.text ?? null;
-}
-
-async function callGemini(apiKey: string, model: string, system: string, text: string): Promise<string | null> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        temperature: 0,
-        system_instruction: { parts: [{ text: system }] },
-        contents: [{ parts: [{ text }] }],
-        generationConfig: { responseMimeType: "application/json" },
-      }),
-      signal: AbortSignal.timeout(30000),
-    },
-  );
-  if (!res.ok) return null;
-  const json = (await res.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-  return json.candidates?.[0]?.content?.parts?.[0]?.text ?? null;
 }
 
 function parseJsonContent(content: string): Record<string, unknown> | null {
@@ -230,50 +106,15 @@ function parseResponse(content: string): ParsedInvoice | null {
 }
 
 async function parseWithLlm(text: string): Promise<ParsedInvoice | null> {
-  const { provider, apiKey, model, baseUrl } = getProvider();
-  if (!provider || !apiKey) return null;
-
-  const system = buildSystemPrompt();
-
-  try {
-    let content: string | null = null;
-
-    switch (provider) {
-      case "openai": {
-        // Prefer the strongest model, fall back down the list automatically.
-        const candidates: string[] = [
-          ...(model ? [model] : []),
-          "deepseek-reasoner",
-          "deepseek-chat",
-        ].filter((m, i, a) => a.indexOf(m) === i);
-        for (const candidate of candidates) {
-          content = await callOpenAICompatible(
-            apiKey,
-            candidate,
-            baseUrl || "https://api.deepseek.com",
-            system,
-            text,
-            candidate.includes("reasoner"),
-          );
-          if (!content) continue;
-          const parsed = parseResponse(content);
-          if (parsed) return parsed;
-        }
-        return null;
-      }
-      case "anthropic":
-        content = await callAnthropic(apiKey, model, system, text);
-        break;
-      case "gemini":
-        content = await callGemini(apiKey, model, system, text);
-        break;
-    }
-
-    if (!content) return null;
-    return parseResponse(content);
-  } catch {
-    return null;
-  }
+  const content = await callChat(
+    [
+      { role: "system", content: buildSystemPrompt() },
+      { role: "user", content: text },
+    ],
+    { jsonMode: true, temperature: 0, maxTokens: 4000, timeoutMs: 90000 },
+  );
+  if (!content) return null;
+  return parseResponse(content);
 }
 
 export async function POST(req: Request) {

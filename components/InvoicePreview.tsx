@@ -248,14 +248,16 @@ export function InvoicePreview({
         </div>
       ) : null}
 
-      {invoice.paymentInstructions ? (
+      {invoice.paymentEnabled && (invoice.paymentInstructions || invoice.paymentLink) ? (
         <div className="mt-8 border-t pt-5" style={{ borderColor: hairline }}>
           <p className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: faint }}>
             How to pay
           </p>
-          <p className="mt-1.5 whitespace-pre-line text-xs leading-relaxed" style={{ color: subtle }}>
-            {invoice.paymentInstructions}
-          </p>
+          {invoice.paymentInstructions ? (
+            <p className="mt-1.5 whitespace-pre-line text-xs leading-relaxed" style={{ color: subtle }}>
+              {invoice.paymentInstructions}
+            </p>
+          ) : null}
           {invoice.paymentLink ? (
             <a
               href={invoice.paymentLink}

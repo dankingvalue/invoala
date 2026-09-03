@@ -67,6 +67,8 @@ export type Invoice = {
   /** Internal: how many occurrences have been generated from this invoice. */
   recurring_count?: number;
   customFields: CustomField[];
+  /** Whether the payment-details section is shown on the invoice itself (preview/PDF), independent of whether text has been entered. Off by default. */
+  paymentEnabled: boolean;
   paymentInstructions: string;
   paymentLink: string;
   theme: InvoiceTheme;
@@ -274,6 +276,7 @@ export function createDefaultInvoice(): Invoice {
     docType: "invoice",
     recurring: "",
     customFields: [],
+    paymentEnabled: false,
     paymentInstructions: "",
     paymentLink: "",
     theme: "green",
@@ -332,6 +335,7 @@ export function loadDraft(): Invoice | null {
               value: (f as CustomField).value,
             }))
         : [],
+      paymentEnabled: typeof parsed.paymentEnabled === "boolean" ? parsed.paymentEnabled : false,
       paymentInstructions: typeof parsed.paymentInstructions === "string" ? parsed.paymentInstructions : "",
       paymentLink: typeof parsed.paymentLink === "string" ? parsed.paymentLink : "",
       theme: THEME_VALUES.has(String(parsed.theme))
@@ -349,6 +353,15 @@ export function saveDraft(invoice: Invoice): void {
     window.localStorage.setItem(DRAFT_KEY, JSON.stringify(invoice));
   } catch {
     // storage full or unavailable; non-critical
+  }
+}
+
+export function clearDraft(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // storage unavailable; non-critical
   }
 }
 

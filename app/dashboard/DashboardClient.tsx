@@ -4,10 +4,17 @@ import { trackEvent } from "@/lib/analytics";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState } from "react";
-import type { InvoiceRow, ClientRow } from "@/lib/data";
+import type { InvoiceRow } from "@/lib/data";
 import type { Subscription } from "@/lib/billing";
 import { PLAN_PITCHES } from "@/lib/plans-content";
 import { CURRENCIES, formatMoney, type Invoice, type LineItem } from "@/lib/invoice";
+import { deriveDisplayStatus, remainingBalance, type DisplayStatus } from "@/lib/invoice-status";
+import { RecordPaymentModal, type PaymentResult } from "@/components/dashboard/RecordPaymentModal";
+import { PaymentHistoryModal } from "@/components/dashboard/PaymentHistoryModal";
+import { ConfirmDialog } from "@/components/dashboard/Modal";
+import { InvoiceRowMenu } from "@/components/dashboard/InvoiceRowMenu";
+import { DownloadIcon, EmailIcon, RecordPaymentIcon, EditIcon, SendIcon } from "@/components/dashboard/icons";
+import { ClientsTab } from "@/components/dashboard/ClientsTab";
 
 type Props = {
   userId: string;
@@ -16,7 +23,6 @@ type Props = {
   timezone: string;
   emailVerified: number;
   initialInvoices: InvoiceRow[];
-  initialClients: ClientRow[];
   subscription: Subscription | null;
   isPro: boolean;
   needsVerification: boolean;
@@ -42,11 +48,29 @@ function planKeyFor(id: string): string {
   return PLAN_KEY_FOR[id] ?? "pro_monthly";
 }
 
-const STATUS_STYLES: Record<string, string> = {
+// Colors reuse the exact tokens already used elsewhere in this file (accent
+// green, paid green, partial amber, destructive red, neutral fog/subtle) —
+// no new colors introduced for the statuses this adds (viewed, overdue, void).
+const STATUS_STYLES: Record<DisplayStatus, string> = {
   draft: "bg-fog text-subtle",
   sent: "bg-accent/10 text-accent",
+  viewed: "bg-accent/10 text-accent",
   partial: "bg-[#fef3c7] text-[#92600a]",
   paid: "bg-[#00b67a]/10 text-[#00875a]",
+  overdue: "bg-[#fef2f2] text-[#d70015]",
+  void: "bg-fog text-subtle",
+  cancelled: "bg-fog text-subtle",
+};
+
+const STATUS_LABELS: Record<DisplayStatus, string> = {
+  draft: "Draft",
+  sent: "Sent",
+  viewed: "Viewed",
+  partial: "Partially paid",
+  paid: "Paid",
+  overdue: "Overdue",
+  void: "Void",
+  cancelled: "Cancelled",
 };
 
 // Pure client-side FX (rates are pre-fetched server-side; this module never
@@ -188,7 +212,6 @@ export function DashboardClient({
   timezone: initialTimezone,
   emailVerified,
   initialInvoices,
-  initialClients,
   subscription,
   isPro,
   needsVerification,
@@ -241,12 +264,8 @@ export function DashboardClient({
     }
   }
   const [invoices, setInvoices] = useState(initialInvoices);
-  const [clients, setClients] = useState(initialClients);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
-  const [clientName, setClientName] = useState("");
-  const [clientEmail, setClientEmail] = useState("");
-  const [clientTeamId, setClientTeamId] = useState("");
 
   const [profileName, setProfileName] = useState(initialName);
   const [profileTimezone, setProfileTimezone] = useState(initialTimezone);
@@ -320,9 +339,17 @@ export function DashboardClient({
 
   function editInvoice(row: InvoiceRow) {
     try {
-      localStorage.setItem("invoala.edit", JSON.stringify({ id: row.id, invoice: row.data }));
+      localStorage.setItem(
+        "invoala.edit",
+        JSON.stringify({ id: row.id, invoice: row.data, clientId: row.client_id }),
+      );
     } catch {}
-    router.push("/#generate");
+    // A hard navigation, not router.push: Next's client-side route cache can
+    // reuse the homepage's already-mounted InvoiceGenerator instance on a
+    // soft nav, and its one-time hydration effect then never re-fires for
+    // this new edit — the payload sits unread and the form stays on
+    // whatever it last loaded. A full page load guarantees a fresh mount.
+    window.location.assign("/#generate");
   }
 
   function makeReceipt(row: InvoiceRow) {
@@ -342,70 +369,64 @@ export function DashboardClient({
     router.push("/receipt-generator");
   }
 
-  async function shareInvoice(row: InvoiceRow) {
-    const url = `${window.location.origin}/api/invoices/${row.id}/share`;
-    const title = `Invoice #${row.number || ""} — ${row.client_name || "Invoala"}`;
-    const text = `Invoice #${row.number || ""} for ${row.client_name || "client"} — ${formatMoney(row.total, row.currency)}`;
+  // The share link needs a token minted server-side (POST) — the API route
+  // rejects a plain /share URL with no ?token= as "not found". Shared by
+  // copyInvoiceLink and viewInvoice so there's one place that knows how to
+  // get a live link for an invoice.
+  async function getShareUrl(row: InvoiceRow): Promise<string> {
+    try {
+      const res = await fetch(`/api/invoices/${row.id}/share`, { method: "POST" });
+      const json = (await res.json()) as { ok?: boolean; url?: string };
+      return json.url || "";
+    } catch {
+      return "";
+    }
+  }
+
+  // On phones with a native share sheet (WhatsApp, Messages, etc.) this opens
+  // that instead — the OS shows its own confirmation, so no toast on that
+  // path. Everywhere else it falls back to copying the link, which is what
+  // the ⋮ menu item is actually named after.
+  async function copyInvoiceLink(row: InvoiceRow) {
+    const url = await getShareUrl(row);
+    if (!url) {
+      setNotice("Could not create a share link. Please try again.");
+      setTimeout(() => setNotice(""), 3000);
+      return;
+    }
 
     if (navigator.share) {
       try {
-        await navigator.share({ title, text, url });
-      } catch {}
-    } else {
-      try {
-        await navigator.clipboard.writeText(url);
-        setNotice("Invoice link copied to clipboard!");
-        setTimeout(() => setNotice(""), 3000);
-      } catch {
-        window.open(url, "_blank");
+        await navigator.share({
+          title: `Invoice #${row.number || ""} — ${row.client_name || "Invoala"}`,
+          text: `Invoice #${row.number || ""} for ${row.client_name || "client"} — ${formatMoney(row.total, row.currency)}`,
+          url,
+        });
+        return;
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        // Share sheet unavailable or failed — fall through to clipboard.
       }
     }
-  }
-
-  async function addClient(e: FormEvent) {
-    e.preventDefault();
-    if (!clientName.trim() || busy) return;
-    setBusy(true);
-    const res = await fetch("/api/clients", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: clientName, email: clientEmail, teamId: clientTeamId || null }),
-    }).catch(() => null);
-    setBusy(false);
-    if (res?.ok) {
-      const json = (await res.json()) as { client: ClientRow };
-      setClients((rows) =>
-        [...rows, json.client].sort((a, b) => a.name.localeCompare(b.name)),
-      );
-      setClientName("");
-      setClientEmail("");
-      setClientTeamId("");
+    try {
+      await navigator.clipboard.writeText(url);
+      setNotice("Invoice link copied");
+    } catch {
+      window.open(url, "_blank");
     }
+    setTimeout(() => setNotice(""), 3000);
   }
 
-  async function shareClient(id: string, teamId: string | null) {
-    setBusy(true);
-    const res = await fetch(`/api/clients/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ teamId }),
-    }).catch(() => null);
-    if (res?.ok) {
-      const json = (await res.json()) as { ok?: boolean };
-      if (json.ok) {
-        const data = await fetch("/api/clients").then((r) => (r.ok ? r.json() : null));
-        if (data?.clients) setClients(data.clients);
-      }
+  async function viewInvoice(row: InvoiceRow) {
+    const url = await getShareUrl(row);
+    if (!url) {
+      setNotice("Could not open this invoice. Please try again.");
+      setTimeout(() => setNotice(""), 3000);
+      return;
     }
-    setBusy(false);
+    window.open(url, "_blank", "noopener,noreferrer");
   }
 
-  async function removeClient(id: string) {
-    setBusy(true);
-    await fetch(`/api/clients/${id}`, { method: "DELETE" }).catch(() => {});
-    setClients((rows) => rows.filter((c) => c.id !== id));
-    setBusy(false);
-  }
 
   async function subscribe(plan: string) {
     setBusy(true);
@@ -546,13 +567,29 @@ export function DashboardClient({
     return "USD";
   });
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [rowBusy, setRowBusy] = useState<string | null>(null);
+  const [recordPaymentRow, setRecordPaymentRow] = useState<InvoiceRow | null>(null);
+  const [paymentHistoryRow, setPaymentHistoryRow] = useState<InvoiceRow | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ type: "void" | "delete"; row: InvoiceRow } | null>(null);
 
   const paidAmt = (row: InvoiceRow) =>
     typeof (row.data as { amountPaid?: number } | undefined)?.amountPaid === "number"
       ? ((row.data as { amountPaid?: number }).amountPaid as number)
       : 0;
+  // Void/cancelled invoices are no longer active receivables, so they never
+  // contribute to an outstanding balance regardless of what was paid.
   const balanceOf = (row: InvoiceRow) =>
-    row.status === "paid" ? 0 : Math.max(0, (row.total || 0) - paidAmt(row));
+    row.status === "paid" || row.status === "void" || row.status === "cancelled"
+      ? 0
+      : remainingBalance(row.total || 0, paidAmt(row));
+  const displayStatusOf = (row: InvoiceRow): DisplayStatus =>
+    deriveDisplayStatus({
+      status: row.status,
+      total: row.total || 0,
+      amountPaid: paidAmt(row),
+      dueDate: row.data?.dueDate,
+      viewedAt: row.viewed_at,
+    });
   const usdValue = (row: InvoiceRow, amount: number) =>
     amount * (fxInvoice?.[row.id]?.usd ?? 1);
   const inDisplay = (usd: number) => convertFx(usd, "USD", displayCcy, fxRates);
@@ -673,52 +710,100 @@ export function DashboardClient({
     }
   }
 
-  async function markPaidFull(row: InvoiceRow) {
-    const total = row.total || 0;
-    const res = await fetch("/api/invoices", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: row.id, status: "paid", amountPaid: total }),
-    });
-    if (res.ok) {
-      trackEvent("payment_received", { invoiceNumber: row.number });
-      setInvoices((rows) =>
-        rows.map((r) =>
-          r.id === row.id
-            ? { ...r, status: "paid", data: { ...r.data, amountPaid: total } }
-            : r,
-        ),
-      );
-    }
+  // Applies a payments-derived {amountPaid, total, status} back onto the row
+  // list — the single place every payment mutation (record/edit/delete) and
+  // reopen funnels through, so the table and summary cards update instantly
+  // with no page refresh and can never show stale numbers.
+  function applyInvoiceSummary(id: string, summary: PaymentResult) {
+    setInvoices((rows) =>
+      rows.map((r) =>
+        r.id === id
+          ? { ...r, status: summary.status, data: { ...r.data, amountPaid: summary.amountPaid || undefined } }
+          : r,
+      ),
+    );
   }
 
-  async function markPartial(row: InvoiceRow) {
-    const total = row.total || 0;
-    const current = paidAmt(row);
-    const input = window.prompt(
-      `Amount paid so far (${row.currency || "USD"}). Total is ${total.toLocaleString("en-US", { maximumFractionDigits: 2 })}.`,
-      String(current > 0 ? current : total > 0 ? Math.round(total / 2 * 100) / 100 : 0),
-    );
-    if (input === null) return;
-    const parsed = Number(String(input).replace(/[^0-9.]/g, ""));
-    if (!Number.isFinite(parsed) || parsed < 0) return;
-    const paid = Math.min(parsed, total);
-    const status = paid >= total ? "paid" : "partial";
-    const res = await fetch("/api/invoices", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: row.id, status, amountPaid: paid }),
-    });
-    if (res.ok) {
-      if (status === "paid") trackEvent("payment_received", { invoiceNumber: row.number });
-      setInvoices((rows) =>
-        rows.map((r) =>
-          r.id === row.id
-            ? { ...r, status, data: { ...r.data, amountPaid: paid } }
-            : r,
-        ),
-      );
+  function onPaymentRecorded(id: string, summary: PaymentResult) {
+    applyInvoiceSummary(id, summary);
+    if (summary.status === "paid") trackEvent("payment_received", { invoiceId: id });
+    setNotice("Payment recorded");
+    setTimeout(() => setNotice(""), 3000);
+  }
+
+  async function duplicateInvoiceRow(row: InvoiceRow) {
+    setRowBusy(row.id);
+    try {
+      const res = await fetch(`/api/invoices/${row.id}/duplicate`, { method: "POST" });
+      const json = (await res.json()) as { ok?: boolean; invoice?: InvoiceRow; error?: string };
+      if (!res.ok || !json.ok || !json.invoice) {
+        setNotice(json.error || "Could not duplicate this invoice.");
+      } else {
+        setInvoices((rows) => [json.invoice as InvoiceRow, ...rows]);
+        setNotice(`Duplicated as ${json.invoice.number}`);
+      }
+    } catch {
+      setNotice("Network error while duplicating.");
     }
+    setRowBusy(null);
+    setTimeout(() => setNotice(""), 3000);
+  }
+
+  async function sendReminder(row: InvoiceRow) {
+    setRowBusy(row.id);
+    try {
+      const res = await fetch(`/api/invoices/${row.id}/remind`, { method: "POST" });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      setNotice(json.ok ? "Reminder sent" : json.error || "Could not send the reminder.");
+    } catch {
+      setNotice("Network error while sending the reminder.");
+    }
+    setRowBusy(null);
+    setTimeout(() => setNotice(""), 3000);
+  }
+
+  async function voidInvoiceRow(row: InvoiceRow) {
+    setRowBusy(row.id);
+    try {
+      const res = await fetch(`/api/invoices/${row.id}/void`, { method: "POST" });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !json.ok) {
+        setNotice(json.error || "Could not void this invoice.");
+      } else {
+        setInvoices((rows) => rows.map((r) => (r.id === row.id ? { ...r, status: "void" } : r)));
+        setNotice("Invoice voided");
+      }
+    } catch {
+      setNotice("Network error while voiding.");
+    }
+    setRowBusy(null);
+    setConfirmAction(null);
+    setTimeout(() => setNotice(""), 3000);
+  }
+
+  async function reopenInvoiceRow(row: InvoiceRow) {
+    setRowBusy(row.id);
+    try {
+      const res = await fetch(`/api/invoices/${row.id}/void`, { method: "DELETE" });
+      const json = (await res.json()) as { ok?: boolean; invoice?: PaymentResult; error?: string };
+      if (!res.ok || !json.ok || !json.invoice) {
+        setNotice(json.error || "Could not reopen this invoice.");
+      } else {
+        applyInvoiceSummary(row.id, json.invoice);
+        setNotice("Invoice reopened");
+      }
+    } catch {
+      setNotice("Network error while reopening.");
+    }
+    setRowBusy(null);
+    setTimeout(() => setNotice(""), 3000);
+  }
+
+  async function deleteInvoiceRow(row: InvoiceRow) {
+    setRowBusy(row.id);
+    await removeInvoice(row.id);
+    setRowBusy(null);
+    setConfirmAction(null);
   }
 
   const inputCls =
@@ -942,19 +1027,6 @@ export function DashboardClient({
                     disabled={busy}
                     onClick={() => {
                       for (const r of invoices) {
-                        if (selected.has(r.id)) void markPaidFull(r);
-                      }
-                      setSelected(new Set());
-                    }}
-                    className="rounded-full bg-[#14532d] px-4 py-1.5 text-[12px] font-semibold text-white transition hover:bg-[#0f3d22] disabled:opacity-50"
-                  >
-                    Mark paid in full
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => {
-                      for (const r of invoices) {
                         if (selected.has(r.id)) void applyRowStatus(r, "sent");
                       }
                       setSelected(new Set());
@@ -1019,6 +1091,9 @@ export function DashboardClient({
                       {invoices.map((row) => {
                         const rowPaid = paidAmt(row);
                         const rowBalance = balanceOf(row);
+                        const rowStatus = displayStatusOf(row);
+                        const isDraft = row.status === "draft";
+                        const isVoid = row.status === "void" || row.status === "cancelled";
                         return (
                           <tr key={row.id} className="border-b border-[#f3f4f6] last:border-0 hover:bg-[#f9fafb]">
                             <td className="py-3 pr-3">
@@ -1060,84 +1135,74 @@ export function DashboardClient({
                             </td>
                             <td className="py-3 pr-4">
                               <span
-                                className={`inline-block rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${
-                                  STATUS_STYLES[row.status] || STATUS_STYLES.draft
-                                }`}
+                                className={`inline-block rounded-full px-2.5 py-1 text-[11px] font-semibold ${STATUS_STYLES[rowStatus]}`}
                               >
-                                {row.status === "partial" && rowBalance > 0
-                                  ? `Partial · ${formatMoney(rowBalance, row.currency)} left`
-                                  : row.status}
+                                {(rowStatus === "partial" || rowStatus === "overdue") && rowBalance > 0
+                                  ? `${STATUS_LABELS[rowStatus]} · ${formatMoney(rowBalance, row.currency)} left`
+                                  : STATUS_LABELS[rowStatus]}
                               </span>
                             </td>
                             <td className="py-3 text-right">
-                              <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-[12px]">
+                              <div className="flex flex-wrap items-center justify-end gap-x-2.5 gap-y-1 text-[12px]">
                                 <button
                                   type="button"
                                   onClick={() => void downloadInvoicePdf(row)}
-                                  className="font-medium text-[#166534] hover:underline"
+                                  className="flex items-center gap-1 font-medium text-[#166534] hover:underline"
                                   title="Download PDF"
                                 >
-                                  Download
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => void printInvoicePdf(row)}
-                                  className="text-[#6b7280] hover:text-[#166534]"
-                                  title="Print PDF"
-                                >
-                                  Print
+                                  <DownloadIcon /> Download
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => void emailInvoice(row)}
-                                  className="text-[#6b7280] hover:text-[#166534]"
+                                  className="flex items-center gap-1 text-[#6b7280] hover:text-[#166534]"
                                   title="Email invoice as PDF"
                                 >
-                                  Email
+                                  <EmailIcon /> Email
                                 </button>
-                                <button
-                                  type="button"
-                                  disabled={busy}
-                                  onClick={() => void markPaidFull(row)}
-                                  className="font-medium text-[#00875a] hover:underline disabled:opacity-50"
-                                  title="Mark as fully paid"
-                                >
-                                  Paid
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={busy}
-                                  onClick={() => void markPartial(row)}
-                                  className="text-[#92600a] hover:underline disabled:opacity-50"
-                                  title="Mark as partially paid"
-                                >
-                                  Partial
-                                </button>
-                                {row.status === "paid" ? (
+                                {isDraft ? (
                                   <button
                                     type="button"
-                                    onClick={() => makeReceipt(row)}
-                                    className="text-[#166534] hover:underline"
-                                    title="Generate a receipt for this payment"
+                                    disabled={busy}
+                                    onClick={() => void applyRowStatus(row, "sent")}
+                                    className="flex items-center gap-1 font-medium text-[#166534] hover:underline disabled:opacity-50"
+                                    title="Issue this invoice so it can be sent and paid"
                                   >
-                                    Receipt
+                                    <SendIcon /> Issue
+                                  </button>
+                                ) : !isVoid && rowBalance > 0 ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setRecordPaymentRow(row)}
+                                    className="flex items-center gap-1 font-medium text-[#166534] hover:underline"
+                                    title="Record a payment against this invoice"
+                                  >
+                                    <RecordPaymentIcon /> Record payment
                                   </button>
                                 ) : null}
                                 <button
                                   type="button"
                                   onClick={() => editInvoice(row)}
-                                  className="text-[#6b7280] hover:text-ink"
+                                  className="flex items-center gap-1 text-[#6b7280] hover:text-ink"
                                 >
-                                  Edit
+                                  <EditIcon /> Edit
                                 </button>
-                                <button
-                                  type="button"
-                                  disabled={busy}
-                                  onClick={() => void removeInvoice(row.id)}
-                                  className="text-[#d70015] hover:underline disabled:opacity-50"
-                                >
-                                  Delete
-                                </button>
+                                <InvoiceRowMenu
+                                  isDraft={isDraft}
+                                  isVoid={isVoid}
+                                  canReceipt={row.status === "paid"}
+                                  busy={rowBusy === row.id}
+                                  onView={() => void viewInvoice(row)}
+                                  onDuplicate={() => void duplicateInvoiceRow(row)}
+                                  onPrint={() => void printInvoicePdf(row)}
+                                  onCopyLink={() => void copyInvoiceLink(row)}
+                                  onPaymentHistory={() => setPaymentHistoryRow(row)}
+                                  onRemind={() => void sendReminder(row)}
+                                  onReceipt={() => makeReceipt(row)}
+                                  onVoid={() => setConfirmAction({ type: "void", row })}
+                                  onReopen={() => void reopenInvoiceRow(row)}
+                                  onDelete={() => setConfirmAction({ type: "delete", row })}
+                                />
                               </div>
                             </td>
                           </tr>
@@ -1150,113 +1215,54 @@ export function DashboardClient({
             </div>
           )}
 
+          {recordPaymentRow ? (
+            <RecordPaymentModal
+              open={!!recordPaymentRow}
+              onClose={() => setRecordPaymentRow(null)}
+              invoiceId={recordPaymentRow.id}
+              number={recordPaymentRow.number}
+              currency={recordPaymentRow.currency}
+              total={recordPaymentRow.total}
+              amountPaid={paidAmt(recordPaymentRow)}
+              onRecorded={(summary) => onPaymentRecorded(recordPaymentRow.id, summary)}
+            />
+          ) : null}
+
+          {paymentHistoryRow ? (
+            <PaymentHistoryModal
+              open={!!paymentHistoryRow}
+              onClose={() => setPaymentHistoryRow(null)}
+              invoiceId={paymentHistoryRow.id}
+              number={paymentHistoryRow.number}
+              currency={paymentHistoryRow.currency}
+              total={paymentHistoryRow.total}
+              onChanged={(summary) => applyInvoiceSummary(paymentHistoryRow.id, summary)}
+            />
+          ) : null}
+
+          <ConfirmDialog
+            open={confirmAction?.type === "void"}
+            onClose={() => setConfirmAction(null)}
+            onConfirm={() => confirmAction && void voidInvoiceRow(confirmAction.row)}
+            title="Void invoice?"
+            body="Voiding an invoice prevents it from being treated as an active receivable. It stays in your records and can be reopened later — this doesn't delete it."
+            confirmLabel="Void invoice"
+            busy={!!confirmAction && rowBusy === confirmAction.row.id}
+          />
+
+          <ConfirmDialog
+            open={confirmAction?.type === "delete"}
+            onClose={() => setConfirmAction(null)}
+            onConfirm={() => confirmAction && void deleteInvoiceRow(confirmAction.row)}
+            title="Delete invoice?"
+            body="This action cannot be undone."
+            confirmLabel="Delete invoice"
+            busy={!!confirmAction && rowBusy === confirmAction.row.id}
+          />
+
           {/* Clients Tab */}
           {tab === "clients" && (
-            <div>
-              <form onSubmit={addClient} className="mb-6 flex flex-wrap gap-2.5">
-                <input
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  placeholder="Client name"
-                  required
-                  maxLength={80}
-                  className="min-w-[180px] flex-1 rounded-lg border border-[#e5e7eb] px-3.5 py-2.5 text-[14px] outline-none focus:border-[#166534] focus:ring-2 focus:ring-[#166534]/15"
-                />
-                <input
-                  value={clientEmail}
-                  onChange={(e) => setClientEmail(e.target.value)}
-                  placeholder="Email (optional)"
-                  type="email"
-                  className="min-w-[180px] flex-1 rounded-lg border border-[#e5e7eb] px-3.5 py-2.5 text-[14px] outline-none focus:border-[#166534] focus:ring-2 focus:ring-[#166534]/15"
-                />
-                {teams.length > 0 && (
-                  <select
-                    value={clientTeamId}
-                    onChange={(e) => setClientTeamId(e.target.value)}
-                    className="rounded-lg border border-[#e5e7eb] px-3 py-2.5 text-[13px] outline-none focus:border-[#166534]"
-                    title="Save this client to your personal book or share it with a team"
-                  >
-                    <option value="">Personal</option>
-                    {teams.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className="rounded-lg bg-[#14532d] px-5 py-2.5 text-[13px] font-semibold text-white transition hover:bg-[#0f3d22] disabled:opacity-50"
-                >
-                  Add client
-                </button>
-              </form>
-
-              {clients.length > 0 ? (
-                <div className="rounded-lg border border-[#e5e7eb]">
-                  {clients.map((c, i) => (
-                    <div
-                      key={c.id}
-                      className={`flex items-center justify-between px-4 py-3 ${
-                        i < clients.length - 1 ? "border-b border-[#e5e7eb]" : ""
-                      }`}
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="text-[14px] font-medium text-ink">{c.name}</p>
-                          {c.team_id && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-[#dcfce7] px-2 py-0.5 text-[11px] font-medium text-[#166534]" title={`Shared with team: ${c.team_name || ""}`}>
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                                <circle cx="9" cy="7" r="4" />
-                                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                              </svg>
-                              {c.team_name || "Team"}
-                            </span>
-                          )}
-                        </div>
-                        {c.email ? <p className="text-[12px] text-[#6b7280]">{c.email}</p> : null}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {teams.length > 0 && (
-                          <select
-                            value={c.team_id || ""}
-                            disabled={busy}
-                            onChange={(e) => void shareClient(c.id, e.target.value || null)}
-                            className="rounded-lg border border-[#e5e7eb] bg-white px-2 py-1 text-[12px] outline-none focus:border-[#166534]"
-                            title="Share this client with a team"
-                          >
-                            <option value="">Personal</option>
-                            {teams.map((t) => (
-                              <option key={t.id} value={t.id}>
-                                {t.name}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                        <button
-                          type="button"
-                          disabled={busy}
-                          onClick={() => void removeClient(c.id)}
-                          className="text-[12px] text-[#d70015] hover:underline disabled:opacity-50"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-12 text-center">
-                  <p className="text-[14px] text-[#6b7280]">No clients saved yet.</p>
-                  <p className="mt-1 text-[13px] text-[#9ca3af]">
-                    Add clients above to auto-fill new invoices.
-                  </p>
-                </div>
-              )}
-            </div>
+            <ClientsTab teams={teams.map((t) => ({ id: t.id, name: t.name }))} />
           )}
 
           {/* Teams Tab */}

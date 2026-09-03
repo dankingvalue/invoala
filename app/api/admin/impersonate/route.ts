@@ -1,4 +1,5 @@
-import { getSessionUser } from "@/lib/server-auth";
+import { NextResponse } from "next/server";
+import { getSessionUser, USER_COOKIE } from "@/lib/server-auth";
 import { dbGet, dbRun } from "@/lib/db";
 import { randomUUID, createHash } from "crypto";
 import { logAudit } from "@/lib/audit";
@@ -43,10 +44,22 @@ export async function POST(req: Request) {
     details: { targetEmail: target.email, duration: "1hr" },
   });
 
-  return Response.json({
+  // Set the impersonation session as an httpOnly cookie here, server-side.
+  // The admin's own session cookie is httpOnly, and browsers refuse to let
+  // client JS overwrite an httpOnly cookie of the same name — so handing the
+  // token back in the JSON body for the client to set via document.cookie
+  // silently no-ops and leaves the admin's own session in place.
+  const res = NextResponse.json({
     ok: true,
-    token,
     expiresAt,
     user: { id: target.id, email: target.email },
   });
+  res.cookies.set(USER_COOKIE, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60,
+  });
+  return res;
 }

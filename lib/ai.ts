@@ -1,4 +1,5 @@
 import { dbGet, dbAll, dbRun } from "@/lib/db";
+import { callChat } from "@/lib/ai-provider";
 
 type AiResponse = { message: string; escalate: boolean };
 
@@ -99,14 +100,7 @@ const KNOWLEDGE_BASE: { patterns: RegExp[]; reply: string; escalate?: boolean }[
 ];
 
 async function callLLM(message: string, conversationContext?: string[]): Promise<string | null> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return null;
-  const baseUrl = (process.env.AI_BASE_URL ||
-    process.env.OPENAI_BASE_URL ||
-    "https://api.deepseek.com").replace(/\/+$/, "");
-  const model = process.env.AI_MODEL || "deepseek-chat";
-
-  const messages: { role: string; content: string }[] = [
+  const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
     { role: "system", content: INVOALA_SYSTEM_PROMPT },
   ];
 
@@ -118,28 +112,7 @@ async function callLLM(message: string, conversationContext?: string[]): Promise
 
   messages.push({ role: "user", content: message });
 
-  try {
-    const res = await fetch(`${baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        max_tokens: 500,
-        temperature: 0.3,
-      }),
-      signal: AbortSignal.timeout(8000),
-    });
-
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content || null;
-  } catch {
-    return null;
-  }
+  return callChat(messages, { maxTokens: 500, temperature: 0.3, timeoutMs: 8000 });
 }
 
 export async function generateAiResponse(message: string): Promise<AiResponse> {

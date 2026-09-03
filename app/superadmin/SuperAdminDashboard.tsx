@@ -8,6 +8,7 @@ import { InvoiceTable } from "@/components/admin/InvoiceTable";
 import { CustomerSlideOut } from "@/components/admin/CustomerSlideOut";
 import { SeoTab } from "@/components/admin/SeoTab";
 import { BroadcastTab } from "@/components/admin/BroadcastTab";
+import { SubscribersTab } from "@/components/admin/SubscribersTab";
 
 type Tab =
   | "overview"
@@ -21,7 +22,8 @@ type Tab =
   | "settings"
   | "danger"
   | "seo"
-  | "notify";
+  | "notify"
+  | "subscribers";
 
 type Stats = {
   users: number;
@@ -79,6 +81,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "danger", label: "Danger Zone" },
   { id: "seo", label: "SEO" },
   { id: "notify", label: "Notify Users" },
+  { id: "subscribers", label: "Newsletter" },
 ];
 
 export function SuperAdminDashboard() {
@@ -114,6 +117,7 @@ export function SuperAdminDashboard() {
       {tab === "danger" && <DangerTab />}
       {tab === "seo" && <SeoTab />}
       {tab === "notify" && <BroadcastTab />}
+      {tab === "subscribers" && <SubscribersTab />}
     </div>
   );
 }
@@ -175,7 +179,88 @@ function OverviewTab() {
           </div>
         )}
       </Panel>
+
+      <UsagePanel />
     </div>
+  );
+}
+
+const USAGE_EVENT_LABELS: Record<string, string> = {
+  invoice_downloaded: "Downloaded",
+  invoice_printed: "Printed",
+  invoice_emailed: "Emailed",
+  invoice_shared: "Shared",
+  invoice_saved_to_account: "Saved to account",
+};
+
+type UsageStats = {
+  totalEvents: number;
+  uniqueVisitors: number;
+  signedInVisitors: number;
+  guestVisitors: number;
+  eventsByType: Record<string, number>;
+  last30Days: Array<{ day: string; events: number; visitors: number }>;
+};
+
+function UsagePanel() {
+  const [stats, setStats] = useState<UsageStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/admin/usage")
+      .then((r) => r.json())
+      .then((d) => { setStats(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  return (
+    <Panel>
+      <SectionHead
+        title="Invoice generation activity"
+        subtitle="Counts a PDF download, print, email, share, or save-to-account — from anyone, signed in or not. Returning visitors are tracked by a persistent cookie, so the same person generating on different days is one visitor, not two."
+      />
+      {loading || !stats ? (
+        <p className="mt-4 text-sm text-[#6b7280]">{loading ? "Loading…" : "Failed to load."}</p>
+      ) : (
+        <>
+          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <StatCard label="Total generations" value={stats.totalEvents.toLocaleString()} />
+            <StatCard label="Unique visitors" value={stats.uniqueVisitors.toLocaleString()} />
+            <StatCard label="Signed in" value={stats.signedInVisitors.toLocaleString()} />
+            <StatCard label="Guests" value={stats.guestVisitors.toLocaleString()} />
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {Object.entries(stats.eventsByType).map(([event, n]) => (
+              <span key={event} className="rounded-full bg-[#f3f4f6] px-3 py-1.5 text-xs font-medium text-[#374151]">
+                {USAGE_EVENT_LABELS[event] || event}: {n.toLocaleString()}
+              </span>
+            ))}
+          </div>
+          {stats.last30Days.length > 0 ? (
+            <div className="mt-5 overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-[#e5e7eb] text-[#6b7280]">
+                    <th className="pb-2 font-medium">Day</th>
+                    <th className="pb-2 font-medium">Generations</th>
+                    <th className="pb-2 font-medium">Visitors</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.last30Days.map((d) => (
+                    <tr key={d.day} className="border-b border-[#f3f4f6]">
+                      <td className="py-2 text-[#111827]">{d.day}</td>
+                      <td className="py-2 text-[#6b7280]">{d.events}</td>
+                      <td className="py-2 text-[#6b7280]">{d.visitors}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+        </>
+      )}
+    </Panel>
   );
 }
 
@@ -228,8 +313,7 @@ function UsersTab() {
     });
     const data = await res.json();
     setBusy(false);
-    if (data.ok && data.token) {
-      document.cookie = `invoala_session=${data.token}; path=/; max-age=3600; samesite=lax`;
+    if (data.ok) {
       window.location.href = "/dashboard";
     }
   }
@@ -638,7 +722,7 @@ function FlagsTab() {
 }
 
 function EmailTab() {
-  const [audience, setAudience] = useState<"all" | "pro" | "free" | "one">("all");
+  const [audience, setAudience] = useState<"all" | "pro" | "free" | "newsletter" | "one">("all");
   const [to, setTo] = useState("");
   const [subject, setSubject] = useState("");
   const [text, setText] = useState("");
@@ -665,7 +749,7 @@ function EmailTab() {
       <SectionHead title="Broadcast email" subtitle="Delivered via Resend or simulated." />
       <div className="mt-5 space-y-4">
         <div className="flex flex-wrap gap-2">
-          {([["all", "All users"], ["pro", "Pro only"], ["free", "Free only"], ["one", "Single user"]] as const).map(([v, l]) => (
+          {([["all", "All users"], ["pro", "Pro only"], ["free", "Free only"], ["newsletter", "Newsletter"], ["one", "Single user"]] as const).map(([v, l]) => (
             <button key={v} type="button" onClick={() => setAudience(v)} className={`rounded-full px-4 py-2 text-sm font-medium transition ${audience === v ? "bg-[#111827] text-white" : "bg-[#f3f4f6] text-[#6b7280] hover:text-[#111827]"}`}>{l}</button>
           ))}
         </div>
@@ -690,6 +774,83 @@ function AuditTab() {
   );
 }
 
+type AiProviderInfo = { id: string; label: string; configured: boolean };
+
+function AiProviderPanel() {
+  const [providers, setProviders] = useState<AiProviderInfo[]>([]);
+  const [active, setActive] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const load = () => {
+    fetch("/api/admin/ai-provider")
+      .then((r) => r.json())
+      .then((d) => { setProviders(d.providers || []); setActive(d.active ?? null); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  async function choose(id: string) {
+    if (id === active || saving) return;
+    setSaving(true);
+    setMessage("");
+    const res = await fetch("/api/admin/ai-provider", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider: id }),
+    });
+    const json = await res.json();
+    setSaving(false);
+    if (res.ok && json.ok) {
+      setActive(json.active);
+      setMessage(`Switched to ${providers.find((p) => p.id === id)?.label ?? id}.`);
+    } else {
+      setMessage(json.error || "Could not switch provider.");
+    }
+    setTimeout(() => setMessage(""), 4000);
+  }
+
+  return (
+    <Panel>
+      <SectionHead
+        title="AI provider"
+        subtitle="Powers both AI invoice drafting and the live-chat assistant. Switch instantly, no redeploy."
+      />
+      {loading ? (
+        <p className="mt-4 text-sm text-[#6b7280]">Loading…</p>
+      ) : (
+        <div className="mt-4 divide-y divide-[#e8e8ed]">
+          {providers.map((p) => (
+            <div key={p.id} className="flex items-center justify-between gap-4 py-3.5">
+              <div>
+                <p className="text-[15px] font-medium">{p.label}</p>
+                <p className="mt-0.5 text-[13px] text-[#6b7280]">
+                  {p.configured ? "API key configured on Vercel." : "No API key set — add one on Vercel to enable."}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={!p.configured || saving}
+                onClick={() => void choose(p.id)}
+                className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                  active === p.id
+                    ? "bg-[#166534] text-white"
+                    : "border border-[#e5e7eb] text-[#111827] hover:border-[#166534]"
+                }`}
+              >
+                {active === p.id ? "Active" : "Use this"}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      {message ? <p className="mt-3 text-[13px] text-[#166534]">{message}</p> : null}
+    </Panel>
+  );
+}
+
 function SettingsTab() {
   const [name, setName] = useState("Invoala");
   const [currency, setCurrency] = useState("USD");
@@ -697,36 +858,39 @@ function SettingsTab() {
   const [saved, setSaved] = useState(false);
 
   return (
-    <Panel>
-      <SectionHead title="Platform settings" subtitle="Core platform configuration." />
-      <div className="mt-5 space-y-4">
-        <div>
-          <label className="mb-1 block text-sm font-medium text-[#374151]">Platform name</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-lg border border-[#e5e7eb] px-3 py-2 text-sm focus:border-[#166534] focus:outline-none focus:ring-1 focus:ring-[#166534]" />
+    <div className="space-y-6">
+      <AiProviderPanel />
+      <Panel>
+        <SectionHead title="Platform settings" subtitle="Core platform configuration." />
+        <div className="mt-5 space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-[#374151]">Platform name</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-lg border border-[#e5e7eb] px-3 py-2 text-sm focus:border-[#166534] focus:outline-none focus:ring-1 focus:ring-[#166534]" />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-[#374151]">Default currency</label>
+            <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="w-full rounded-lg border border-[#e5e7eb] px-3 py-2 text-sm focus:border-[#166534] focus:outline-none">
+              <option value="USD">USD — US Dollar</option>
+              <option value="EUR">EUR — Euro</option>
+              <option value="GBP">GBP — British Pound</option>
+              <option value="CAD">CAD — Canadian Dollar</option>
+              <option value="AUD">AUD — Australian Dollar</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-sm font-medium text-[#374151]">
+              <input type="checkbox" checked={maintenance} onChange={(e) => setMaintenance(e.target.checked)} className="h-4 w-4 rounded border-[#d1d5db] text-[#166534] focus:ring-[#166534]" />
+              Maintenance mode
+            </label>
+            <span className="text-xs text-[#6b7280]">Takes the public site down. Admin stays available.</span>
+          </div>
+          <button type="button" onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 3000); }} className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white hover:bg-[#14532d]">
+            Save settings
+          </button>
+          {saved ? <p className="text-sm text-[#166534]">Settings saved.</p> : null}
         </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-[#374151]">Default currency</label>
-          <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="w-full rounded-lg border border-[#e5e7eb] px-3 py-2 text-sm focus:border-[#166534] focus:outline-none">
-            <option value="USD">USD — US Dollar</option>
-            <option value="EUR">EUR — Euro</option>
-            <option value="GBP">GBP — British Pound</option>
-            <option value="CAD">CAD — Canadian Dollar</option>
-            <option value="AUD">AUD — Australian Dollar</option>
-          </select>
-        </div>
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-sm font-medium text-[#374151]">
-            <input type="checkbox" checked={maintenance} onChange={(e) => setMaintenance(e.target.checked)} className="h-4 w-4 rounded border-[#d1d5db] text-[#166534] focus:ring-[#166534]" />
-            Maintenance mode
-          </label>
-          <span className="text-xs text-[#6b7280]">Takes the public site down. Admin stays available.</span>
-        </div>
-        <button type="button" onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 3000); }} className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white hover:bg-[#14532d]">
-          Save settings
-        </button>
-        {saved ? <p className="text-sm text-[#166534]">Settings saved.</p> : null}
-      </div>
-    </Panel>
+      </Panel>
+    </div>
   );
 }
 
