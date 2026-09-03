@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { jsPDF } from "jspdf";
 import {
   clearDraft,
@@ -160,7 +160,6 @@ export function InvoiceGenerator({
   const autosaveHandledRef = useRef(false);
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   // "autosave=1" round-trips through /signup and /login (both preserve
   // `next` verbatim) so that landing back here — logged in — can finish the
   // save the user actually asked for, instead of just showing them their
@@ -229,15 +228,16 @@ export function InvoiceGenerator({
   // anything was left to do.
   useEffect(() => {
     if (!hydrated || !user || autosaveHandledRef.current) return;
-    if (searchParams?.get("autosave") !== "1") return;
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("autosave") !== "1") return;
     autosaveHandledRef.current = true;
-    const params = new URLSearchParams(searchParams.toString());
     params.delete("autosave");
     const qs = params.toString();
     router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
     void saveToAccount();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, user, searchParams, pathname, router]);
+  }, [hydrated, user, pathname, router]);
 
   useEffect(() => {
     if (!user) return;
