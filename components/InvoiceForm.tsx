@@ -308,7 +308,7 @@ export function InvoiceForm({
       </section>
 
       <section className="grid gap-6 sm:grid-cols-2">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Currency" id="inv-currency">
             <select
               id="inv-currency"
@@ -334,73 +334,78 @@ export function InvoiceForm({
               onChange={(e) => onChange({ taxRate: Number(e.target.value) || 0 })}
             />
           </Field>
-          <Field label="Discount" id="inv-discount">
-            <div className="flex gap-2">
-              <select
-                aria-label="Discount type"
-                value={invoice.discountMode === "fixed" ? "fixed" : "percent"}
-                onChange={(e) => {
-                  const mode = e.target.value as "percent" | "fixed";
-                  if (mode === "fixed") {
-                    const keep = Number(invoice.discount) > 0 ? Number(invoice.discount) : Number(invoice.discountAmount) || 0;
-                    onChange({ discountMode: "fixed", discountAmount: keep, discount: 0 });
-                  } else {
-                    const keep = Number(invoice.discountAmount) > 0 ? Number(invoice.discountAmount) : Number(invoice.discount) || 0;
-                    onChange({ discountMode: "percent", discount: keep > 100 ? 0 : keep, discountAmount: 0 });
-                  }
-                }}
-                className={`${inputCls} w-[118px] shrink-0`}
-              >
-                <option value="percent">%</option>
-                <option value="fixed">Amount</option>
-              </select>
-              {invoice.discountMode === "fixed" ? (
-                <input
-                  id="inv-discount"
-                  type="number"
-                  min={0}
-                  step="0.01"
+          <div className="sm:col-span-2">
+            <Field label="Discount" id="inv-discount">
+              <div className="flex items-center gap-2">
+                <select
+                  aria-label="Discount type"
+                  value={invoice.discountMode === "fixed" ? "fixed" : "percent"}
+                  onChange={(e) => {
+                    const mode = e.target.value as "percent" | "fixed";
+                    if (mode === "fixed") {
+                      const keep = Number(invoice.discount) > 0 ? Number(invoice.discount) : Number(invoice.discountAmount) || 0;
+                      onChange({ discountMode: "fixed", discountAmount: keep, discount: 0 });
+                    } else {
+                      const keep = Number(invoice.discountAmount) > 0 ? Number(invoice.discountAmount) : Number(invoice.discount) || 0;
+                      onChange({ discountMode: "percent", discount: keep > 100 ? 0 : keep, discountAmount: 0 });
+                    }
+                  }}
+                  style={{ width: 118, minWidth: 118 }}
                   className={inputCls}
-                  value={invoice.discountAmount ?? 0}
-                  onChange={(e) =>
-                    onChange({
-                      discountAmount: Number(e.target.value) || 0,
-                      discount: 0,
-                    })
-                  }
-                  placeholder="0.00"
-                />
-              ) : (
-                <input
-                  id="inv-discount"
-                  type="number"
-                  min={0}
-                  max={100}
-                  step="0.01"
-                  className={inputCls}
-                  value={invoice.discount}
-                  onChange={(e) =>
-                    onChange({
-                      discount: Number(e.target.value) || 0,
-                      discountAmount: 0,
-                    })
-                  }
-                />
-              )}
-            </div>
-          </Field>
-          <Field label="Shipping" id="inv-shipping">
-            <input
-              id="inv-shipping"
-              type="number"
-              min={0}
-              step="0.01"
-              className={inputCls}
-              value={invoice.shipping}
-              onChange={(e) => onChange({ shipping: Number(e.target.value) || 0 })}
-              placeholder="0.00"
-            />
-          </Field>
+                >
+                  <option value="percent">%</option>
+                  <option value="fixed">Amount</option>
+                </select>
+                {invoice.discountMode === "fixed" ? (
+                  <input
+                    id="inv-discount"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    className={`${inputCls} min-w-0 flex-1`}
+                    value={invoice.discountAmount ?? 0}
+                    onChange={(e) =>
+                      onChange({
+                        discountAmount: Number(e.target.value) || 0,
+                        discount: 0,
+                      })
+                    }
+                    placeholder="0.00"
+                  />
+                ) : (
+                  <input
+                    id="inv-discount"
+                    type="number"
+                    min={0}
+                    max={100}
+                    step="0.01"
+                    className={`${inputCls} min-w-0 flex-1`}
+                    value={invoice.discount}
+                    onChange={(e) =>
+                      onChange({
+                        discount: Number(e.target.value) || 0,
+                        discountAmount: 0,
+                      })
+                    }
+                  />
+                )}
+              </div>
+            </Field>
+          </div>
+          <div className="sm:col-span-2">
+            <Field label="Shipping" id="inv-shipping">
+              <input
+                id="inv-shipping"
+                type="number"
+                min={0}
+                step="0.01"
+                className={inputCls}
+                value={invoice.shipping}
+                onChange={(e) => onChange({ shipping: Number(e.target.value) || 0 })}
+                placeholder="0.00"
+              />
+            </Field>
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <Field label={invoice.docType === "receipt" ? "Date paid" : "Issue date"} id="inv-issue-date">
@@ -535,32 +540,52 @@ export function InvoiceForm({
       </section>
 
       {/* Payment details: optional, off by default */}
-      <section className="rounded-2xl border border-hairline p-4">
-        <div className="flex items-center justify-between gap-3">          <div>
-            <h3 className="text-[15px] font-semibold tracking-tight text-ink">
+      <section
+        className={`rounded-2xl border p-4 transition-colors ${
+          paymentSectionOpen ? "border-accent/30 bg-white" : "border-hairline bg-white"
+        }`}
+      >
+        <button
+          type="button"
+          role="switch"
+          aria-checked={paymentSectionOpen}
+          onClick={() => setPayUiOpen((v) => !v)}
+          className="flex w-full items-center justify-between gap-3 rounded-xl text-left"
+        >
+          <span>
+            <span className="block text-[15px] font-semibold tracking-tight text-ink">
               Payment details
-            </h3>
-            <p className="mt-0.5 text-[13px] text-subtle">
-              Add a pay-online link or payment instructions to your invoice.
-            </p>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={paymentSectionOpen}
-            onClick={() => setPayUiOpen(!payUiOpen)}
-            className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+            </span>
+            <span className="mt-0.5 block text-[13px] text-subtle">
+              {paymentSectionOpen
+                ? "Pay-online link or bank/payment instructions shown on the invoice."
+                : "Add a pay-online link or payment instructions to your invoice."}
+            </span>
+          </span>
+          <span
+            aria-hidden="true"
+            className={`relative h-8 w-14 shrink-0 rounded-full transition-colors ${
               paymentSectionOpen ? "bg-accent" : "bg-[#e4e4e9]"
             }`}
-            aria-label={paymentSectionOpen ? "Hide payment details" : "Add payment details"}
           >
             <span
-              className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${
-                paymentSectionOpen ? "left-6" : "left-1"
+              className={`absolute top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow transition-all ${
+                paymentSectionOpen ? "left-7" : "left-1"
               }`}
-            />
-          </button>
-        </div>
+            >
+              {paymentSectionOpen ? (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#166534" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+              ) : (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              )}
+            </span>
+          </span>
+        </button>
 
         {paymentSectionOpen ? (
           <div className="mt-4 space-y-4">
