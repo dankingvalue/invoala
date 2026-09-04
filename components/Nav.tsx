@@ -26,11 +26,27 @@ export async function Nav() {
                 it shares space with the logo and account cluster instead of
                 floating over them, so it can't visually collide the way an
                 absolute/translate-centered nav can at in-between widths.
-                Only the app's own sections show here — marketing links
-                (Features/Pricing/FAQ) belong on the marketing site, not
-                inside the dashboard — which keeps this short enough to fit
-                (and skip the hamburger) at ordinary laptop widths. */}
-            <nav className="hidden flex-1 items-center justify-center gap-8 text-[14px] font-medium lg:flex">
+                Carries both the marketing links (routed back to their anchor
+                on the homepage, since a bare #hash would just scroll the
+                current dashboard page) and the app's own sections, so a
+                logged-in user still has a way back to Pricing/FAQ/etc.
+                without opening the account menu. Tighter gap/text than the
+                logged-out nav so all 8 links plus the divider still fit
+                without wrapping into the Upgrade/Account cluster. */}
+            <nav className="hidden flex-1 items-center justify-center gap-5 text-[13px] font-medium xl:flex">
+              <Link href="/#features" className="text-subtle transition-colors hover:text-ink">
+                Features
+              </Link>
+              <Link href="/#how" className="text-subtle transition-colors hover:text-ink">
+                How it works
+              </Link>
+              <Link href="/pricing" className="text-subtle transition-colors hover:text-ink">
+                Pricing
+              </Link>
+              <Link href="/#faq" className="text-subtle transition-colors hover:text-ink">
+                FAQ
+              </Link>
+              <span className="h-4 w-px bg-[#e5e7eb]" />
               <Link href="/dashboard?tab=general" className="text-subtle transition-colors hover:text-ink">
                 Dashboard
               </Link>
@@ -44,7 +60,7 @@ export async function Nav() {
                 Settings
               </Link>
             </nav>
-            <div className="ml-auto flex shrink-0 items-center gap-3 lg:ml-0">
+            <div className="ml-auto flex shrink-0 items-center gap-3 xl:ml-0">
               <NavAuthActions role={user.role} />
               <MobileMenuButton role={user.role} />
             </div>
