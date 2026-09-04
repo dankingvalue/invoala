@@ -12,7 +12,6 @@ import { deriveDisplayStatus, remainingBalance, type DisplayStatus } from "@/lib
 import { RecordPaymentModal, type PaymentResult } from "@/components/dashboard/RecordPaymentModal";
 import { PaymentHistoryModal } from "@/components/dashboard/PaymentHistoryModal";
 import { ConfirmDialog, Modal } from "@/components/dashboard/Modal";
-import { copyToClipboard } from "@/lib/clipboard";
 import { InvoiceRowMenu } from "@/components/dashboard/InvoiceRowMenu";
 import { DownloadIcon, EmailIcon, RecordPaymentIcon, EditIcon, SendIcon, SearchIcon } from "@/components/dashboard/icons";
 import { ClientsTab } from "@/components/dashboard/ClientsTab";
@@ -417,9 +416,11 @@ export function DashboardClient({
   }
 
   // On phones with a native share sheet (WhatsApp, Messages, etc.) this opens
-  // that instead — the OS shows its own confirmation, so no toast on that
-  // path. Everywhere else it falls back to copying the link, which is what
-  // the ⋮ menu item is actually named after.
+  // that instead — the OS shows its own confirmation. Everywhere else, skip
+  // guessing whether an auto-copy silently worked (clipboard permission
+  // behavior is inconsistent across browsers, notably Safari, and gave no
+  // feedback at all when it failed) — just show the link in a field so the
+  // user can select and copy it themselves, every time.
   async function copyInvoiceLink(row: InvoiceRow) {
     const url = await getShareUrl(row);
     if (!url) {
@@ -438,17 +439,10 @@ export function DashboardClient({
         return;
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
-        // Share sheet unavailable or failed — fall through to clipboard.
+        // Share sheet unavailable or failed — fall through to the link field.
       }
     }
-    const copied = await copyToClipboard(url);
-    if (copied) {
-      setNotice("Invoice link copied");
-      setTimeout(() => setNotice(""), 3000);
-    } else {
-      // Never fail silently — show the link so it can be copied by hand.
-      setLinkModalUrl(url);
-    }
+    setLinkModalUrl(url);
   }
 
   async function viewInvoice(row: InvoiceRow) {
@@ -1471,7 +1465,7 @@ export function DashboardClient({
 
           <Modal open={!!linkModalUrl} onClose={() => setLinkModalUrl(null)} title="Invoice link" maxWidth="440px">
             <p className="mb-3 text-[13px] text-[#6b7280]">
-              Your browser blocked the automatic copy — select the link below and copy it manually.
+              Here&apos;s your invoice link — select it and copy.
             </p>
             <input
               type="text"
