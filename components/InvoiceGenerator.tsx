@@ -164,6 +164,7 @@ export function InvoiceGenerator({
   const teamIdLockedRef = useRef(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailNote, setEmailNote] = useState("");
+  const [shareNote, setShareNote] = useState("");
   const [formKey, setFormKey] = useState(0);
   const previewRef = useRef<HTMLDivElement>(null);
   // Guards the hydration effect below against React's dev-mode double-invoke
@@ -535,6 +536,7 @@ export function InvoiceGenerator({
     setSavedId(null);
     setSaveNote("");
     setEmailNote("");
+    setShareNote("");
     setSelectedClientId(null);
     setSelectedTeamId(undefined);
     teamIdLockedRef.current = false;
@@ -682,6 +684,7 @@ export function InvoiceGenerator({
   async function shareInvoice() {
     if (sharing || downloading) return;
     setSharing(true);
+    setShareNote("");
     try {
       const canvas = await captureInvoiceCanvas();
       if (!canvas) throw new Error("no preview");
@@ -726,19 +729,30 @@ export function InvoiceGenerator({
             // fell through to window.open, which many browsers also block
             // this far from the original click, leaving nothing visible.
             window.prompt("Copy this link:", url);
+          } else {
+            setShareNote("Link copied!");
           }
           return;
         }
       }
 
-      // Last resort: download the PDF.
+      // Last resort: download the PDF. This is what actually happens for
+      // anyone using the generator without an account — there's no invoice
+      // ID to build a share link from, so make that explicit instead of
+      // leaving the click looking like it did nothing.
       pdf.save(`${name}.pdf`);
+      setShareNote(
+        savedId
+          ? "Downloaded as a PDF instead — share that."
+          : "Downloaded as a PDF — save to your account to get a shareable link instead.",
+      );
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       console.error(err);
       alert("Something went wrong sharing the invoice. Please try again.");
     } finally {
       setSharing(false);
+      setTimeout(() => setShareNote(""), 5000);
     }
   }
 
@@ -820,6 +834,7 @@ export function InvoiceGenerator({
             </button>
           </div>
           {emailNote ? <p className="mt-2 text-center text-xs text-[#166534]">{emailNote}</p> : null}
+          {shareNote ? <p className="mt-2 text-center text-xs text-[#166534]">{shareNote}</p> : null}
           {!user ? (
             <p className="mt-3 text-center text-xs text-subtle">
               Create a free account to save invoices to your dashboard and email them to clients.
