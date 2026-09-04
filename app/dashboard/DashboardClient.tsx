@@ -1166,6 +1166,7 @@ export function DashboardClient({
                   + New invoice
                 </button>
               </div>
+              {notice ? <p className="mb-4 text-[13px] font-medium text-[#166534]">{notice}</p> : null}
 
               <div className="mb-4 flex flex-wrap items-center gap-3">
                 <div className="relative min-w-[220px] flex-1">
