@@ -11,7 +11,8 @@ import { CURRENCIES, formatMoney, newId, type Invoice, type LineItem } from "@/l
 import { deriveDisplayStatus, remainingBalance, type DisplayStatus } from "@/lib/invoice-status";
 import { RecordPaymentModal, type PaymentResult } from "@/components/dashboard/RecordPaymentModal";
 import { PaymentHistoryModal } from "@/components/dashboard/PaymentHistoryModal";
-import { ConfirmDialog } from "@/components/dashboard/Modal";
+import { ConfirmDialog, Modal } from "@/components/dashboard/Modal";
+import { copyToClipboard } from "@/lib/clipboard";
 import { InvoiceRowMenu } from "@/components/dashboard/InvoiceRowMenu";
 import { DownloadIcon, EmailIcon, RecordPaymentIcon, EditIcon, SendIcon, SearchIcon } from "@/components/dashboard/icons";
 import { ClientsTab } from "@/components/dashboard/ClientsTab";
@@ -40,7 +41,7 @@ type Props = {
 
 type Tab = "general" | "documents" | "clients" | "teams" | "billing" | "security" | "messages";
 
-const VALID_TABS: Tab[] = ["general", "documents", "clients", "teams", "billing", "security"];
+const VALID_TABS: Tab[] = ["general", "documents", "clients", "teams", "billing", "security", "messages"];
 
 const PLAN_KEY_FOR: Record<string, string> = {
   pro: "pro_monthly",
@@ -440,13 +441,14 @@ export function DashboardClient({
         // Share sheet unavailable or failed — fall through to clipboard.
       }
     }
-    try {
-      await navigator.clipboard.writeText(url);
+    const copied = await copyToClipboard(url);
+    if (copied) {
       setNotice("Invoice link copied");
-    } catch {
-      window.open(url, "_blank");
+      setTimeout(() => setNotice(""), 3000);
+    } else {
+      // Never fail silently — show the link so it can be copied by hand.
+      setLinkModalUrl(url);
     }
-    setTimeout(() => setNotice(""), 3000);
   }
 
   async function viewInvoice(row: InvoiceRow) {
@@ -610,11 +612,23 @@ export function DashboardClient({
   const [recordPaymentRow, setRecordPaymentRow] = useState<InvoiceRow | null>(null);
   const [paymentHistoryRow, setPaymentHistoryRow] = useState<InvoiceRow | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ type: "void" | "delete"; row: InvoiceRow } | null>(null);
+  // Last-resort fallback when even the legacy copy trick fails (rare, but
+  // some locked-down browser configs block both) — show the link so the
+  // user can select and copy it themselves instead of the action just
+  // silently doing nothing.
+  const [linkModalUrl, setLinkModalUrl] = useState<string | null>(null);
 
-  const paidAmt = (row: InvoiceRow) =>
-    typeof (row.data as { amountPaid?: number } | undefined)?.amountPaid === "number"
+  // "paid" status is definitionally "amountPaid >= total" (see
+  // lib/invoice-status.ts ledgerStatusForAmount), so that's used directly
+  // rather than trusting data.amountPaid alone — a handful of older/seeded
+  // invoices have status='paid' with no payment ever recorded through the
+  // ledger, which left that cached field unset.
+  const paidAmt = (row: InvoiceRow) => {
+    if (row.status === "paid") return row.total || 0;
+    return typeof (row.data as { amountPaid?: number } | undefined)?.amountPaid === "number"
       ? ((row.data as { amountPaid?: number }).amountPaid as number)
       : 0;
+  };
   // Void/cancelled invoices are no longer active receivables, so they never
   // contribute to an outstanding balance regardless of what was paid.
   const balanceOf = (row: InvoiceRow) =>
@@ -652,6 +666,17 @@ export function DashboardClient({
   const outstanding = inDisplay(outstandingUsd);
   const totalsUsd = invoices.reduce((sum, i) => sum + usdValue(i, i.total || 0), 0);
   const totalsInDisplay = inDisplay(totalsUsd);
+  // Dashboard "at a glance" totals — same balance/paid helpers the
+  // Documents table already uses, just summed a different way: overdue is
+  // the open balance specifically on invoices past due, paid is the actual
+  // amount collected (including partial payments), not a count of invoices.
+  const overdueUsd = invoices.reduce(
+    (sum, i) => sum + (displayStatusOf(i) === "overdue" ? usdValue(i, balanceOf(i)) : 0),
+    0,
+  );
+  const overdueTotal = inDisplay(overdueUsd);
+  const paidUsd = invoices.reduce((sum, i) => sum + usdValue(i, paidAmt(i)), 0);
+  const paidTotal = inDisplay(paidUsd);
 
 
 
@@ -979,11 +1004,60 @@ export function DashboardClient({
           {/* General Tab */}
           {tab === "general" && (
             <div className="space-y-8">
+              {/* At-a-glance totals */}
+              {invoices.length > 0 ? (
+                <section>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDocStatusFilter("all");
+                        setTab("documents");
+                      }}
+                      className="rounded-xl border border-[#e5e7eb] p-4 text-left transition hover:border-[#166534]/40 hover:bg-[#f9fafb]"
+                    >
+                      <p className="text-[12px] font-medium uppercase tracking-wider text-[#6b7280]">Open</p>
+                      <p className="mt-1 text-[22px] font-bold tabular-nums text-ink">{formatMoney(outstanding, displayCcy)}</p>
+                      <p className="mt-0.5 text-[12px] text-[#9ca3af]">Unpaid balance across active invoices</p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDocStatusFilter("overdue");
+                        setTab("documents");
+                      }}
+                      className="rounded-xl border border-[#e5e7eb] p-4 text-left transition hover:border-[#d70015]/40 hover:bg-[#f9fafb]"
+                    >
+                      <p className="text-[12px] font-medium uppercase tracking-wider text-[#6b7280]">Overdue</p>
+                      <p className={`mt-1 text-[22px] font-bold tabular-nums ${overdueTotal > 0 ? "text-[#d70015]" : "text-ink"}`}>
+                        {formatMoney(overdueTotal, displayCcy)}
+                      </p>
+                      <p className="mt-0.5 text-[12px] text-[#9ca3af]">Past due and still unpaid</p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDocStatusFilter("all");
+                        setTab("documents");
+                      }}
+                      className="rounded-xl border border-[#e5e7eb] p-4 text-left transition hover:border-[#166534]/40 hover:bg-[#f9fafb]"
+                    >
+                      <p className="text-[12px] font-medium uppercase tracking-wider text-[#6b7280]">Paid</p>
+                      <p className="mt-1 text-[22px] font-bold tabular-nums text-[#00875a]">{formatMoney(paidTotal, displayCcy)}</p>
+                      <p className="mt-0.5 text-[12px] text-[#9ca3af]">Collected, including partial payments</p>
+                    </button>
+                  </div>
+                  {totalsUsd > 0 && displayCcy !== "USD" ? (
+                    <p className="mt-2 text-[11px] text-[#9ca3af]">Totals in {displayCcy} · converted at invoice-date rates</p>
+                  ) : null}
+                </section>
+              ) : null}
+
               {/* Profile */}
               <section>
                 <h2 className="text-[16px] font-bold text-ink">Profile</h2>
                 <p className="mt-1 text-[13px] text-[#6b7280]">
-                  Your name and timezone. These appear on invoices and affect date formatting.
+                  Your account name and timezone. Invoices use your business profile below, not this.
                 </p>
                 <form onSubmit={saveProfile} className="mt-5 space-y-4">
                   <div className="grid gap-4 sm:grid-cols-2">
@@ -1394,6 +1468,19 @@ export function DashboardClient({
             busy={!!confirmAction && rowBusy === confirmAction.row.id}
           />
 
+          <Modal open={!!linkModalUrl} onClose={() => setLinkModalUrl(null)} title="Invoice link" maxWidth="440px">
+            <p className="mb-3 text-[13px] text-[#6b7280]">
+              Your browser blocked the automatic copy — select the link below and copy it manually.
+            </p>
+            <input
+              type="text"
+              readOnly
+              value={linkModalUrl ?? ""}
+              onFocus={(e) => e.currentTarget.select()}
+              className="w-full rounded-lg border border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2.5 text-[13px] text-ink outline-none focus:border-[#166534]"
+            />
+          </Modal>
+
           {/* Clients Tab */}
           {tab === "clients" && (
             <ClientsTab teams={teams.map((t) => ({ id: t.id, name: t.name }))} workspace={activeWorkspace} />
@@ -1757,7 +1844,7 @@ export function DashboardClient({
           )}
 
           {tab === "messages" && (
-            <UserMessagesTab />
+            <UserMessagesTab workspace={activeWorkspace} />
           )}
         </div>
       </div>
@@ -1765,7 +1852,84 @@ export function DashboardClient({
   );
 }
 
-function UserMessagesTab() {
+const EMAIL_KIND_LABEL: Record<string, string> = {
+  invoice: "Invoice",
+  quote: "Quote",
+  receipt: "Receipt",
+  reminder: "Payment reminder",
+  other: "Email",
+};
+
+function EmailActivityTab({ workspace }: { workspace: string }) {
+  const [activity, setActivity] = useState<Array<{
+    id: string;
+    to_email: string;
+    subject: string;
+    status: string;
+    kind: string | null;
+    created_at: number;
+    invoice_id: string | null;
+    invoice_number: string | null;
+    invoice_viewed_at: number | null;
+  }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/email-activity?workspace=${encodeURIComponent(workspace)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setActivity(d?.activity || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [workspace]);
+
+  if (loading) return <p className="text-[13px] text-[#6b7280]">Loading…</p>;
+
+  if (activity.length === 0) {
+    return (
+      <div className="py-8 text-center">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#f0fdf4]">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#166534" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 4h16v16H4z" />
+            <path d="m4 6 8 7 8-7" />
+          </svg>
+        </div>
+        <p className="text-[14px] font-medium text-ink">No email activity yet</p>
+        <p className="mt-1 text-[13px] text-[#6b7280]">
+          Invoices, quotes, receipts, and reminders you send from Documents will show up here.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <ul className="divide-y divide-[#f3f4f6] rounded-lg border border-[#e5e7eb]">
+      {activity.map((a) => (
+        <li key={a.id} className="flex items-start justify-between gap-3 px-4 py-3.5">
+          <div className="min-w-0">
+            <p className="text-[14px] font-medium text-ink">
+              {a.invoice_number ? `${EMAIL_KIND_LABEL[a.kind ?? "other"] ?? "Email"} ${a.invoice_number}` : a.subject}
+              {" "}sent
+            </p>
+            <p className="mt-0.5 truncate text-[12px] text-[#6b7280]">
+              To {a.to_email} · {new Date(a.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <span className={`flex items-center gap-1 text-[12px] font-medium ${a.status === "failed" ? "text-[#d70015]" : "text-[#00875a]"}`}>
+              {a.status === "failed" ? "✕ Failed" : "✓ Sent"}
+            </span>
+            {a.invoice_id && a.invoice_viewed_at ? (
+              <span className="flex items-center gap-1 text-[12px] font-medium text-[#166534]">✓ Viewed</span>
+            ) : null}
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function UserMessagesTab({ workspace }: { workspace: string }) {
+  const [view, setView] = useState<"activity" | "support">("activity");
   const [conversations, setConversations] = useState<Array<{
     id: string;
     status: string;
@@ -1778,12 +1942,49 @@ function UserMessagesTab() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (view !== "support") return;
     fetch("/api/conversations")
       .then((r) => r.json())
       .then((d) => { setConversations(d.conversations || []); setLoading(false); })
       .catch(() => setLoading(false));
-  }, []);
+  }, [view]);
 
+  const tabBtnCls = (active: boolean) =>
+    `flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] font-medium transition ${
+      active ? "border-[#166534] text-[#166534]" : "border-transparent text-[#6b7280] hover:text-ink"
+    }`;
+
+  return (
+    <div>
+      <div className="mb-4 flex gap-1 border-b border-[#e5e7eb]">
+        <button type="button" onClick={() => setView("activity")} className={tabBtnCls(view === "activity")}>
+          Email activity
+        </button>
+        <button type="button" onClick={() => setView("support")} className={tabBtnCls(view === "support")}>
+          Support
+        </button>
+      </div>
+
+      {view === "activity" ? <EmailActivityTab workspace={workspace} /> : <SupportInbox conversations={conversations} loading={loading} />}
+    </div>
+  );
+}
+
+function SupportInbox({
+  conversations,
+  loading,
+}: {
+  conversations: Array<{
+    id: string;
+    status: string;
+    subject: string;
+    last_message: string;
+    last_sender: string;
+    unread_count: number;
+    updated_at: number;
+  }>;
+  loading: boolean;
+}) {
   if (loading) {
     return <p className="text-[13px] text-[#6b7280]">Loading messages...</p>;
   }

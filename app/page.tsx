@@ -7,6 +7,7 @@ import { TrustStrip } from "@/components/TrustStrip";
 import { CURRENCIES } from "@/lib/invoice";
 import { getFlags } from "@/lib/flags.server";
 import { ProPricing } from "@/components/ProPricing";
+import { ProductShowcase } from "@/components/ProductShowcase";
 import { SignupPrompt } from "@/components/SignupPrompt";
 import { getCurrentUser } from "@/lib/server-auth";
 
@@ -72,30 +73,37 @@ const faqs = [
 const features = [
   {
     title: "Polished PDFs",
-    copy: "Pixel-perfect invoices that make your work look premium. Download an A4 PDF ready to email to any client.",
+    copy: "Voilà — client-ready the moment you hit download. Pixel-perfect A4 PDFs that make solo work look like an agency's.",
     glyph: (
       <path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm7 1.5V9h4.5M9 13h6m-6 4h6" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
     ),
   },
   {
     title: "Yours in seconds",
-    copy: "No sign-up, no paywall. Fill the form and download instantly. Your details stay saved right on your device.",
+    copy: "No account, no paywall, no waiting around. Fill it in, download it, done — your details stay saved right on your own device.",
     glyph: (
       <path d="M13 2 4.5 13.5H11L9.5 22 19 10h-6.5L13 2Z" strokeWidth="1.5" strokeLinejoin="round" />
     ),
   },
   {
     title: "Any currency",
-    copy: `Charge clients in any of ${CURRENCIES.length} world currencies — with automatic tax math and professional formatting built in.`,
+    copy: `Bill anyone, anywhere — ${CURRENCIES.length} world currencies, automatic tax math, formatting that's correct by default.`,
     glyph: (
       <path d="M12 3v18M16.5 7.5c-.8-1.2-2.4-2-4.5-2-2.5 0-4 1.3-4 3.1 0 4.4 9 2.3 9 6.8 0 1.8-1.7 3.1-4.5 3.1-2.3 0-4-.9-4.8-2.2" strokeWidth="1.5" strokeLinecap="round" />
     ),
   },
   {
     title: "Just describe it",
-    copy: "Type what you did in plain words — AI turns it into a finished invoice, items and totals included.",
+    copy: "Describe the job in plain words — AI turns it into a finished invoice, line items and totals included.",
     glyph: (
       <path d="M12 2l2.2 6.6L21 11l-6.8 2.4L12 20l-2.2-6.6L3 11l6.8-2.4L12 2Z" strokeWidth="1.5" strokeLinejoin="round" />
+    ),
+  },
+  {
+    title: "One place for it all",
+    copy: "Create a free account and Invoala remembers your clients, tracks who's paid and who's overdue, and tells you the moment a client opens an invoice.",
+    glyph: (
+      <path d="M4 4h7v7H4V4Zm9 0h7v4h-7V4Zm0 7h7v9h-7v-9ZM4 14h7v6H4v-6Z" strokeWidth="1.5" strokeLinejoin="round" />
     ),
   },
 ];
@@ -159,7 +167,12 @@ export default async function Home() {
       {/* Hero */}
       <section className="px-6 pb-20 pt-36 text-center md:pb-28 md:pt-44">
         <Reveal>
-          <h1 className="mx-auto max-w-[900px] text-[48px] font-extrabold leading-[1.05] tracking-tight md:text-[80px]">
+          <p className="text-[13px] font-semibold uppercase tracking-wider text-[#166534]">
+            Join 500+ freelancers and agencies already invoicing with Invoala
+          </p>
+        </Reveal>
+        <Reveal>
+          <h1 className="mx-auto mt-3 max-w-[900px] text-[48px] font-extrabold leading-[1.05] tracking-tight md:text-[80px]">
             Invoices that look
             <span className="block text-[#166534]">professional.</span>
           </h1>
@@ -221,7 +234,7 @@ export default async function Home() {
               <span className="block text-subtle">Nothing you don&rsquo;t.</span>
             </h2>
           </Reveal>
-          <div className="mt-14 grid gap-x-12 gap-y-12 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-14 grid gap-x-12 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((f, i) => (
               <Reveal key={f.title} delay={i * 100}>
                 <div className="flex flex-col items-center text-center sm:items-start sm:text-left">
@@ -246,6 +259,9 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* Product showcase — a closer look inside */}
+      <ProductShowcase />
+
       {/* How it works */}
       <section id="how" className="scroll-mt-16 bg-[#f3f4f6] px-6 py-16 md:py-28">
         <div className="mx-auto max-w-[1024px]">
@@ -253,6 +269,9 @@ export default async function Home() {
             <h2 className="max-w-[680px] text-[36px] font-extrabold tracking-tight md:text-[52px]">
               Three steps. Done.
             </h2>
+            <p className="mt-3 max-w-[520px] text-[17px] font-medium text-subtle">
+              You handle the big work. Invoala handles the busywork.
+            </p>
           </Reveal>
           <div className="mt-14 grid gap-12 sm:grid-cols-3">
             {[

@@ -3,11 +3,20 @@ import { dbRun } from "@/lib/db";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
+export type EmailKind = "invoice" | "quote" | "receipt" | "reminder" | "other";
+
 export async function sendEmail(opts: {
   to: string;
   subject: string;
   text: string;
   attachments?: Array<{ filename: string; content: string }>;
+  /** Context for the sender's "Email activity" feed — omit for
+   * system/account emails (verification, password reset, team invites)
+   * that shouldn't show up there. */
+  userId?: string;
+  teamId?: string | null;
+  invoiceId?: string;
+  kind?: EmailKind;
 }): Promise<{ status: "sent" | "simulated" | "failed"; error?: string }> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM || "Invoala <noreply@invoala.com>";
@@ -59,8 +68,10 @@ export async function sendEmail(opts: {
 
   try {
     await dbRun(
-      "INSERT INTO email_log (id, to_email, subject, provider, status, error, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      randomUUID(), opts.to, opts.subject, apiKey ? "resend" : "console", status, error ?? null, Date.now()
+      `INSERT INTO email_log (id, to_email, subject, provider, status, error, created_at, user_id, team_id, invoice_id, kind)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      randomUUID(), opts.to, opts.subject, apiKey ? "resend" : "console", status, error ?? null, Date.now(),
+      opts.userId ?? null, opts.teamId ?? null, opts.invoiceId ?? null, opts.kind ?? null,
     );
   } catch {
     // logging must never break the request

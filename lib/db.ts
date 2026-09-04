@@ -22,6 +22,15 @@ export { getDb };
 
 let schemaInitialized = false;
 
+// Bump this whenever a new ALTER TABLE / one-time migration is added below.
+// Every serverless cold start used to re-run the full ~90-statement
+// migration block sequentially (each wrapped in try/catch to tolerate
+// "column already exists") before serving its first request — real,
+// measurable latency on a fresh instance. This gate makes that a single
+// cheap read on every cold start except the one right after a deploy that
+// actually changed the schema.
+const SCHEMA_VERSION = "2026-09-05.2";
+
 async function ensureSchema(): Promise<void> {
   const db = getDb();
 
@@ -241,7 +250,25 @@ async function ensureSchema(): Promise<void> {
     { sql: `CREATE INDEX IF NOT EXISTS idx_usage_events_created ON usage_events(created_at)` },
     { sql: `CREATE INDEX IF NOT EXISTS idx_usage_events_visitor ON usage_events(visitor_id, created_at)` },
     { sql: `CREATE INDEX IF NOT EXISTS idx_usage_events_event ON usage_events(event, created_at)` },
+    { sql: `CREATE TABLE IF NOT EXISTS service_items (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      team_id TEXT,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      rate REAL NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_service_items_user ON service_items(user_id)` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_service_items_team ON service_items(team_id)` },
   ]);
+
+  const versionRow = await db.execute("SELECT value FROM app_settings WHERE key = 'schema_version'");
+  if ((versionRow.rows[0] as { value?: string } | undefined)?.value === SCHEMA_VERSION) {
+    schemaInitialized = true;
+    return;
+  }
 
   // Migration: add viewed_at if missing (ALTER TABLE throws if column exists)
   try {
@@ -454,6 +481,36 @@ async function ensureSchema(): Promise<void> {
   try {
     await db.execute("CREATE INDEX IF NOT EXISTS idx_audit_team ON audit_logs(team_id, created_at DESC)");
   } catch {}
+
+  // Migration: email_log gains enough context (who sent it, which invoice,
+  // what kind) to power a per-user/workspace "Email activity" feed — it
+  // previously only existed for admin-level diagnostics (to_email/subject/
+  // status), with no way to tell which user or invoice an entry belonged to.
+  for (const col of [
+    "user_id TEXT",
+    "team_id TEXT",
+    "invoice_id TEXT",
+    "kind TEXT",
+  ]) {
+    try {
+      await db.execute(`ALTER TABLE email_log ADD COLUMN ${col}`);
+    } catch {}
+  }
+  try {
+    await db.execute("CREATE INDEX IF NOT EXISTS idx_email_log_user ON email_log(user_id, created_at DESC)");
+  } catch {}
+  try {
+    await db.execute("CREATE INDEX IF NOT EXISTS idx_email_log_team ON email_log(team_id, created_at DESC)");
+  } catch {}
+  try {
+    await db.execute("CREATE INDEX IF NOT EXISTS idx_email_log_invoice ON email_log(invoice_id)");
+  } catch {}
+
+  await db.execute({
+    sql: `INSERT INTO app_settings (key, value, updated_at) VALUES ('schema_version', ?, ?)
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+    args: [SCHEMA_VERSION, Date.now()],
+  });
 
   schemaInitialized = true;
 }

@@ -11,6 +11,7 @@ import {
   type LineItem,
 } from "@/lib/invoice";
 import type { ClientRow } from "@/lib/data";
+import type { ServiceItem } from "@/lib/service-items";
 
 const inputCls =
   "w-full rounded-xl border border-hairline bg-white px-3.5 py-2.5 text-[15px] text-ink outline-none transition placeholder:text-[#6b7280] focus:border-accent focus:ring-[3px] focus:ring-accent/20";
@@ -46,6 +47,10 @@ export function InvoiceForm({
   clients = [],
   onClientSelect,
   onClientSaved,
+  services = [],
+  onAddService,
+  onServiceSaved,
+  serviceWorkspaceTeamId = null,
 }: {
   invoice: Invoice;
   onChange: (patch: Partial<Invoice>) => void;
@@ -60,10 +65,24 @@ export function InvoiceForm({
   onClientSelect?: (clientId: string | null) => void;
   /** Fires after "Save as new client" succeeds, so the caller can add it to its own client list without a refetch. */
   onClientSaved?: (client: ClientRow) => void;
+  services?: ServiceItem[];
+  /** Appends a new line item pre-filled from the picked saved service. */
+  onAddService?: (service: ServiceItem) => void;
+  /** Fires after "+ New service" succeeds, so the caller can add it to its own list without a refetch. */
+  onServiceSaved?: (service: ServiceItem) => void;
+  /** Workspace a newly-saved service should belong to (null = Personal). */
+  serviceWorkspaceTeamId?: string | null;
 }) {
   const [selectedClientId, setSelectedClientId] = useState<string>("new");
   const [savingClient, setSavingClient] = useState(false);
   const [clientSaveNote, setClientSaveNote] = useState("");
+  const [servicesOpen, setServicesOpen] = useState(false);
+  const [newServiceOpen, setNewServiceOpen] = useState(false);
+  const [newServiceName, setNewServiceName] = useState("");
+  const [newServiceDescription, setNewServiceDescription] = useState("");
+  const [newServiceRate, setNewServiceRate] = useState("");
+  const [savingService, setSavingService] = useState(false);
+  const [serviceError, setServiceError] = useState("");
   // Whether the payment section is shown on the invoice itself (preview/PDF)
   // is real invoice data (`paymentEnabled`), not local UI state — otherwise
   // toggling it off still leaves the underlying text rendering on the
@@ -149,6 +168,37 @@ export function InvoiceForm({
     }
     setSavingClient(false);
     setTimeout(() => setClientSaveNote(""), 3000);
+  }
+
+  async function saveNewService() {
+    if (!newServiceName.trim() || savingService) return;
+    setSavingService(true);
+    setServiceError("");
+    try {
+      const res = await fetch("/api/service-items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newServiceName,
+          description: newServiceDescription,
+          rate: Number(newServiceRate) || 0,
+          teamId: serviceWorkspaceTeamId,
+        }),
+      });
+      const json = (await res.json()) as { ok?: boolean; service?: ServiceItem; error?: string };
+      if (res.ok && json.ok && json.service) {
+        onServiceSaved?.(json.service);
+        setNewServiceName("");
+        setNewServiceDescription("");
+        setNewServiceRate("");
+        setNewServiceOpen(false);
+      } else {
+        setServiceError(json.error || "Could not save this service.");
+      }
+    } catch {
+      setServiceError("Network error while saving.");
+    }
+    setSavingService(false);
   }
 
   return (
@@ -312,14 +362,114 @@ export function InvoiceForm({
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold tracking-tight text-ink">Items</h3>
-          <button
-            type="button"
-            onClick={onAddItem}
-            className="text-sm font-medium text-link transition-opacity hover:opacity-70"
-          >
-            + Add item
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setServicesOpen((v) => !v)}
+              className="text-sm font-medium text-link transition-opacity hover:opacity-70"
+            >
+              + Add from saved services
+            </button>
+            <button
+              type="button"
+              onClick={onAddItem}
+              className="text-sm font-medium text-link transition-opacity hover:opacity-70"
+            >
+              + Add item
+            </button>
+          </div>
         </div>
+
+        {servicesOpen ? (
+          <div className="rounded-xl border border-hairline bg-fog/40 p-3">
+            {services.length === 0 ? (
+              <p className="px-1 py-2 text-sm text-subtle">
+                No saved services yet — add one below to reuse it on any future invoice.
+              </p>
+            ) : (
+              <ul className="max-h-56 divide-y divide-hairline overflow-y-auto">
+                {services.map((s) => (
+                  <li key={s.id}>
+                    <button
+                      type="button"
+                      onClick={() => onAddService?.(s)}
+                      className="flex w-full items-center justify-between gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-white"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium text-ink">{s.name}</span>
+                        {s.description ? (
+                          <span className="block truncate text-xs text-subtle">{s.description}</span>
+                        ) : null}
+                      </span>
+                      <span className="shrink-0 text-sm tabular-nums text-subtle">
+                        {s.rate.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="mt-2 border-t border-hairline pt-2">
+              {newServiceOpen ? (
+                <div className="space-y-2">
+                  <div className="grid gap-2 sm:grid-cols-[1fr_100px]">
+                    <input
+                      className={inputCls}
+                      value={newServiceName}
+                      onChange={(e) => setNewServiceName(e.target.value)}
+                      placeholder="Service name, e.g. Website design"
+                      aria-label="Service name"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      className={`${inputCls} text-right tabular-nums`}
+                      value={newServiceRate}
+                      onChange={(e) => setNewServiceRate(e.target.value)}
+                      placeholder="Rate"
+                      aria-label="Service rate"
+                    />
+                  </div>
+                  <input
+                    className={inputCls}
+                    value={newServiceDescription}
+                    onChange={(e) => setNewServiceDescription(e.target.value)}
+                    placeholder="Description (optional)"
+                    aria-label="Service description"
+                  />
+                  {serviceError ? <p className="text-xs text-red-600">{serviceError}</p> : null}
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => void saveNewService()}
+                      disabled={!newServiceName.trim() || savingService}
+                      className="text-sm font-medium text-link transition-opacity hover:opacity-70 disabled:opacity-50"
+                    >
+                      {savingService ? "Saving…" : "Save service"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewServiceOpen(false)}
+                      className="text-sm text-subtle transition-opacity hover:opacity-70"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setNewServiceOpen(true)}
+                  className="text-sm font-medium text-link transition-opacity hover:opacity-70"
+                >
+                  + New service
+                </button>
+              )}
+            </div>
+          </div>
+        ) : null}
 
         <div className="hidden grid-cols-[1fr_64px_104px_96px_28px] gap-3 px-1 text-[11px] font-semibold uppercase tracking-wider text-subtle sm:grid">
           <span>Description</span>

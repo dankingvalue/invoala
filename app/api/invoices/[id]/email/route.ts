@@ -19,8 +19,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     total: number;
     currency: string;
     data: string;
+    doc_type: string;
+    team_id: string | null;
   }>(
-    `SELECT id, user_id, number, status, client_name, total, currency, data FROM invoices WHERE id = ?
+    `SELECT id, user_id, number, status, client_name, total, currency, data, doc_type, team_id FROM invoices WHERE id = ?
      AND (user_id = ? OR team_id IN (SELECT team_id FROM team_members WHERE user_id = ?))`,
     id, user.id, user.id,
   );
@@ -61,11 +63,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     console.error("[email:invoice] PDF generation failed — sending text summary only", err);
   }
 
+  const kind = invoice.doc_type === "quote" ? "quote" : invoice.doc_type === "receipt" ? "receipt" : "invoice";
   const result = await sendEmail({
     to: toEmail,
     subject: `Invoice #${invoice.number} from ${businessName}`,
     text: `Hi ${invoice.client_name || "there"},\n\n${pdfAttachment ? "Please find attached" : "Your invoice is below"}:\n\nInvoice #${invoice.number} — ${amount} ${invoice.currency}\n${invoiceData.notes ? `\nNotes: ${invoiceData.notes}\n` : ""}Thank you for your business!\n\n— ${businessName}`,
     attachments: pdfAttachment ? [pdfAttachment] : undefined,
+    userId: user.id,
+    teamId: invoice.team_id,
+    invoiceId: invoice.id,
+    kind,
   });
 
   if (result.status === "failed") {

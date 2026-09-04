@@ -47,6 +47,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     subject: `Reminder: Invoice #${row.number} from ${businessName}`,
     text: `Hi ${row.client_name || "there"},\n\nThis is a friendly reminder that Invoice #${row.number} — ${amount} ${row.currency} — is still outstanding.\n\n${pdfAttachment ? "The invoice is attached." : `Amount due: ${amount} ${row.currency}.`}\n\nThank you!\n\n— ${businessName}`,
     attachments: pdfAttachment ? [pdfAttachment] : undefined,
+    userId: user.id,
+    teamId: row.team_id,
+    invoiceId: row.id,
+    kind: "reminder",
   });
 
   if (result.status === "failed") {

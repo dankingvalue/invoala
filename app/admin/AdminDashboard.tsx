@@ -65,7 +65,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "audit", label: "Audit Trail" },
   { id: "seo", label: "SEO" },
   { id: "notify", label: "Notify Users" },
-  { id: "subscribers", label: "Newsletter" },
+  { id: "subscribers", label: "Email list" },
 ];
 
 export function AdminDashboard({ myRole }: { myRole: string }) {

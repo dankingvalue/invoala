@@ -34,7 +34,7 @@ export function SubscribersTab() {
   return (
     <Panel>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <SectionHead title="Newsletter subscribers" subtitle={`${total} email${total === 1 ? "" : "s"} captured from the site signup forms.`} />
+        <SectionHead title="Email list" subtitle={`${total} email${total === 1 ? "" : "s"} captured from the site signup forms.`} />
         <button
           type="button"
           onClick={exportCsv}

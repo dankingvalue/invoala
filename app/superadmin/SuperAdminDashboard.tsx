@@ -81,7 +81,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "danger", label: "Danger Zone" },
   { id: "seo", label: "SEO" },
   { id: "notify", label: "Notify Users" },
-  { id: "subscribers", label: "Newsletter" },
+  { id: "subscribers", label: "Email list" },
 ];
 
 export function SuperAdminDashboard() {

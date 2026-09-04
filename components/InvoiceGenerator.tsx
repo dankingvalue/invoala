@@ -17,7 +17,9 @@ import { InvoicePreview } from "@/components/InvoicePreview";
 import { AiComposer } from "@/components/AiComposer";
 import type { ParsedInvoice } from "@/lib/parseInvoice";
 import { trackEvent } from "@/lib/analytics";
+import { copyToClipboard } from "@/lib/clipboard";
 import type { ClientRow } from "@/lib/data";
+import type { ServiceItem } from "@/lib/service-items";
 
 // Printable area on an A4 page with 8mm margins (print flow).
 const PRINT_W_MM = 194;
@@ -146,6 +148,7 @@ export function InvoiceGenerator({
   const [savedId, setSavedId] = useState<string | null>(null);
   const [saveNote, setSaveNote] = useState("");
   const [clients, setClients] = useState<ClientRow[]>([]);
+  const [services, setServices] = useState<ServiceItem[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   // The workspace this invoice belongs to — set via the invoala.edit
   // handoff (from a specific client's or the active workspace's "+ New
@@ -301,9 +304,9 @@ export function InvoiceGenerator({
     if (!user) return;
     // The generator has no live workspace switcher of its own — it reads
     // the dashboard's last-chosen workspace out of localStorage (same key
-    // DashboardClient persists to) so the client picker matches whatever
-    // workspace the user was last looking at, instead of merging every
-    // team's clients into one dropdown.
+    // DashboardClient persists to) so the client/service pickers match
+    // whatever workspace the user was last looking at, instead of merging
+    // every team's data into one dropdown.
     let workspace = "personal";
     try {
       const saved = window.localStorage.getItem("invoala.workspace");
@@ -313,6 +316,12 @@ export function InvoiceGenerator({
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.clients) setClients(data.clients);
+      })
+      .catch(() => {});
+    fetch(`/api/service-items?workspace=${encodeURIComponent(workspace)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.services) setServices(data.services);
       })
       .catch(() => {});
   }, [user]);
@@ -338,6 +347,37 @@ export function InvoiceGenerator({
     setInvoice((inv) => ({
       ...inv,
       items: [...inv.items, { id: newId(), description: "", quantity: 1, rate: 0 }],
+    }));
+  }
+
+  // Which workspace a newly-saved service should belong to — same
+  // last-chosen-workspace localStorage read the client/service fetch effect
+  // above uses, independent of this invoice's own team (saving a reusable
+  // service is a "my client book" style action, not tied to one invoice).
+  function activeWorkspaceTeamId(): string | null {
+    try {
+      const saved = window.localStorage.getItem("invoala.workspace");
+      if (saved?.startsWith("team:")) return saved.slice(5);
+    } catch {}
+    return null;
+  }
+
+  // "Add from saved services" — appends a new line item pre-filled from a
+  // saved service instead of an empty one. Description combines name +
+  // description (when set) so the invoice line reads naturally without
+  // requiring a second field on the printed document.
+  function addServiceItem(service: ServiceItem) {
+    setInvoice((inv) => ({
+      ...inv,
+      items: [
+        ...inv.items,
+        {
+          id: newId(),
+          description: service.description ? `${service.name} — ${service.description}` : service.name,
+          quantity: 1,
+          rate: service.rate,
+        },
+      ],
     }));
   }
 
@@ -680,10 +720,12 @@ export function InvoiceGenerator({
           }
         }
         if (url) {
-          try {
-            await navigator.clipboard.writeText(url);
-          } catch {
-            window.open(url, "_blank");
+          const copied = await copyToClipboard(url);
+          if (!copied) {
+            // Never fail silently — a blocked clipboard write previously
+            // fell through to window.open, which many browsers also block
+            // this far from the original click, leaving nothing visible.
+            window.prompt("Copy this link:", url);
           }
           return;
         }
@@ -727,6 +769,10 @@ export function InvoiceGenerator({
             clients={clients}
             onClientSelect={handleClientSelect}
             onClientSaved={(client) => setClients((rows) => [...rows, client].sort((a, b) => a.name.localeCompare(b.name)))}
+            services={services}
+            onAddService={addServiceItem}
+            onServiceSaved={(service) => setServices((rows) => [...rows, service].sort((a, b) => a.name.localeCompare(b.name)))}
+            serviceWorkspaceTeamId={activeWorkspaceTeamId()}
           />
         </div>
 
