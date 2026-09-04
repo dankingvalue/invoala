@@ -13,12 +13,38 @@ export type AuditAction =
   | "settings_change"
   | "danger_reset"
   | "impersonate"
-  | "stop_impersonate";
+  | "stop_impersonate"
+  // Workspace/team activity (see lib/teams.ts and lib/data.ts) — reuses this
+  // same table via the team_id column rather than a second event system.
+  | "team_created"
+  | "team_updated"
+  | "team_archived"
+  | "team_unarchived"
+  | "team_deleted"
+  | "ownership_transferred"
+  | "member_invited"
+  | "invite_resent"
+  | "invite_role_changed"
+  | "invite_cancelled"
+  | "member_role_changed"
+  | "member_removed"
+  | "member_left"
+  | "invoice_created"
+  | "invoice_updated"
+  | "invoice_status_changed"
+  | "invoice_deleted"
+  | "payment_recorded"
+  | "payment_updated"
+  | "payment_deleted"
+  | "client_created"
+  | "client_updated"
+  | "client_deleted";
 
 export async function logAudit(opts: {
   action: AuditAction;
   targetId?: string;
   targetType?: string;
+  teamId?: string;
   details?: Record<string, unknown>;
   req?: Request;
   actor?: { id: string; email: string; role: string };
@@ -36,8 +62,8 @@ export async function logAudit(opts: {
     const ip = opts.req?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
 
     await dbRun(
-      `INSERT INTO audit_logs (id, actor_id, actor_email, actor_role, action, target_id, target_type, details, ip_address, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO audit_logs (id, actor_id, actor_email, actor_role, action, target_id, target_type, details, ip_address, created_at, team_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       randomUUID(),
       actor.id,
       actor.email,
@@ -47,11 +73,39 @@ export async function logAudit(opts: {
       opts.targetType ?? null,
       opts.details ? JSON.stringify(opts.details) : null,
       ip,
-      Date.now()
+      Date.now(),
+      opts.teamId ?? null,
     );
   } catch {
     // audit logging must never break the request
   }
+}
+
+export type ActivityEntry = {
+  id: string;
+  actor_id: string;
+  actor_email: string;
+  action: string;
+  target_id: string | null;
+  target_type: string | null;
+  details: string | null;
+  created_at: number;
+  actor_name: string;
+};
+
+// Workspace activity feed — team_id-scoped subset of the same audit_logs
+// table platform admins already read from getAuditLogs above.
+export async function getTeamActivity(teamId: string, limit = 100): Promise<ActivityEntry[]> {
+  return await dbAll<ActivityEntry>(
+    `SELECT a.id, a.actor_id, a.actor_email, a.action, a.target_id, a.target_type, a.details, a.created_at,
+            COALESCE(u.name, a.actor_email) AS actor_name
+     FROM audit_logs a
+     LEFT JOIN users u ON u.id = a.actor_id
+     WHERE a.team_id = ?
+     ORDER BY a.created_at DESC
+     LIMIT ?`,
+    teamId, limit,
+  );
 }
 
 export type AuditLog = {

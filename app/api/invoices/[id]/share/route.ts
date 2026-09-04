@@ -14,9 +14,11 @@ export async function POST(
 
   const { id } = await params;
   const invoice = await dbGet<{ id: string }>(
-    "SELECT id FROM invoices WHERE id = ? AND user_id = ?",
+    `SELECT id FROM invoices WHERE id = ?
+     AND (user_id = ? OR team_id IN (SELECT team_id FROM team_members WHERE user_id = ?))`,
     id,
-    user.id
+    user.id,
+    user.id,
   );
   if (!invoice) return Response.json({ error: "Not found." }, { status: 404 });
 

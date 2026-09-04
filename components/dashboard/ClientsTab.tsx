@@ -60,7 +60,7 @@ function ClientRowMenu({
   return <RowMenu items={items} />;
 }
 
-export function ClientsTab({ teams }: { teams: Team[] }) {
+export function ClientsTab({ teams, workspace = "personal" }: { teams: Team[]; workspace?: string }) {
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [financials, setFinancials] = useState<Record<string, ClientFinancials>>({});
   const [loading, setLoading] = useState(true);
@@ -76,7 +76,7 @@ export function ClientsTab({ teams }: { teams: Team[] }) {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   function load() {
-    fetch("/api/clients")
+    fetch(`/api/clients?workspace=${encodeURIComponent(workspace)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { clients?: ClientRow[]; financials?: Record<string, ClientFinancials> } | null) => {
         if (data?.clients) setClients(data.clients);
@@ -85,7 +85,8 @@ export function ClientsTab({ teams }: { teams: Team[] }) {
       .finally(() => setLoading(false));
   }
 
-  useEffect(() => { load(); }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, [workspace]);
 
   function flash(msg: string) {
     setNotice(msg);
@@ -131,8 +132,12 @@ export function ClientsTab({ teams }: { teams: Team[] }) {
   const displayCcy = clients.find((c) => c.currency)?.currency || "USD";
 
   function startNewInvoice(client: ClientRow, docType?: "quote") {
-    const payload: { invoice: Record<string, unknown>; clientId: string } = {
+    const payload: { invoice: Record<string, unknown>; clientId: string; teamId: string | null } = {
       clientId: client.id,
+      // Follows the client's own workspace — a client shared to a team
+      // always produces an invoice in that same team, regardless of which
+      // workspace happens to be active in the switcher.
+      teamId: client.team_id,
       invoice: {
         clientName: client.name,
         clientEmail: client.email,
@@ -376,6 +381,7 @@ export function ClientsTab({ teams }: { teams: Team[] }) {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         editing={editingClient}
+        teamId={workspace.startsWith("team:") ? workspace.slice(5) : null}
         onSaved={(client, wasEdit) => {
           setClients((rows) => (wasEdit ? rows.map((r) => (r.id === client.id ? client : r)) : [...rows, client].sort((a, b) => a.name.localeCompare(b.name))));
           flash(wasEdit ? "Client updated" : "Client added");

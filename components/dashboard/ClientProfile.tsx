@@ -49,8 +49,9 @@ export function ClientProfile({
   function newInvoiceForClient() {
     if (!data) return;
     const c = data.client;
-    const payload: { invoice: Record<string, unknown>; clientId: string } = {
+    const payload: { invoice: Record<string, unknown>; clientId: string; teamId: string | null } = {
       clientId: c.id,
+      teamId: c.team_id,
       invoice: {
         clientName: c.name,
         clientEmail: c.email,

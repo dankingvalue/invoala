@@ -323,6 +323,138 @@ async function ensureSchema(): Promise<void> {
     await db.execute("CREATE INDEX IF NOT EXISTS idx_seo_redirects_source ON seo_redirects(source)");
   } catch {}
 
+  // Migration: per-user business/invoice-defaults profile — the "General
+  // settings" backing store for the Personal workspace (no team active).
+  // Applied as defaults when starting a brand-new invoice (see
+  // InvoiceGenerator's hydration effect) and by /api/account/settings.
+  // Deliberately a smaller field set than teams' below (no quote/branding/
+  // email-template richness) — those are workspace-configuration concepts
+  // that belong to a team, not a solo account. See lib/workspace-settings.ts.
+  for (const col of [
+    "business_name TEXT NOT NULL DEFAULT ''",
+    "business_email TEXT NOT NULL DEFAULT ''",
+    "business_address TEXT NOT NULL DEFAULT ''",
+    "business_logo TEXT NOT NULL DEFAULT ''",
+    "business_phone TEXT NOT NULL DEFAULT ''",
+    "business_website TEXT NOT NULL DEFAULT ''",
+    "invoice_prefix TEXT NOT NULL DEFAULT 'INV-'",
+    "next_invoice_number INTEGER NOT NULL DEFAULT 1",
+    "default_payment_terms_days INTEGER NOT NULL DEFAULT 14",
+    "default_tax_rate REAL",
+    "default_notes TEXT NOT NULL DEFAULT ''",
+    "default_payment_instructions TEXT NOT NULL DEFAULT ''",
+  ]) {
+    try {
+      await db.execute(`ALTER TABLE users ADD COLUMN ${col}`);
+    } catch {}
+  }
+
+  // Migration: workspace upgrade. `teams`/`team_members`/`team_invites`
+  // already existed (the original Teams feature); this extends `teams` into
+  // a full workspace — business profile, branding, regional settings,
+  // invoice/quote defaults and numbering, email preferences, and an
+  // explicit 'owner' role so permission checks don't have to special-case
+  // teams.owner_id everywhere (see lib/permissions.ts, lib/workspace-settings.ts).
+  // Column names mirror the existing `clients` table's business-info
+  // columns (contact/address/tax fields) for the same shape already used
+  // there, rather than inventing a second convention.
+  for (const col of [
+    "status TEXT NOT NULL DEFAULT 'active'",
+    "logo TEXT NOT NULL DEFAULT ''",
+    "brand_color TEXT NOT NULL DEFAULT ''",
+    "show_logo_on_documents INTEGER NOT NULL DEFAULT 1",
+    "business_name_display TEXT NOT NULL DEFAULT 'business_name'",
+    "business_name TEXT NOT NULL DEFAULT ''",
+    "legal_business_name TEXT NOT NULL DEFAULT ''",
+    "business_email TEXT NOT NULL DEFAULT ''",
+    "business_address TEXT NOT NULL DEFAULT ''",
+    "phone TEXT NOT NULL DEFAULT ''",
+    "website TEXT NOT NULL DEFAULT ''",
+    "city TEXT NOT NULL DEFAULT ''",
+    "state TEXT NOT NULL DEFAULT ''",
+    "country TEXT NOT NULL DEFAULT ''",
+    "postal_code TEXT NOT NULL DEFAULT ''",
+    "tax_number TEXT NOT NULL DEFAULT ''",
+    "business_reg_number TEXT NOT NULL DEFAULT ''",
+    "default_currency TEXT NOT NULL DEFAULT 'USD'",
+    "date_format TEXT NOT NULL DEFAULT 'MM/DD/YYYY'",
+    "timezone TEXT NOT NULL DEFAULT ''",
+    "language TEXT NOT NULL DEFAULT 'en'",
+    "default_tax_rate REAL",
+    "default_notes TEXT NOT NULL DEFAULT ''",
+    "default_payment_instructions TEXT NOT NULL DEFAULT ''",
+    "default_payment_terms_days INTEGER NOT NULL DEFAULT 14",
+    "invoice_prefix TEXT NOT NULL DEFAULT 'INV-'",
+    "next_invoice_number INTEGER NOT NULL DEFAULT 1",
+    "quote_prefix TEXT NOT NULL DEFAULT 'QUO-'",
+    "next_quote_number INTEGER NOT NULL DEFAULT 1",
+    "quote_validity_days INTEGER NOT NULL DEFAULT 30",
+    "default_quote_notes TEXT NOT NULL DEFAULT ''",
+    "receipt_prefix TEXT NOT NULL DEFAULT 'RCPT-'",
+    "next_receipt_number INTEGER NOT NULL DEFAULT 1",
+    "invoice_email_subject TEXT NOT NULL DEFAULT ''",
+    "quote_email_subject TEXT NOT NULL DEFAULT ''",
+    "receipt_email_subject TEXT NOT NULL DEFAULT ''",
+    "show_pdf_attachment INTEGER NOT NULL DEFAULT 1",
+    "include_payment_link INTEGER NOT NULL DEFAULT 1",
+    "include_business_contact INTEGER NOT NULL DEFAULT 1",
+  ]) {
+    try {
+      await db.execute(`ALTER TABLE teams ADD COLUMN ${col}`);
+    } catch {}
+  }
+  // team_members.role was only ever 'admin' | 'member' — the creator's own
+  // membership row was inserted with role='admin', with ownership tracked
+  // purely via teams.owner_id. Backfill 'owner' onto that row so role alone
+  // is now authoritative; safe to re-run (only ever touches rows that still
+  // say 'admin' for the actual owner).
+  try {
+    await db.execute(`UPDATE team_members SET role = 'owner'
+      WHERE role != 'owner' AND user_id = (SELECT owner_id FROM teams WHERE teams.id = team_members.team_id)`);
+  } catch {}
+
+  // Migration: team_id on payments, so a payment inherits its invoice's
+  // workspace (mirrors the existing clients.team_id / invoices.team_id
+  // columns) instead of requiring a join through invoices every time.
+  try {
+    await db.execute("ALTER TABLE payments ADD COLUMN team_id TEXT");
+  } catch {}
+  try {
+    await db.execute("CREATE INDEX IF NOT EXISTS idx_payments_team ON payments(team_id)");
+  } catch {}
+  // Backfill from the invoice each payment already belongs to.
+  try {
+    await db.execute(`UPDATE payments SET team_id = (
+      SELECT i.team_id FROM invoices i WHERE i.id = payments.invoice_id
+    ) WHERE team_id IS NULL`);
+  } catch {}
+
+  // Migration: invoices.team_id existed from the original schema but was
+  // never indexed or actually queried — add the index now that workspace
+  // scoping uses it (see lib/data.ts). Also add updated_by so an edit by a
+  // team member other than the original creator (invoices.user_id) is
+  // attributable.
+  try {
+    await db.execute("CREATE INDEX IF NOT EXISTS idx_invoices_team ON invoices(team_id, updated_at DESC)");
+  } catch {}
+  try {
+    await db.execute("ALTER TABLE invoices ADD COLUMN updated_by TEXT");
+  } catch {}
+  try {
+    await db.execute("CREATE INDEX IF NOT EXISTS idx_clients_team ON clients(team_id)");
+  } catch {}
+
+  // Migration: team-scoped activity reuses audit_logs (see lib/audit.ts)
+  // instead of a second event table — target_type/target_id/details already
+  // map onto entityType/entityId/metadata, this just adds the workspace the
+  // event happened in. NULL for existing (platform-admin) rows.
+  try {
+    await db.execute("ALTER TABLE audit_logs ADD COLUMN team_id TEXT");
+  } catch {}
+  try {
+    await db.execute("CREATE INDEX IF NOT EXISTS idx_audit_team ON audit_logs(team_id, created_at DESC)");
+  } catch {}
+
   schemaInitialized = true;
 }
 

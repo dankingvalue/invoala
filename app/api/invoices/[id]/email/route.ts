@@ -20,8 +20,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     currency: string;
     data: string;
   }>(
-    "SELECT id, user_id, number, status, client_name, total, currency, data FROM invoices WHERE id = ? AND user_id = ?",
-    id, user.id
+    `SELECT id, user_id, number, status, client_name, total, currency, data FROM invoices WHERE id = ?
+     AND (user_id = ? OR team_id IN (SELECT team_id FROM team_members WHERE user_id = ?))`,
+    id, user.id, user.id,
   );
 
   if (!invoice) return Response.json({ error: "Invoice not found." }, { status: 404 });

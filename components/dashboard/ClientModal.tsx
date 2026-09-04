@@ -65,11 +65,16 @@ export function ClientModal({
   onClose,
   editing,
   onSaved,
+  teamId = null,
 }: {
   open: boolean;
   onClose: () => void;
   editing: ClientRow | null;
   onSaved: (client: ClientRow, wasEdit: boolean) => void;
+  // Active workspace at creation time — stamped onto a brand-new client so
+  // it's shared to the team, not just the creator. Never sent on an edit
+  // (editing an existing client doesn't move it between workspaces).
+  teamId?: string | null;
 }) {
   const [form, setForm] = useState<ClientFormValues>(() => (editing ? fieldsFromClient(editing) : EMPTY_FORM));
   const [busy, setBusy] = useState(false);
@@ -129,6 +134,7 @@ export function ClientModal({
         defaultNotes: form.defaultNotes,
         defaultPaymentInstructions: form.defaultPaymentInstructions,
         internalNotes: form.internalNotes,
+        ...(editing ? {} : { teamId }),
       };
       const res = await fetch(editing ? `/api/clients/${editing.id}` : "/api/clients", {
         method: editing ? "PUT" : "POST",

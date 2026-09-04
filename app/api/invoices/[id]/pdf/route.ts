@@ -11,8 +11,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   const { id } = await params;
   const row = await dbGet<{ number: string; data: string }>(
-    "SELECT number, data FROM invoices WHERE id = ? AND user_id = ?",
+    `SELECT number, data FROM invoices WHERE id = ?
+     AND (user_id = ? OR team_id IN (SELECT team_id FROM team_members WHERE user_id = ?))`,
     id,
+    user.id,
     user.id,
   );
   if (!row) return Response.json({ error: "Not found." }, { status: 404 });

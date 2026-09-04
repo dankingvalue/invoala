@@ -147,6 +147,12 @@ export function InvoiceGenerator({
   const [saveNote, setSaveNote] = useState("");
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  // The workspace this invoice belongs to — only ever set via the
+  // invoala.edit handoff (from a specific client's or the active
+  // workspace's "+ New invoice"/Edit), never chosen inside the generator
+  // itself. undefined means "don't change" on an update, null means
+  // Personal, a string is that team's id.
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null | undefined>(undefined);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailNote, setEmailNote] = useState("");
   const [formKey, setFormKey] = useState(0);
@@ -182,7 +188,7 @@ export function InvoiceGenerator({
     if (editRaw) {
       window.localStorage.removeItem("invoala.edit");
       try {
-        const parsed = JSON.parse(editRaw) as { id?: string; invoice?: Partial<Invoice>; clientId?: string | null };
+        const parsed = JSON.parse(editRaw) as { id?: string; invoice?: Partial<Invoice>; clientId?: string | null; teamId?: string | null };
         if (parsed.invoice && Array.isArray(parsed.invoice.items)) {
           next = { ...base, ...parsed.invoice };
           if (parsed.id) {
@@ -192,6 +198,10 @@ export function InvoiceGenerator({
           if (parsed.clientId !== undefined) {
             // eslint-disable-next-line react-hooks/set-state-in-effect
             setSelectedClientId(parsed.clientId);
+          }
+          if (parsed.teamId !== undefined) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setSelectedTeamId(parsed.teamId);
           }
         }
       } catch {
@@ -217,9 +227,46 @@ export function InvoiceGenerator({
     }
      
     setInvoice(next);
-     
+
     setHydrated(true);
   }, [preset]);
+
+  // Applies the user's saved business profile (Settings → General →
+  // Business profile) as defaults for a genuinely fresh invoice — never
+  // overwrites a resumed draft or edit payload, both of which already have
+  // a non-empty businessName by the time this checks. Templates supply
+  // their own placeholder business info, so this skips presets entirely.
+  const profileAppliedRef = useRef(false);
+  useEffect(() => {
+    if (!hydrated || !user || preset || profileAppliedRef.current) return;
+    profileAppliedRef.current = true;
+    fetch("/api/workspace-settings?workspace=personal")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { settings?: {
+        businessName: string; businessEmail: string; businessAddress: string; logo: string;
+        defaultTaxRate: number | null; defaultNotes: string; defaultPaymentInstructions: string;
+        defaultPaymentTermsDays: number;
+      } } | null) => {
+        const s = data?.settings;
+        if (!s) return;
+        setInvoice((inv) => {
+          if (inv.businessName.trim()) return inv;
+          const patch: Partial<Invoice> = {};
+          if (s.businessName) patch.businessName = s.businessName;
+          if (s.businessEmail) patch.businessEmail = s.businessEmail;
+          if (s.businessAddress) patch.businessAddress = s.businessAddress;
+          if (s.logo) patch.logoDataUrl = s.logo;
+          if (typeof s.defaultTaxRate === "number") patch.taxRate = s.defaultTaxRate;
+          if (s.defaultNotes) patch.notes = s.defaultNotes;
+          if (s.defaultPaymentInstructions) {
+            patch.paymentInstructions = s.defaultPaymentInstructions;
+            patch.paymentEnabled = true;
+          }
+          return Object.keys(patch).length ? { ...inv, ...patch } : inv;
+        });
+      })
+      .catch(() => {});
+  }, [hydrated, user, preset]);
 
   // Finishes the save a logged-out user asked for before being sent to
   // /signup or /login — see signupHref. Their draft survives the round trip
@@ -343,7 +390,7 @@ export function InvoiceGenerator({
       const res = await fetch("/api/invoices", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: savedId ?? undefined, invoice, clientId: selectedClientId }),
+        body: JSON.stringify({ id: savedId ?? undefined, invoice, clientId: selectedClientId, teamId: selectedTeamId }),
       });
       if (res.status === 401) {
         setSaveNote("");
@@ -378,7 +425,7 @@ export function InvoiceGenerator({
         const saveRes = await fetch("/api/invoices", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoice, clientId: selectedClientId }),
+          body: JSON.stringify({ invoice, clientId: selectedClientId, teamId: selectedTeamId }),
         });
         const saveJson = (await saveRes.json()) as { id?: string };
         if (saveJson.id) {
@@ -410,6 +457,7 @@ export function InvoiceGenerator({
     setSaveNote("");
     setEmailNote("");
     setSelectedClientId(null);
+    setSelectedTeamId(undefined);
     // Remounts InvoiceForm so its own internal state (selected client,
     // payment-details toggle) resets along with the invoice data.
     setFormKey((k) => k + 1);

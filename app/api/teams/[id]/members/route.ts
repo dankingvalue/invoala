@@ -1,5 +1,6 @@
 import { getSessionUser } from "@/lib/server-auth";
-import { getTeam, getTeamMembers, getTeamMemberCount, getTeamInvites, cancelTeamInvite, inviteToTeam, removeMember, updateTeamMemberRole, isTeamAdmin } from "@/lib/teams";
+import { getTeam, getTeamMembers, getTeamMemberCount, getTeamInvites, cancelTeamInvite, inviteToTeam, removeMember, updateTeamMemberRole, isTeamAdmin, isTeamMember, getTeamRole } from "@/lib/teams";
+import { canAssignRole, canRemoveMember, isTeamRole } from "@/lib/permissions";
 import { sendTeamInviteEmail } from "@/lib/email";
 
 export async function GET(
@@ -12,6 +13,12 @@ export async function GET(
   const { id } = await params;
   const team = await getTeam(id);
   if (!team) return Response.json({ error: "Team not found." }, { status: 404 });
+
+  // Anyone who can look up a team id was otherwise able to read its member
+  // roster — this is the actual access boundary, not just the UI hiding it.
+  if (!(await isTeamMember(id, user.id))) {
+    return Response.json({ error: "Not a member of this workspace." }, { status: 403 });
+  }
 
   const members = await getTeamMembers(id);
   const count = await getTeamMemberCount(id);
@@ -60,7 +67,7 @@ export async function POST(
 
   const invite = await inviteToTeam(id, email, role, user.id);
   if (!invite) {
-    return Response.json({ error: "Could not create invite. User may already be a member." }, { status: 400 });
+    return Response.json({ error: "Could not create invite. They may already be a member, or already have a pending invitation." }, { status: 400 });
   }
 
   // Send invite email
@@ -80,7 +87,8 @@ export async function PATCH(
   const team = await getTeam(id);
   if (!team) return Response.json({ error: "Team not found." }, { status: 404 });
 
-  if (!(await isTeamAdmin(id, user.id))) {
+  const actorRole = await getTeamRole(id, user.id);
+  if (!actorRole || !isTeamRole(actorRole)) {
     return Response.json({ error: "Only team admins can update members." }, { status: 403 });
   }
 
@@ -98,11 +106,11 @@ export async function PATCH(
     return Response.json({ error: "userId and role are required." }, { status: 400 });
   }
 
-  if (!["member", "admin"].includes(role)) {
-    return Response.json({ error: "Invalid role." }, { status: 400 });
+  if (!isTeamRole(role) || !canAssignRole(actorRole, role)) {
+    return Response.json({ error: "You can't assign that role." }, { status: 403 });
   }
 
-  const updated = await updateTeamMemberRole(id, userId, role);
+  const updated = await updateTeamMemberRole(id, userId, role, user.id);
   if (!updated) {
     return Response.json({ error: "Could not update member." }, { status: 400 });
   }
@@ -121,7 +129,8 @@ export async function DELETE(
   const team = await getTeam(id);
   if (!team) return Response.json({ error: "Team not found." }, { status: 404 });
 
-  if (!(await isTeamAdmin(id, user.id))) {
+  const actorRole = await getTeamRole(id, user.id);
+  if (!actorRole) {
     return Response.json({ error: "Only team admins can remove members." }, { status: 403 });
   }
 
@@ -136,7 +145,10 @@ export async function DELETE(
   }
 
   if (inviteId) {
-    const cancelled = await cancelTeamInvite(inviteId, id);
+    if (actorRole !== "owner" && actorRole !== "admin") {
+      return Response.json({ error: "Only team admins can cancel invitations." }, { status: 403 });
+    }
+    const cancelled = await cancelTeamInvite(inviteId, id, user.id);
     if (!cancelled) {
       return Response.json({ error: "Invite not found." }, { status: 404 });
     }
@@ -147,7 +159,12 @@ export async function DELETE(
     return Response.json({ error: "userId is required." }, { status: 400 });
   }
 
-  const removed = await removeMember(id, userId);
+  const targetRole = await getTeamRole(id, userId);
+  if (!targetRole || !canRemoveMember(actorRole, targetRole)) {
+    return Response.json({ error: "Could not remove member. The owner can't be removed." }, { status: 400 });
+  }
+
+  const removed = await removeMember(id, userId, user.id);
   if (!removed) {
     return Response.json({ error: "Could not remove member. Owner cannot be removed." }, { status: 400 });
   }

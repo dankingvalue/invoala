@@ -7,7 +7,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { InvoiceRow } from "@/lib/data";
 import type { Subscription } from "@/lib/billing";
 import { PLAN_PITCHES } from "@/lib/plans-content";
-import { CURRENCIES, formatMoney, type Invoice, type LineItem } from "@/lib/invoice";
+import { CURRENCIES, formatMoney, newId, type Invoice, type LineItem } from "@/lib/invoice";
 import { deriveDisplayStatus, remainingBalance, type DisplayStatus } from "@/lib/invoice-status";
 import { RecordPaymentModal, type PaymentResult } from "@/components/dashboard/RecordPaymentModal";
 import { PaymentHistoryModal } from "@/components/dashboard/PaymentHistoryModal";
@@ -15,6 +15,9 @@ import { ConfirmDialog } from "@/components/dashboard/Modal";
 import { InvoiceRowMenu } from "@/components/dashboard/InvoiceRowMenu";
 import { DownloadIcon, EmailIcon, RecordPaymentIcon, EditIcon, SendIcon, SearchIcon } from "@/components/dashboard/icons";
 import { ClientsTab } from "@/components/dashboard/ClientsTab";
+import { TeamsTab } from "@/components/dashboard/TeamsTab";
+import { GeneralSettings } from "@/components/dashboard/GeneralSettings";
+import { WorkspaceSwitcher, type WorkspaceTeam, type WorkspaceValue } from "@/components/dashboard/WorkspaceSwitcher";
 
 type Props = {
   userId: string;
@@ -287,51 +290,60 @@ export function DashboardClient({
   const [deleteStatus, setDeleteStatus] = useState<"idle" | "loading" | "error">("idle");
   const [deleteMsg, setDeleteMsg] = useState("");
 
-  // Teams state
-  const [teams, setTeams] = useState<Array<{ id: string; name: string; owner_id: string; plan: string }>>([]);
-  const [teamInvites, setTeamInvites] = useState<Array<{ id: string; team_name: string; inviter_name: string; email: string }>>([]);
-  const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
-  const [teamMembers, setTeamMembers] = useState<Array<{ id: string; user_id: string; role: string; name: string; email: string }>>([]);
-  const [teamPendingInvites, setTeamPendingInvites] = useState<Array<{ id: string; email: string; role: string; created_at: number }>>([]);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState("member");
-  const [teamStatus, setTeamStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
-  const [teamMsg, setTeamMsg] = useState("");
-  const [newTeamName, setNewTeamName] = useState("");
+  // Lightweight team list — powers the workspace switcher and the Clients
+  // page's "share to team" dropdown. The Teams tab itself (member
+  // management, invites, activity, settings) self-fetches its own richer
+  // data, same pattern as ClientsTab; this just needs enough to render the
+  // switcher and knows to refresh whenever TeamsTab signals a team was
+  // created/left/deleted.
+  const [teams, setTeams] = useState<WorkspaceTeam[]>([]);
+  const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceValue>(() => {
+    try {
+      const saved = window.localStorage.getItem("invoala.workspace");
+      if (saved === "personal" || saved?.startsWith("team:")) return saved as WorkspaceValue;
+    } catch {}
+    return "personal";
+  });
 
-  function isTeamAdminLocal(teamId: string, uid?: string): boolean {
-    const checkId = uid || userId;
-    const team = teams.find((t) => t.id === teamId);
-    if (team?.owner_id === checkId) return true;
-    const member = teamMembers.find((m) => m.user_id === checkId);
-    return member?.role === "admin";
-  }
-
-  // Fetch teams data when teams tab is selected
-  useEffect(() => {
-    if (tab !== "teams" && tab !== "clients") return;
+  function refreshTeams() {
     fetch("/api/teams")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (data) {
-          setTeams(data.teams || []);
-          setTeamInvites(data.invites || []);
-        }
+        if (data?.teams) setTeams(data.teams);
       })
       .catch(() => {});
-  }, [tab]);
+  }
 
-  // Fetch team members when a team is selected
   useEffect(() => {
-    if (!selectedTeam) return;
-    fetch(`/api/teams/${selectedTeam}/members`)
+    refreshTeams();
+  }, []);
+
+  function changeWorkspace(next: WorkspaceValue) {
+    setActiveWorkspace(next);
+    try {
+      window.localStorage.setItem("invoala.workspace", next);
+    } catch {}
+    // A workspace a user just left/was removed from can still be "active"
+    // in their stale localStorage value — fall back to Personal instead of
+    // silently showing another workspace's now-inaccessible data.
+    if (next.startsWith("team:") && !teams.some((t) => `team:${t.id}` === next)) {
+      setActiveWorkspace("personal");
+    }
+  }
+
+  // Documents are SSR'd for Personal on first load, then re-fetched here on
+  // every workspace change (including the first, which just re-confirms
+  // Personal — a cheap extra request that keeps this the one place that
+  // knows how to load invoices for whatever workspace is active).
+  useEffect(() => {
+    fetch(`/api/invoices?workspace=${encodeURIComponent(activeWorkspace)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (data?.members) setTeamMembers(data.members);
-        if (data?.invites) setTeamPendingInvites(data.invites);
+        if (data?.invoices) setInvoices(data.invoices);
       })
       .catch(() => {});
-  }, [selectedTeam]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeWorkspace]);
 
   async function removeInvoice(id: string) {
     setBusy(true);
@@ -352,6 +364,23 @@ export function DashboardClient({
     // soft nav, and its one-time hydration effect then never re-fires for
     // this new edit — the payload sits unread and the form stays on
     // whatever it last loaded. A full page load guarantees a fresh mount.
+    window.location.assign("/#generate");
+  }
+
+  // "+ New invoice" from Documents follows whichever workspace is active in
+  // the switcher — same invoala.edit handoff as editInvoice, just with a
+  // blank invoice and no id (so it's a create, not an update).
+  function startNewInvoice() {
+    const teamId = activeWorkspace.startsWith("team:") ? activeWorkspace.slice(5) : null;
+    try {
+      localStorage.setItem(
+        "invoala.edit",
+        JSON.stringify({
+          teamId,
+          invoice: { items: [{ id: newId(), description: "", quantity: 1, rate: 0 }] },
+        }),
+      );
+    } catch {}
     window.location.assign("/#generate");
   }
 
@@ -894,7 +923,12 @@ export function DashboardClient({
             {tab === "security" && "Email, password, and account deletion."}
           </p>
         </div>
-        <NotificationsBell />
+        <div className="flex items-center gap-3">
+          {tab !== "billing" && tab !== "security" ? (
+            <WorkspaceSwitcher teams={teams} value={activeWorkspace} onChange={changeWorkspace} />
+          ) : null}
+          <NotificationsBell />
+        </div>
       </div>
 
       {/* Card */}
@@ -996,31 +1030,7 @@ export function DashboardClient({
 
               <div className="border-t border-[#e5e7eb]" />
 
-              {/* Invoicing defaults */}
-              <section>
-                <h2 className="text-[16px] font-bold text-ink">Invoicing defaults</h2>
-                <p className="mt-1 text-[13px] text-[#6b7280]">
-                  These values apply to new invoices. Edit your account name, country, and currency from the generator.
-                </p>
-                <div className="mt-5 rounded-lg border border-[#e5e7eb]">
-                  <div className="flex flex-col gap-1 border-b border-[#e5e7eb] px-4 py-3 sm:flex-row sm:items-center sm:gap-0">
-                    <span className="w-full text-[13px] text-[#6b7280] sm:w-[200px]">Account name</span>
-                    <span className="text-[14px] font-medium text-ink">{profileName || "—"}</span>
-                  </div>
-                  <div className="flex flex-col gap-1 border-b border-[#e5e7eb] px-4 py-3 sm:flex-row sm:items-center sm:gap-0">
-                    <span className="w-full text-[13px] text-[#6b7280] sm:w-[200px]">Email</span>
-                    <span className="text-[14px] font-medium text-ink">{email}</span>
-                  </div>
-                  <div className="flex flex-col gap-1 border-b border-[#e5e7eb] px-4 py-3 sm:flex-row sm:items-center sm:gap-0">
-                    <span className="w-full text-[13px] text-[#6b7280] sm:w-[200px]">Timezone</span>
-                    <span className="text-[14px] font-medium text-ink">{profileTimezone || "System default"}</span>
-                  </div>
-                  <div className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:gap-0">
-                    <span className="w-full text-[13px] text-[#6b7280] sm:w-[200px]">Plan</span>
-                    <span className="text-[14px] font-medium text-ink">{isPro ? "Pro" : "Free"}</span>
-                  </div>
-                </div>
-              </section>
+              <GeneralSettings workspace={activeWorkspace} />
             </div>
           )}
 
@@ -1074,12 +1084,13 @@ export function DashboardClient({
                     </p>
                   ) : null}
                 </div>
-                <Link
-                  href="/#generate"
+                <button
+                  type="button"
+                  onClick={startNewInvoice}
                   className="rounded-lg bg-[#14532d] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0f3d22]"
                 >
                   + New invoice
-                </Link>
+                </button>
               </div>
 
               <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -1168,9 +1179,9 @@ export function DashboardClient({
               {invoices.length === 0 ? (
                 <div className="py-16 text-center">
                   <p className="text-[15px] text-[#6b7280]">No documents yet.</p>
-                  <Link href="/#generate" className="mt-3 inline-block text-[14px] font-medium text-[#166534] hover:underline">
+                  <button type="button" onClick={startNewInvoice} className="mt-3 inline-block text-[14px] font-medium text-[#166534] hover:underline">
                     Create your first invoice →
-                  </Link>
+                  </button>
                 </div>
               ) : filteredInvoices.length === 0 ? (
                 <div className="py-16 text-center">
@@ -1385,392 +1396,23 @@ export function DashboardClient({
 
           {/* Clients Tab */}
           {tab === "clients" && (
-            <ClientsTab teams={teams.map((t) => ({ id: t.id, name: t.name }))} />
+            <ClientsTab teams={teams.map((t) => ({ id: t.id, name: t.name }))} workspace={activeWorkspace} />
           )}
 
           {/* Teams Tab */}
           {tab === "teams" && (
-            <div className="space-y-6">
-              {/* Pending Invites */}
-              {teamInvites.length > 0 && (
-                <div className="rounded-lg border border-[#e5e7eb] p-6">
-                  <h3 className="text-[16px] font-bold text-ink">Pending Invitations</h3>
-                  <div className="mt-4 space-y-3">
-                    {teamInvites.map((invite) => (
-                      <div key={invite.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[#f9fafb] px-4 py-3">
-                        <div>
-                          <p className="text-[14px] font-medium text-ink">{invite.team_name}</p>
-                          <p className="text-[12px] text-[#6b7280]">
-                            Invited by {invite.inviter_name}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              setTeamStatus("loading");
-                              const res = await fetch(`/api/teams/${invite.id}/invite`, { method: "DELETE" });
-                              if (res.ok) {
-                                setTeamInvites((prev) => prev.filter((i) => i.id !== invite.id));
-                                setTeamStatus("done");
-                                setTeamMsg("Invitation declined.");
-                              } else {
-                                setTeamStatus("error");
-                                setTeamMsg("Could not decline invite.");
-                              }
-                            }}
-                            disabled={teamStatus === "loading"}
-                            className="rounded-lg border border-[#e5e7eb] px-4 py-2 text-[13px] font-medium text-[#6b7280] transition hover:bg-[#f3f4f6] disabled:opacity-50"
-                          >
-                            Decline
-                          </button>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              setTeamStatus("loading");
-                              const res = await fetch(`/api/teams/${invite.id}/invite`, { method: "POST" });
-                              if (res.ok) {
-                                setTeamInvites((prev) => prev.filter((i) => i.id !== invite.id));
-                                setTeamStatus("done");
-                                setTeamMsg("Joined team!");
-                                // Refresh teams list
-                                const data = await fetch("/api/teams").then((r) => r.json());
-                                if (data?.teams) setTeams(data.teams);
-                              } else {
-                                setTeamStatus("error");
-                                setTeamMsg("Could not accept invite.");
-                              }
-                            }}
-                            disabled={teamStatus === "loading"}
-                            className="rounded-lg bg-[#14532d] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0f3d22] disabled:opacity-50"
-                          >
-                            Accept
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* My Teams */}
-              <div className="rounded-lg border border-[#e5e7eb] p-6">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <h3 className="text-[16px] font-bold text-ink">My Teams</h3>
-                  {teamsEnabled && (
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        placeholder="Team name"
-                        value={newTeamName}
-                        onChange={(e) => setNewTeamName(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === "Enter" && newTeamName.trim()) e.currentTarget.parentElement?.querySelector("button")?.click(); }}
-                        className="w-48 rounded-lg border border-[#e5e7eb] px-3 py-2 text-[13px] focus:border-[#166534] focus:outline-none"
-                      />
-                      <button
-                        type="button"
-                        disabled={teamStatus === "loading" || !newTeamName.trim()}
-                        onClick={async () => {
-                          if (!newTeamName.trim()) return;
-                          setTeamStatus("loading");
-                          const res = await fetch("/api/teams", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ name: newTeamName }),
-                          });
-                          if (res.ok) {
-                            const json = await res.json();
-                            setTeams((prev) => [...prev, json.team]);
-                            setNewTeamName("");
-                            setTeamStatus("done");
-                            setTeamMsg("Team created!");
-                          } else {
-                            const json = await res.json();
-                            setTeamStatus("error");
-                            setTeamMsg(json.error || "Could not create team.");
-                          }
-                        }}
-                        className="rounded-lg bg-[#14532d] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0f3d22] disabled:opacity-50"
-                      >
-                        + New team
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {!teamsEnabled && (
-                  <div className="mt-3">
-                    <p className="text-[13px] text-[#6b7280]">
-                      {isPro
-                        ? "Your current plan doesn't include teams. Upgrade to the Teams plan to create and manage teams."
-                        : "Upgrade to Teams plan to create and manage teams."}
-                    </p>
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => void subscribe("teams_monthly")}
-                        disabled={busy}
-                        className="rounded-lg bg-[#14532d] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0f3d22] disabled:opacity-50"
-                      >
-                        Upgrade to Teams — $29/mo
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void subscribe("teams_yearly")}
-                        disabled={busy}
-                        className="rounded-lg border border-[#166534] px-4 py-2 text-[13px] font-semibold text-[#166534] transition hover:bg-[#f0fdf4] disabled:opacity-50"
-                      >
-                        Teams $249/yr
-                      </button>
-                      {notice ? <span className="text-[13px] text-[#166534]">{notice}</span> : null}
-                    </div>
-                  </div>
-                )}
-
-                {teams.length === 0 && teamsEnabled ? (
-                  <div className="mt-4 rounded-lg border border-dashed border-[#e5e7eb] p-6 text-center">
-                    <p className="text-[14px] text-[#6b7280]">No teams yet.</p>
-                    <p className="mt-1 text-[12px] text-[#9ca3af]">
-                      Create a team to collaborate with your team members.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="mt-4 space-y-3">
-                    {teams.map((team) => (
-                      <div
-                        key={team.id}
-                        className={`flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3 transition ${
-                          selectedTeam === team.id
-                            ? "bg-[#f0fdf4] ring-1 ring-[#166534]"
-                            : "bg-[#f9fafb] hover:bg-[#f3f4f6]"
-                        }`}
-                      >
-                        <div
-                          className="cursor-pointer flex-1"
-                          onClick={() => setSelectedTeam(selectedTeam === team.id ? null : team.id)}
-                        >
-                          <p className="text-[14px] font-medium text-ink">{team.name}</p>
-                          <p className="text-[12px] text-[#6b7280]">
-                            {team.owner_id === userId ? "Owner" : "Member"}
-                          </p>
-                        </div>
-                        {team.owner_id === userId && (
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              if (!confirm("Delete this team? This cannot be undone.")) return;
-                              setTeamStatus("loading");
-                              const res = await fetch(`/api/teams/${team.id}`, {
-                                method: "DELETE",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ action: "delete" }),
-                              });
-                              if (res.ok) {
-                                setTeams((prev) => prev.filter((t) => t.id !== team.id));
-                                setSelectedTeam(null);
-                                setTeamStatus("done");
-                                setTeamMsg("Team deleted.");
-                              }
-                            }}
-                            className="rounded-lg border border-[#e5e7eb] px-3 py-1.5 text-[12px] font-medium text-[#d70015] transition hover:bg-[#fef2f2]"
-                          >
-                            Delete
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {teamMsg ? (
-                  <p className={`mt-3 text-[13px] ${teamStatus === "error" ? "text-[#d70015]" : "text-[#166534]"}`}>
-                    {teamMsg}
-                  </p>
-                ) : null}
-              </div>
-
-              {/* Team Members */}
-              {selectedTeam && (
-                <div className="rounded-lg border border-[#e5e7eb] p-6">
-                  <h3 className="text-[16px] font-bold text-ink">Team Members</h3>
-
-                  {/* Invite form */}
-                  {teamsEnabled && (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <input
-                        type="email"
-                        value={inviteEmail}
-                        onChange={(e) => setInviteEmail(e.target.value)}
-                        placeholder="Email address"
-                        className="flex-1 min-w-[200px] rounded-lg border border-[#e5e7eb] px-3 py-2 text-[13px] outline-none focus:border-[#166534] focus:ring-2 focus:ring-[#166534]/20"
-                      />
-                      <select
-                        value={inviteRole}
-                        onChange={(e) => setInviteRole(e.target.value)}
-                        className="rounded-lg border border-[#e5e7eb] px-3 py-2 text-[13px] outline-none focus:border-[#166534]"
-                      >
-                        <option value="member">Member</option>
-                        <option value="admin">Admin</option>
-                      </select>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          if (!inviteEmail.trim()) return;
-                          setTeamStatus("loading");
-                          setTeamMsg("");
-                          const res = await fetch(`/api/teams/${selectedTeam}/members`, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
-                          });
-                          if (res.ok) {
-                            const json = await res.json();
-                            setInviteEmail("");
-                            setTeamStatus("done");
-                            setTeamMsg("Invitation sent!");
-                            if (json.invite) {
-                              setTeamPendingInvites((prev) => [
-                                { id: json.invite.id, email: inviteEmail, role: inviteRole, created_at: Date.now() },
-                                ...prev,
-                              ]);
-                            }
-                          } else {
-                            const json = await res.json();
-                            setTeamStatus("error");
-                            setTeamMsg(json.error || "Could not send invitation.");
-                          }
-                        }}
-                        disabled={!inviteEmail.trim() || teamStatus === "loading"}
-                        className="rounded-lg bg-[#14532d] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0f3d22] disabled:opacity-50"
-                      >
-                        Invite
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Members list */}
-                  <div className="mt-4 space-y-2">
-                    {teamPendingInvites.length > 0 && (
-                      <div className="mb-4">
-                        <p className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-[#6b7280]">
-                          Pending invites
-                        </p>
-                        <div className="space-y-2">
-                          {teamPendingInvites.map((invite) => (
-                            <div
-                              key={invite.id}
-                              className="flex items-center justify-between gap-3 rounded-lg bg-[#fef9e7] px-4 py-2.5"
-                            >
-                              <div>
-                                <p className="text-[13px] font-medium text-ink">{invite.email}</p>
-                                <p className="text-[11px] text-[#92600a]">
-                                  {invite.role} · Invited {new Date(invite.created_at).toLocaleDateString()}
-                                </p>
-                              </div>
-                              {isTeamAdminLocal(selectedTeam, userId) && (
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    setTeamStatus("loading");
-                                    const res = await fetch(`/api/teams/${selectedTeam}/members`, {
-                                      method: "DELETE",
-                                      headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify({ inviteId: invite.id }),
-                                    });
-                                    if (res.ok) {
-                                      setTeamPendingInvites((prev) => prev.filter((i) => i.id !== invite.id));
-                                      setTeamStatus("done");
-                                    }
-                                  }}
-                                  className="text-[12px] text-[#d70015] hover:underline"
-                                >
-                                  Cancel invite
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {teamMembers.map((member) => (
-                      <div
-                        key={member.user_id}
-                        className="flex items-center justify-between gap-3 rounded-lg bg-[#f9fafb] px-4 py-3"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#166534] text-[12px] font-bold text-white">
-                            {member.name?.charAt(0)?.toUpperCase() || member.email.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="text-[14px] font-medium text-ink">{member.name || member.email}</p>
-                            <p className="text-[12px] text-[#6b7280]">{member.email}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                            teams.find((t) => t.id === selectedTeam)?.owner_id === member.user_id
-                              ? "bg-[#111827] text-white"
-                              : member.role === "admin" ? "bg-[#166534] text-white" : "bg-[#e5e7eb] text-[#6b7280]"
-                          }`}>
-                            {teams.find((t) => t.id === selectedTeam)?.owner_id === member.user_id ? "Owner" : member.role}
-                          </span>
-                          {isTeamAdminLocal(selectedTeam, userId) &&
-                            teams.find((t) => t.id === selectedTeam)?.owner_id !== member.user_id && (
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                const nextRole = member.role === "admin" ? "member" : "admin";
-                                setTeamStatus("loading");
-                                const res = await fetch(`/api/teams/${selectedTeam}/members`, {
-                                  method: "PATCH",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ userId: member.user_id, role: nextRole }),
-                                });
-                                if (res.ok) {
-                                  setTeamMembers((prev) =>
-                                    prev.map((m) => (m.user_id === member.user_id ? { ...m, role: nextRole } : m))
-                                  );
-                                  setTeamStatus("done");
-                                }
-                              }}
-                              disabled={teamStatus === "loading"}
-                              className="text-[12px] text-[#166534] hover:underline disabled:opacity-50"
-                            >
-                              {member.role === "admin" ? "Make member" : "Make admin"}
-                            </button>
-                          )}
-                          {teams.find((t) => t.id === selectedTeam)?.owner_id !== member.user_id &&
-                            isTeamAdminLocal(selectedTeam, userId) && (
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                if (!confirm(`Remove ${member.name || member.email} from this team?`)) return;
-                                setTeamStatus("loading");
-                                const res = await fetch(`/api/teams/${selectedTeam}/members`, {
-                                  method: "DELETE",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ userId: member.user_id }),
-                                });
-                                if (res.ok) {
-                                  setTeamMembers((prev) => prev.filter((m) => m.user_id !== member.user_id));
-                                  setTeamStatus("done");
-                                }
-                              }}
-                              className="text-[12px] text-[#d70015] hover:underline"
-                            >
-                              Remove
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    {teamMembers.length === 0 && (
-                      <p className="text-[13px] text-[#6b7280]">No team members yet.</p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+            <TeamsTab
+              userId={userId}
+              teamsEnabled={teamsEnabled}
+              busy={busy}
+              notice={notice}
+              onSubscribe={(plan) => void subscribe(plan)}
+              onTeamsChanged={refreshTeams}
+              onOpenSettings={(teamId) => {
+                changeWorkspace(`team:${teamId}`);
+                setTab("general");
+              }}
+            />
           )}
 
           {/* Billing Tab */}
