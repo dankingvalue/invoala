@@ -147,12 +147,18 @@ export function InvoiceGenerator({
   const [saveNote, setSaveNote] = useState("");
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
-  // The workspace this invoice belongs to — only ever set via the
-  // invoala.edit handoff (from a specific client's or the active
-  // workspace's "+ New invoice"/Edit), never chosen inside the generator
-  // itself. undefined means "don't change" on an update, null means
-  // Personal, a string is that team's id.
+  // The workspace this invoice belongs to — set via the invoala.edit
+  // handoff (from a specific client's or the active workspace's "+ New
+  // invoice"/Edit) or, for a session started fresh in the generator itself,
+  // derived from whichever client the user picks in the dropdown (see
+  // handleClientSelect below). undefined means "don't change" on an
+  // update, null means Personal, a string is that team's id.
   const [selectedTeamId, setSelectedTeamId] = useState<string | null | undefined>(undefined);
+  // True once a handoff has explicitly set selectedTeamId (including an
+  // edit, which explicitly sets it to undefined to mean "don't change") —
+  // once locked, picking a client from the dropdown must not silently move
+  // an existing invoice to a different workspace.
+  const teamIdLockedRef = useRef(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailNote, setEmailNote] = useState("");
   const [formKey, setFormKey] = useState(0);
@@ -191,6 +197,11 @@ export function InvoiceGenerator({
         const parsed = JSON.parse(editRaw) as { id?: string; invoice?: Partial<Invoice>; clientId?: string | null; teamId?: string | null };
         if (parsed.invoice && Array.isArray(parsed.invoice.items)) {
           next = { ...base, ...parsed.invoice };
+          // A handoff (edit or "+ New invoice for this client") already
+          // establishes the workspace — an edit deliberately leaves
+          // selectedTeamId as undefined ("don't change"), which the picker
+          // below must not override with a casually re-selected client.
+          teamIdLockedRef.current = true;
           if (parsed.id) {
             // eslint-disable-next-line react-hooks/set-state-in-effect
             setSavedId(parsed.id);
@@ -288,7 +299,17 @@ export function InvoiceGenerator({
 
   useEffect(() => {
     if (!user) return;
-    fetch("/api/clients")
+    // The generator has no live workspace switcher of its own — it reads
+    // the dashboard's last-chosen workspace out of localStorage (same key
+    // DashboardClient persists to) so the client picker matches whatever
+    // workspace the user was last looking at, instead of merging every
+    // team's clients into one dropdown.
+    let workspace = "personal";
+    try {
+      const saved = window.localStorage.getItem("invoala.workspace");
+      if (saved === "personal" || saved?.startsWith("team:")) workspace = saved;
+    } catch {}
+    fetch(`/api/clients?workspace=${encodeURIComponent(workspace)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.clients) setClients(data.clients);
@@ -449,6 +470,24 @@ export function InvoiceGenerator({
     setSendingEmail(false);
   }
 
+  // Picking a client from InvoiceForm's dropdown also decides which
+  // workspace a brand-new invoice belongs to — the client's own team_id is
+  // the source of truth (same rule ClientsTab/ClientProfile's "+ New
+  // invoice" already follows), not whatever workspace happened to be last
+  // active. Locked out during an edit/handoff session (see
+  // teamIdLockedRef) so re-picking a client can't silently move an
+  // existing invoice to a different workspace.
+  function handleClientSelect(id: string | null) {
+    setSelectedClientId(id);
+    if (teamIdLockedRef.current) return;
+    if (!id) {
+      setSelectedTeamId(null);
+      return;
+    }
+    const client = clients.find((c) => c.id === id);
+    setSelectedTeamId(client ? client.team_id : null);
+  }
+
   function clearInvoice() {
     if (!confirm("Clear all fields and start a new invoice? This can't be undone.")) return;
     clearDraft();
@@ -458,6 +497,7 @@ export function InvoiceGenerator({
     setEmailNote("");
     setSelectedClientId(null);
     setSelectedTeamId(undefined);
+    teamIdLockedRef.current = false;
     // Remounts InvoiceForm so its own internal state (selected client,
     // payment-details toggle) resets along with the invoice data.
     setFormKey((k) => k + 1);
@@ -685,7 +725,7 @@ export function InvoiceGenerator({
             showQuoteMode={quoteMode}
             showRecurring={recurringTerms}
             clients={clients}
-            onClientSelect={setSelectedClientId}
+            onClientSelect={handleClientSelect}
             onClientSaved={(client) => setClients((rows) => [...rows, client].sort((a, b) => a.name.localeCompare(b.name)))}
           />
         </div>
