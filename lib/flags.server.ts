@@ -1,5 +1,4 @@
-import { mkdir, readFile, writeFile } from "fs/promises";
-import path from "path";
+import { dbGet, dbRun } from "@/lib/db";
 import {
   defaultFlags,
   FLAG_KEYS,
@@ -7,15 +6,23 @@ import {
   type FlagsState,
 } from "@/lib/flags";
 
-function filePath(): string {
-  return process.env.FLAGS_PATH || path.join(process.cwd(), "data", "flags.json");
-}
+const SETTINGS_KEY = "site_flags";
 
+// Was a local JSON file (data/flags.json) — Vercel's serverless functions
+// have an ephemeral, read-only filesystem, so writes either failed outright
+// or silently vanished on the next cold start. app_settings is the same
+// key/value table already used for schema_version and the AI provider
+// choice, so it actually persists.
 export async function getFlags(): Promise<FlagsState> {
+  const row = await dbGet<{ value: string }>(
+    "SELECT value FROM app_settings WHERE key = ?", SETTINGS_KEY,
+  ).catch(() => undefined);
+
+  const state = defaultFlags();
+  if (!row?.value) return state;
+
   try {
-    const raw = await readFile(/* turbopackIgnore: true */ filePath(), "utf8");
-    const parsed = JSON.parse(raw) as Partial<FlagsState>;
-    const state = defaultFlags();
+    const parsed = JSON.parse(row.value) as Partial<FlagsState>;
     if (parsed.flags && typeof parsed.flags === "object") {
       for (const key of FLAG_KEYS) {
         if (typeof parsed.flags[key as FlagKey] === "boolean") {
@@ -26,16 +33,20 @@ export async function getFlags(): Promise<FlagsState> {
     if (typeof parsed.announcement === "string") {
       state.announcement = parsed.announcement.slice(0, 300);
     }
-    return state;
   } catch {
-    return defaultFlags();
+    // Corrupt stored value — fall back to defaults rather than throw.
   }
+  return state;
 }
 
 export async function setFlags(next: FlagsState): Promise<void> {
-  const file = filePath();
-  await mkdir(path.dirname(file), { recursive: true });
-  await writeFile(file, `${JSON.stringify(next, null, 2)}\n`, "utf8");
+  await dbRun(
+    `INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+    SETTINGS_KEY,
+    JSON.stringify({ flags: next.flags, announcement: next.announcement }),
+    Date.now(),
+  );
 }
 
 export function sanitizeFlagsInput(input: unknown): FlagsState | null {
