@@ -10,17 +10,18 @@ import { SeoTab } from "@/components/admin/SeoTab";
 import { BroadcastTab } from "@/components/admin/BroadcastTab";
 import { SubscribersTab } from "@/components/admin/SubscribersTab";
 import { RoadmapTab } from "@/components/admin/RoadmapTab";
+import { RangePicker, type RangeId } from "@/components/admin/RangePicker";
 
 type Tab = "overview" | "users" | "invoices" | "messages" | "flags" | "email" | "audit" | "seo" | "notify" | "subscribers" | "roadmap";
 
 type Stats = {
   users: number;
-  newUsers7d: number;
+  newUsersInRange: number;
   invoices: number;
-  invoices30d: number;
+  invoicesInRange: number;
   activeSubs: number;
   mrrCents: number;
-  emailsSent7d: number;
+  emailsInRange: number;
   recentSubs: Array<{ email: string; plan: string; status: string; provider: string }>;
 };
 
@@ -109,25 +110,31 @@ export function AdminDashboard({ myRole }: { myRole: string }) {
 function OverviewTab() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [rangeParams, setRangeParams] = useState<{ range: RangeId; from?: number; to?: number }>({ range: "7d" });
 
   useEffect(() => {
-    fetch("/api/admin/stats")
+    const qs = new URLSearchParams({ range: rangeParams.range });
+    if (rangeParams.from) qs.set("from", String(rangeParams.from));
+    if (rangeParams.to) qs.set("to", String(rangeParams.to));
+    fetch(`/api/admin/stats?${qs.toString()}`)
       .then((r) => r.json())
       .then((d) => { setStats(d); setLoading(false); })
       .catch(() => setLoading(false));
-  }, []);
+  }, [rangeParams]);
 
-  if (loading) return <Panel><p className="text-sm text-[#6b7280]">Loading…</p></Panel>;
+  if (loading && !stats) return <Panel><p className="text-sm text-[#6b7280]">Loading…</p></Panel>;
   if (!stats) return <Panel><p className="text-sm text-[#6b7280]">Failed to load.</p></Panel>;
 
   return (
     <div className="space-y-6">
+      <RangePicker onChange={setRangeParams} />
+
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        <StatCard label="Users" value={stats.users.toLocaleString()} sub={`+${stats.newUsers7d} this week`} />
-        <StatCard label="Documents" value={stats.invoices.toLocaleString()} sub={`${stats.invoices30d} in 30 days`} />
-        <StatCard label="Pro Subscribers" value={stats.activeSubs.toLocaleString()} />
-        <StatCard label="MRR" value={`$${(stats.mrrCents / 100).toFixed(0)}`} sub="monthly equivalent" />
-        <StatCard label="Emails (7d)" value={stats.emailsSent7d.toLocaleString()} />
+        <StatCard label="Users" value={stats.users.toLocaleString()} sub={`+${stats.newUsersInRange} in range`} />
+        <StatCard label="Documents" value={stats.invoices.toLocaleString()} sub={`${stats.invoicesInRange} in range`} />
+        <StatCard label="Paying Customers" value={stats.activeSubs.toLocaleString()} sub="Pro, Teams & Lifetime — right now" />
+        <StatCard label="MRR" value={`$${(stats.mrrCents / 100).toFixed(0)}`} sub="monthly equivalent, right now" />
+        <StatCard label="Emails" value={stats.emailsInRange.toLocaleString()} sub="in range" />
       </div>
 
       <Panel>

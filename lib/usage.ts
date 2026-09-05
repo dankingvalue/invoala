@@ -60,16 +60,22 @@ export type UsageStats = {
   last30Days: Array<{ day: string; events: number; visitors: number }>;
 };
 
-// "Unique visitors" counts distinct visitor_id across the WHOLE table, not
-// per-day — a visitor who generates an invoice today and again tomorrow is
+// "Unique visitors" counts distinct visitor_id within the given range, not
+// all-time — a visitor who generates an invoice today and again tomorrow is
 // one visitor with two events, not two separate "new" visitors.
-export async function getUsageStats(): Promise<UsageStats> {
+export async function getUsageStats(from = 0, to = Date.now()): Promise<UsageStats> {
   const [totalRow, visitorsRow, signedInRow, byType, daily] = await Promise.all([
-    dbGet<{ n: number }>("SELECT COUNT(*) AS n FROM usage_events"),
-    dbGet<{ n: number }>("SELECT COUNT(DISTINCT visitor_id) AS n FROM usage_events"),
-    dbGet<{ n: number }>("SELECT COUNT(DISTINCT visitor_id) AS n FROM usage_events WHERE user_id IS NOT NULL"),
+    dbGet<{ n: number }>("SELECT COUNT(*) AS n FROM usage_events WHERE created_at BETWEEN ? AND ?", from, to),
+    dbGet<{ n: number }>(
+      "SELECT COUNT(DISTINCT visitor_id) AS n FROM usage_events WHERE created_at BETWEEN ? AND ?", from, to,
+    ),
+    dbGet<{ n: number }>(
+      "SELECT COUNT(DISTINCT visitor_id) AS n FROM usage_events WHERE user_id IS NOT NULL AND created_at BETWEEN ? AND ?",
+      from, to,
+    ),
     dbAll<{ event: string; n: number }>(
-      "SELECT event, COUNT(*) AS n FROM usage_events GROUP BY event ORDER BY n DESC",
+      "SELECT event, COUNT(*) AS n FROM usage_events WHERE created_at BETWEEN ? AND ? GROUP BY event ORDER BY n DESC",
+      from, to,
     ),
     dbAll<{ day: string; events: number; visitors: number }>(
       `SELECT

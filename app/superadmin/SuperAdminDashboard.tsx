@@ -10,6 +10,7 @@ import { SeoTab } from "@/components/admin/SeoTab";
 import { BroadcastTab } from "@/components/admin/BroadcastTab";
 import { SubscribersTab } from "@/components/admin/SubscribersTab";
 import { RoadmapTab } from "@/components/admin/RoadmapTab";
+import { RangePicker, type RangeId } from "@/components/admin/RangePicker";
 
 type Tab =
   | "overview"
@@ -29,12 +30,12 @@ type Tab =
 
 type Stats = {
   users: number;
-  newUsers7d: number;
+  newUsersInRange: number;
   invoices: number;
-  invoices30d: number;
+  invoicesInRange: number;
   activeSubs: number;
   mrrCents: number;
-  emailsSent7d: number;
+  emailsInRange: number;
   recentSubs: Array<{ email: string; plan: string; status: string; provider: string }>;
 };
 
@@ -129,25 +130,75 @@ export function SuperAdminDashboard() {
 function OverviewTab() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [rangeParams, setRangeParams] = useState<{ range: RangeId; from?: number; to?: number }>({ range: "7d" });
+  const [resetting, setResetting] = useState(false);
+  const [resetMsg, setResetMsg] = useState("");
 
   useEffect(() => {
-    fetch("/api/admin/stats")
+    const qs = new URLSearchParams({ range: rangeParams.range });
+    if (rangeParams.from) qs.set("from", String(rangeParams.from));
+    if (rangeParams.to) qs.set("to", String(rangeParams.to));
+    fetch(`/api/admin/stats?${qs.toString()}`)
       .then((r) => r.json())
       .then((d) => { setStats(d); setLoading(false); })
       .catch(() => setLoading(false));
-  }, []);
+  }, [rangeParams]);
 
-  if (loading) return <Panel><p className="text-sm text-[#6b7280]">Loading…</p></Panel>;
+  async function resetTestData() {
+    if (
+      !confirm(
+        "Reset test data? This permanently deletes ALL generation/visitor tracking history (usage_events) and any subscription created with the \"Grant Pro\" dev buttons (provider = dev). Real users, invoices, real payments, and email history are never touched. This can't be undone.",
+      )
+    ) {
+      return;
+    }
+    setResetting(true);
+    setResetMsg("");
+    try {
+      const res = await fetch("/api/admin/reset-test-data", { method: "POST" });
+      const json = (await res.json()) as { ok?: boolean; error?: string; deleted?: { usageEvents: number; devSubscriptions: number } };
+      if (res.ok && json.ok) {
+        setResetMsg(
+          `Cleared ${json.deleted?.usageEvents ?? 0} tracking events and ${json.deleted?.devSubscriptions ?? 0} dev subscriptions.`,
+        );
+        setRangeParams((p) => ({ ...p }));
+      } else {
+        setResetMsg(json.error || "Reset failed.");
+      }
+    } catch {
+      setResetMsg("Network error.");
+    } finally {
+      setResetting(false);
+      setTimeout(() => setResetMsg(""), 6000);
+    }
+  }
+
+  if (loading && !stats) return <Panel><p className="text-sm text-[#6b7280]">Loading…</p></Panel>;
   if (!stats) return <Panel><p className="text-sm text-[#6b7280]">Failed to load.</p></Panel>;
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <RangePicker onChange={setRangeParams} />
+        <div className="flex items-center gap-3">
+          {resetMsg ? <span className="text-[13px] text-[#166534]">{resetMsg}</span> : null}
+          <button
+            type="button"
+            onClick={resetTestData}
+            disabled={resetting}
+            className="rounded-full border border-[#fecaca] px-3.5 py-1.5 text-[13px] font-medium text-[#d70015] transition hover:bg-[#fef2f2] disabled:opacity-50"
+          >
+            {resetting ? "Resetting…" : "Reset test data"}
+          </button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        <StatCard label="Users" value={stats.users.toLocaleString()} sub={`+${stats.newUsers7d} this week`} />
-        <StatCard label="Documents" value={stats.invoices.toLocaleString()} sub={`${stats.invoices30d} in 30 days`} />
-        <StatCard label="Pro Subscribers" value={stats.activeSubs.toLocaleString()} />
-        <StatCard label="MRR" value={`$${(stats.mrrCents / 100).toFixed(0)}`} sub="monthly equivalent" />
-        <StatCard label="Emails (7d)" value={stats.emailsSent7d.toLocaleString()} />
+        <StatCard label="Users" value={stats.users.toLocaleString()} sub={`+${stats.newUsersInRange} in range`} />
+        <StatCard label="Documents" value={stats.invoices.toLocaleString()} sub={`${stats.invoicesInRange} in range`} />
+        <StatCard label="Paying Customers" value={stats.activeSubs.toLocaleString()} sub="Pro, Teams & Lifetime — right now" />
+        <StatCard label="MRR" value={`$${(stats.mrrCents / 100).toFixed(0)}`} sub="monthly equivalent, right now" />
+        <StatCard label="Emails" value={stats.emailsInRange.toLocaleString()} sub="in range" />
       </div>
 
       <Panel>
@@ -184,7 +235,7 @@ function OverviewTab() {
         )}
       </Panel>
 
-      <UsagePanel />
+      <UsagePanel rangeParams={rangeParams} />
     </div>
   );
 }
@@ -206,29 +257,32 @@ type UsageStats = {
   last30Days: Array<{ day: string; events: number; visitors: number }>;
 };
 
-function UsagePanel() {
+function UsagePanel({ rangeParams }: { rangeParams: { range: RangeId; from?: number; to?: number } }) {
   const [stats, setStats] = useState<UsageStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/admin/usage")
+    const qs = new URLSearchParams({ range: rangeParams.range });
+    if (rangeParams.from) qs.set("from", String(rangeParams.from));
+    if (rangeParams.to) qs.set("to", String(rangeParams.to));
+    fetch(`/api/admin/usage?${qs.toString()}`)
       .then((r) => r.json())
       .then((d) => { setStats(d); setLoading(false); })
       .catch(() => setLoading(false));
-  }, []);
+  }, [rangeParams]);
 
   return (
     <Panel>
       <SectionHead
         title="Invoice generation activity"
-        subtitle="Counts a PDF download, print, email, share, or save-to-account — from anyone, signed in or not. Returning visitors are tracked by a persistent cookie, so the same person generating on different days is one visitor, not two."
+        subtitle="Counts a PDF download, print, email, share, or save-to-account in the selected range — from anyone, signed in or not. Returning visitors are tracked by a persistent cookie, so the same person generating on different days is one visitor, not two."
       />
       {loading || !stats ? (
         <p className="mt-4 text-sm text-[#6b7280]">{loading ? "Loading…" : "Failed to load."}</p>
       ) : (
         <>
           <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <StatCard label="Total generations" value={stats.totalEvents.toLocaleString()} />
+            <StatCard label="Invoice actions" value={stats.totalEvents.toLocaleString()} sub="in range" />
             <StatCard label="Unique visitors" value={stats.uniqueVisitors.toLocaleString()} />
             <StatCard label="Signed in" value={stats.signedInVisitors.toLocaleString()} />
             <StatCard label="Guests" value={stats.guestVisitors.toLocaleString()} />
@@ -430,7 +484,7 @@ function SubscriptionsTab() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-        <StatCard label="Active Pro" value={stats.activeSubs.toLocaleString()} />
+        <StatCard label="Paying Customers" value={stats.activeSubs.toLocaleString()} />
         <StatCard label="MRR" value={`$${(stats.mrrCents / 100).toFixed(0)}`} />
         <StatCard label="Total Users" value={stats.users.toLocaleString()} />
       </div>
