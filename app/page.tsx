@@ -478,6 +478,7 @@ export default async function Home() {
               <a href="#faq" className="transition-colors hover:text-ink">FAQ</a>
               <Link href="/how-to-create-invoice" className="transition-colors hover:text-ink">Guide</Link>
               <Link href="/invoice-template" className="transition-colors hover:text-ink">Templates</Link>
+              <Link href="/roadmap" className="transition-colors hover:text-ink">Roadmap</Link>
               <Link href="/privacy" className="transition-colors hover:text-ink">Privacy</Link>
               <Link href="/terms" className="transition-colors hover:text-ink">Terms</Link>
               <a href="mailto:hello@invoala.com" className="transition-colors hover:text-ink">

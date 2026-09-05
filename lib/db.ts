@@ -262,6 +262,28 @@ async function ensureSchema(): Promise<void> {
     )` },
     { sql: `CREATE INDEX IF NOT EXISTS idx_service_items_user ON service_items(user_id)` },
     { sql: `CREATE INDEX IF NOT EXISTS idx_service_items_team ON service_items(team_id)` },
+    { sql: `CREATE TABLE IF NOT EXISTS roadmap_items (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'open',
+      votes INTEGER NOT NULL DEFAULT 0,
+      submitted_name TEXT NOT NULL DEFAULT '',
+      submitted_email TEXT NOT NULL DEFAULT '',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_roadmap_items_status ON roadmap_items(status, sort_order)` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_roadmap_items_votes ON roadmap_items(votes DESC)` },
+    { sql: `CREATE TABLE IF NOT EXISTS roadmap_votes (
+      id TEXT PRIMARY KEY,
+      item_id TEXT NOT NULL REFERENCES roadmap_items(id) ON DELETE CASCADE,
+      voter_key TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      UNIQUE(item_id, voter_key)
+    )` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_roadmap_votes_item ON roadmap_votes(item_id)` },
   ]);
 
   const versionRow = await db.execute("SELECT value FROM app_settings WHERE key = 'schema_version'");

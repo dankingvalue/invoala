@@ -202,6 +202,7 @@ export function SeoFooter() {
             <h4 className="mb-3 text-[13px] font-semibold text-[#111827]">Company</h4>
             <ul className="space-y-2">
               <li><Link href="/pricing" className="hover:text-[#166534]">Pricing</Link></li>
+              <li><Link href="/roadmap" className="hover:text-[#166534]">Roadmap</Link></li>
               <li><Link href="/about" className="hover:text-[#166534]">About</Link></li>
               <li><Link href="/security" className="hover:text-[#166534]">Security</Link></li>
               <li><Link href="/contact" className="hover:text-[#166534]">Contact</Link></li>

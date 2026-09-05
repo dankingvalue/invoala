@@ -119,6 +119,7 @@ export default async function DashboardPage({
             <nav className="flex items-center gap-6">
               <Link href="/" className="transition-colors hover:text-ink">Home</Link>
               <Link href="/dashboard?tab=general" className="transition-colors hover:text-ink">Dashboard</Link>
+              <Link href="/roadmap" className="transition-colors hover:text-ink">Roadmap</Link>
               <Link href="/privacy" className="transition-colors hover:text-ink">Privacy</Link>
               <Link href="/terms" className="transition-colors hover:text-ink">Terms</Link>
               <a href="mailto:hello@invoala.com" className="transition-colors hover:text-ink">

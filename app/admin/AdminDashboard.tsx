@@ -9,8 +9,9 @@ import { CustomerSlideOut } from "@/components/admin/CustomerSlideOut";
 import { SeoTab } from "@/components/admin/SeoTab";
 import { BroadcastTab } from "@/components/admin/BroadcastTab";
 import { SubscribersTab } from "@/components/admin/SubscribersTab";
+import { RoadmapTab } from "@/components/admin/RoadmapTab";
 
-type Tab = "overview" | "users" | "invoices" | "messages" | "flags" | "email" | "audit" | "seo" | "notify" | "subscribers";
+type Tab = "overview" | "users" | "invoices" | "messages" | "flags" | "email" | "audit" | "seo" | "notify" | "subscribers" | "roadmap";
 
 type Stats = {
   users: number;
@@ -66,6 +67,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "seo", label: "SEO" },
   { id: "notify", label: "Notify Users" },
   { id: "subscribers", label: "Email list" },
+  { id: "roadmap", label: "Roadmap" },
 ];
 
 export function AdminDashboard({ myRole }: { myRole: string }) {
@@ -99,6 +101,7 @@ export function AdminDashboard({ myRole }: { myRole: string }) {
       {tab === "seo" && <SeoTab />}
       {tab === "notify" && <BroadcastTab />}
       {tab === "subscribers" && <SubscribersTab />}
+      {tab === "roadmap" && <RoadmapTab />}
     </div>
   );
 }
