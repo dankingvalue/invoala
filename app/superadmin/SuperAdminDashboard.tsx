@@ -198,7 +198,7 @@ function OverviewTab() {
         <StatCard label="Documents" value={stats.invoices.toLocaleString()} sub={`${stats.invoicesInRange} in range`} />
         <StatCard label="Paying Customers" value={stats.activeSubs.toLocaleString()} sub="Pro, Teams & Lifetime — right now" />
         <StatCard label="MRR" value={`$${(stats.mrrCents / 100).toFixed(0)}`} sub="monthly equivalent, right now" />
-        <StatCard label="Emails" value={stats.emailsInRange.toLocaleString()} sub="in range" />
+        <StatCard label="Emails" value={stats.emailsInRange.toLocaleString()} sub="all sends: verification, invoices, etc." />
       </div>
 
       <Panel>
