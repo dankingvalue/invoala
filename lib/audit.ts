@@ -93,6 +93,48 @@ export type ActivityEntry = {
   actor_name: string;
 };
 
+export type TeamActivityFilter = {
+  actorId?: string;
+  action?: string;
+  from?: number;
+  to?: number;
+  limit?: number;
+  offset?: number;
+};
+
+// Workspace activity feed — team_id-scoped subset of the same audit_logs
+// table platform admins already read from getAuditLogs above. Supports the
+// Activity page's filters (actor/action/date range) and pagination; kept
+// as a separate function from the simple getTeamActivity below so existing
+// callers that just want "the last N entries" don't need to pass filters.
+export async function getTeamActivityFiltered(teamId: string, filter: TeamActivityFilter): Promise<{ entries: ActivityEntry[]; total: number }> {
+  const conditions = ["a.team_id = ?"];
+  const args: (string | number)[] = [teamId];
+  if (filter.actorId) { conditions.push("a.actor_id = ?"); args.push(filter.actorId); }
+  if (filter.action) { conditions.push("a.action = ?"); args.push(filter.action); }
+  if (filter.from) { conditions.push("a.created_at >= ?"); args.push(filter.from); }
+  if (filter.to) { conditions.push("a.created_at <= ?"); args.push(filter.to); }
+  const where = conditions.join(" AND ");
+  const limit = Math.min(Math.max(filter.limit ?? 50, 1), 200);
+  const offset = Math.max(filter.offset ?? 0, 0);
+
+  const [entries, totalRow] = await Promise.all([
+    dbAll<ActivityEntry>(
+      `SELECT a.id, a.actor_id, a.actor_email, a.action, a.target_id, a.target_type, a.details, a.created_at,
+              COALESCE(u.name, a.actor_email) AS actor_name
+       FROM audit_logs a
+       LEFT JOIN users u ON u.id = a.actor_id
+       WHERE ${where}
+       ORDER BY a.created_at DESC
+       LIMIT ? OFFSET ?`,
+      ...args, limit, offset,
+    ),
+    dbGet<{ n: number }>(`SELECT COUNT(*) AS n FROM audit_logs a WHERE ${where}`, ...args),
+  ]);
+
+  return { entries, total: totalRow?.n ?? 0 };
+}
+
 // Workspace activity feed — team_id-scoped subset of the same audit_logs
 // table platform admins already read from getAuditLogs above.
 export async function getTeamActivity(teamId: string, limit = 100): Promise<ActivityEntry[]> {

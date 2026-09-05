@@ -471,19 +471,11 @@ export function DashboardClient({
         window.location.href = json.url;
         return;
       }
-      if (json.mode === "dev") {
-        trackEvent("subscription_started", { plan, provider: "dev" });
-      }
       if (json.mode === "not_configured") {
         setNotice(json.error || "Payment processing is not configured yet. We're working on integrating a payment provider — stay tuned!");
         return;
       }
-      if (res.ok && json.mode === "dev") {
-        setNotice("Dev billing: Pro activated instantly.");
-        router.refresh();
-      } else {
-        setNotice(json.error || "Checkout failed.");
-      }
+      setNotice(json.error || "Checkout failed.");
     } finally {
       setBusy(false);
     }
@@ -1515,7 +1507,6 @@ export function DashboardClient({
                           day: "numeric",
                           year: "numeric",
                         })}
-                        {subscription.provider === "dev" ? " · dev billing" : ""}
                       </p>
                     ) : (
                       <p className="mt-1 text-[13px] text-[#6b7280]">
@@ -1523,11 +1514,6 @@ export function DashboardClient({
                       </p>
                     )}
                   </div>
-                  {subscription?.provider === "dev" ? (
-                    <div className="mb-4 rounded-lg border border-[#f0c000]/30 bg-[#fef9e7] px-4 py-3 text-[13px] text-[#92600a]">
-                      <strong>Dev mode:</strong> Billing is simulated. No real charges.
-                    </div>
-                  ) : null}
                   {isPro ? (
                     <button
                       type="button"

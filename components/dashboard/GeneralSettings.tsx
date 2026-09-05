@@ -756,6 +756,7 @@ export function GeneralSettings({ workspace }: { workspace: string }) {
         body="This removes the workspace and its membership permanently. Clients, invoices, and payment history are kept, not deleted. This cannot be undone."
         confirmLabel="Delete workspace"
         busy={dangerBusy}
+        requireTypedConfirmation={settings.businessName || undefined}
         onConfirm={async () => {
           if (!teamId) return;
           setDangerBusy(true);

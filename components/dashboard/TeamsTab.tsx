@@ -13,7 +13,9 @@ import {
   DeleteIcon,
   LogoutIcon,
   BackIcon,
+  BuildingIcon,
 } from "@/components/dashboard/icons";
+import { PERMISSION_GROUPS } from "@/lib/permissions-matrix";
 
 type TeamRole = "owner" | "admin" | "member";
 
@@ -470,6 +472,7 @@ export function TeamsTab({
         body={`This removes ${deleteTarget?.name || "this workspace"} and its membership permanently. Clients, invoices, and payment history are kept, not deleted. This cannot be undone.`}
         confirmLabel="Delete team"
         busy={status === "loading"}
+        requireTypedConfirmation={deleteTarget?.name}
       />
     </div>
   );
@@ -488,10 +491,18 @@ function TeamDetail({
   onOpenSettings: () => void;
   onChanged: () => void;
 }) {
-  const [view, setView] = useState<"members" | "activity">("members");
+  const [view, setView] = useState<"overview" | "members" | "permissions" | "activity">("overview");
+  const [profileTarget, setProfileTarget] = useState<Member | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [invites, setInvites] = useState<PendingInvite[]>([]);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
+  const [activityTotal, setActivityTotal] = useState(0);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activityFilterActor, setActivityFilterActor] = useState("");
+  const [activityFilterAction, setActivityFilterAction] = useState("");
+  const [activityFrom, setActivityFrom] = useState("");
+  const [activityTo, setActivityTo] = useState("");
+  const ACTIVITY_PAGE_SIZE = 25;
   const [loading, setLoading] = useState(true);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -523,14 +534,33 @@ function TeamDetail({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [team.id]);
 
-  useEffect(() => {
-    if (view !== "activity") return;
-    fetch(`/api/teams/${team.id}/activity`)
+  function activityQuery(offset: number) {
+    const params = new URLSearchParams({ limit: String(ACTIVITY_PAGE_SIZE), offset: String(offset) });
+    if (activityFilterActor) params.set("actorId", activityFilterActor);
+    if (activityFilterAction) params.set("action", activityFilterAction);
+    if (activityFrom) params.set("from", String(new Date(activityFrom).getTime()));
+    if (activityTo) params.set("to", String(new Date(activityTo).getTime() + 86400000 - 1));
+    return params;
+  }
+
+  function loadActivity(offset: number, append: boolean) {
+    fetch(`/api/teams/${team.id}/activity?${activityQuery(offset)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (data?.activity) setActivity(data.activity);
-      });
-  }, [view, team.id]);
+        if (!data) return;
+        setActivity((prev) => (append ? [...prev, ...data.activity] : data.activity));
+        setActivityTotal(data.total ?? 0);
+      })
+      .finally(() => setActivityLoading(false));
+  }
+
+  useEffect(() => {
+    if (view !== "activity") return;
+    loadActivity(0, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, team.id, activityFilterActor, activityFilterAction, activityFrom, activityTo]);
+
+  const activityActions = [...new Set(activity.map((a) => a.action))].sort();
 
   function isValidEmail(v: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
@@ -678,7 +708,16 @@ function TeamDetail({
         </div>
       </div>
 
-      <div className="flex gap-1 border-b border-[#e5e7eb]">
+      <div className="flex flex-wrap gap-1 border-b border-[#e5e7eb]">
+        <button
+          type="button"
+          onClick={() => setView("overview")}
+          className={`flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] font-medium transition ${
+            view === "overview" ? "border-[#166534] text-[#166534]" : "border-transparent text-[#6b7280] hover:text-ink"
+          }`}
+        >
+          <BuildingIcon /> Overview
+        </button>
         <button
           type="button"
           onClick={() => setView("members")}
@@ -687,6 +726,15 @@ function TeamDetail({
           }`}
         >
           <UsersIcon /> Members
+        </button>
+        <button
+          type="button"
+          onClick={() => setView("permissions")}
+          className={`flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] font-medium transition ${
+            view === "permissions" ? "border-[#166534] text-[#166534]" : "border-transparent text-[#6b7280] hover:text-ink"
+          }`}
+        >
+          <CrownIcon /> Roles &amp; permissions
         </button>
         <button
           type="button"
@@ -701,7 +749,11 @@ function TeamDetail({
 
       {notice ? <p className="text-[13px] text-[#166534]">{notice}</p> : null}
 
-      {view === "members" ? (
+      {view === "overview" ? (
+        <OverviewPanel teamId={team.id} />
+      ) : view === "permissions" ? (
+        <PermissionsMatrix />
+      ) : view === "members" ? (
         loading ? (
           <p className="text-[13px] text-[#6b7280]">Loading…</p>
         ) : (
@@ -787,15 +839,19 @@ function TeamDetail({
                       return (
                         <tr key={member.user_id} className="border-b border-[#f3f4f6] last:border-0">
                           <td className="px-4 py-2.5">
-                            <div className="flex items-center gap-2.5">
+                            <button
+                              type="button"
+                              onClick={() => setProfileTarget(member)}
+                              className="flex items-center gap-2.5 text-left"
+                            >
                               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#166534] text-[11px] font-bold text-white">
                                 {(member.name || member.email).charAt(0).toUpperCase()}
                               </div>
                               <div>
-                                <p className="font-medium text-ink">{member.name || member.email}{isSelf ? " (you)" : ""}</p>
+                                <p className="font-medium text-ink hover:underline">{member.name || member.email}{isSelf ? " (you)" : ""}</p>
                                 <p className="text-[11px] text-[#6b7280]">{member.email}</p>
                               </div>
-                            </div>
+                            </button>
                           </td>
                           <td className="px-4 py-2.5">
                             {canManage && !isOwner ? (
@@ -840,24 +896,83 @@ function TeamDetail({
           </div>
         )
       ) : (
-        <div className="rounded-lg border border-[#e5e7eb]">
-          {activity.length === 0 ? (
-            <p className="px-4 py-8 text-center text-[13px] text-[#6b7280]">No activity yet.</p>
-          ) : (
-            <ul className="divide-y divide-[#f3f4f6]">
-              {activity.map((entry) => (
-                <li key={entry.id} className="flex items-start gap-3 px-4 py-3">
-                  <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f3f4f6] text-[#6b7280]">
-                    <ActivityIcon className="h-3 w-3" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13px] text-ink">{activitySentence(entry)}</p>
-                    <p className="text-[11px] text-[#9ca3af]">{timeAgo(entry.created_at)}</p>
-                  </div>
-                </li>
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={activityFilterActor}
+              onChange={(e) => setActivityFilterActor(e.target.value)}
+              className="rounded-lg border border-[#e5e7eb] px-2.5 py-1.5 text-[12px] outline-none focus:border-[#166534]"
+            >
+              <option value="">All members</option>
+              {members.map((m) => (
+                <option key={m.user_id} value={m.user_id}>{m.name || m.email}</option>
               ))}
-            </ul>
-          )}
+            </select>
+            <select
+              value={activityFilterAction}
+              onChange={(e) => setActivityFilterAction(e.target.value)}
+              className="rounded-lg border border-[#e5e7eb] px-2.5 py-1.5 text-[12px] outline-none focus:border-[#166534]"
+            >
+              <option value="">All actions</option>
+              {activityActions.map((a) => (
+                <option key={a} value={a}>{a.replace(/_/g, " ")}</option>
+              ))}
+            </select>
+            <input
+              type="date"
+              value={activityFrom}
+              onChange={(e) => setActivityFrom(e.target.value)}
+              className="rounded-lg border border-[#e5e7eb] px-2.5 py-1.5 text-[12px] outline-none focus:border-[#166534]"
+            />
+            <span className="text-[12px] text-[#9ca3af]">to</span>
+            <input
+              type="date"
+              value={activityTo}
+              onChange={(e) => setActivityTo(e.target.value)}
+              className="rounded-lg border border-[#e5e7eb] px-2.5 py-1.5 text-[12px] outline-none focus:border-[#166534]"
+            />
+            <a
+              href={`/api/teams/${team.id}/activity?format=csv&${activityQuery(0)}`}
+              className="ml-auto rounded-lg border border-[#e5e7eb] px-3 py-1.5 text-[12px] font-medium text-[#6b7280] transition hover:bg-[#f3f4f6]"
+            >
+              Export CSV
+            </a>
+          </div>
+
+          <div className="rounded-lg border border-[#e5e7eb]">
+            {activity.length === 0 ? (
+              <p className="px-4 py-8 text-center text-[13px] text-[#6b7280]">
+                {activityLoading ? "Loading…" : "No activity yet."}
+              </p>
+            ) : (
+              <ul className="divide-y divide-[#f3f4f6]">
+                {activity.map((entry) => (
+                  <li key={entry.id} className="flex items-start gap-3 px-4 py-3">
+                    <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f3f4f6] text-[#6b7280]">
+                      <ActivityIcon className="h-3 w-3" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] text-ink">{activitySentence(entry)}</p>
+                      <p className="text-[11px] text-[#9ca3af]">{timeAgo(entry.created_at)}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {activity.length < activityTotal ? (
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => { setActivityLoading(true); loadActivity(activity.length, true); }}
+                disabled={activityLoading}
+                className="rounded-full border border-[#e5e7eb] px-4 py-2 text-[13px] font-medium text-ink transition hover:bg-[#f3f4f6] disabled:opacity-50"
+              >
+                {activityLoading ? "Loading…" : `Load more (${activityTotal - activity.length} left)`}
+              </button>
+            </div>
+          ) : null}
         </div>
       )}
 
@@ -915,6 +1030,235 @@ function TeamDetail({
         confirmLabel="Remove member"
         busy={busyKey === removeTarget?.user_id}
       />
+
+      {profileTarget ? (
+        <MemberProfileModal
+          teamId={team.id}
+          member={profileTarget}
+          onClose={() => setProfileTarget(null)}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function OverviewPanel({ teamId }: { teamId: string }) {
+  const [data, setData] = useState<{
+    stats: {
+      memberCount: number;
+      pendingInviteCount: number;
+      clientCount: number;
+      invoiceCount: number;
+      byCurrency: Array<{ currency: string; outstanding: number; paid: number }>;
+    };
+    recentActivity: ActivityEntry[];
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/teams/${teamId}/overview`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setData(d))
+      .finally(() => setLoading(false));
+  }, [teamId]);
+
+  if (loading) return <p className="text-[13px] text-[#6b7280]">Loading…</p>;
+  if (!data) return <p className="text-[13px] text-[#6b7280]">Failed to load.</p>;
+
+  const { stats, recentActivity } = data;
+  const money = (n: number, ccy: string) =>
+    n.toLocaleString("en-US", { style: "currency", currency: ccy, maximumFractionDigits: 0 });
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="rounded-lg border border-[#e5e7eb] p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#9ca3af]">Members</p>
+          <p className="mt-1 text-[20px] font-bold text-ink">{stats.memberCount}</p>
+        </div>
+        <div className="rounded-lg border border-[#e5e7eb] p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#9ca3af]">Pending invites</p>
+          <p className="mt-1 text-[20px] font-bold text-ink">{stats.pendingInviteCount}</p>
+        </div>
+        <div className="rounded-lg border border-[#e5e7eb] p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#9ca3af]">Clients</p>
+          <p className="mt-1 text-[20px] font-bold text-ink">{stats.clientCount}</p>
+        </div>
+        <div className="rounded-lg border border-[#e5e7eb] p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#9ca3af]">Invoices</p>
+          <p className="mt-1 text-[20px] font-bold text-ink">{stats.invoiceCount}</p>
+        </div>
+      </div>
+
+      {stats.byCurrency.length > 0 ? (
+        <div className="rounded-lg border border-[#e5e7eb] p-4">
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-[#9ca3af]">Outstanding &amp; paid</p>
+          <div className="space-y-2">
+            {stats.byCurrency.map((c) => (
+              <div key={c.currency} className="flex items-center justify-between text-[13px]">
+                <span className="text-[#6b7280]">{c.currency}</span>
+                <span>
+                  <span className="font-semibold text-[#d70015]">{money(c.outstanding, c.currency)}</span>
+                  <span className="mx-1.5 text-[#d1d5db]">·</span>
+                  <span className="font-semibold text-[#00875a]">{money(c.paid, c.currency)} paid</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="rounded-lg border border-[#e5e7eb]">
+        <p className="border-b border-[#e5e7eb] bg-[#f9fafb] px-4 py-2.5 text-[12px] font-semibold uppercase tracking-wider text-[#6b7280]">
+          Recent activity
+        </p>
+        {recentActivity.length === 0 ? (
+          <p className="px-4 py-6 text-center text-[13px] text-[#6b7280]">No activity yet.</p>
+        ) : (
+          <ul className="divide-y divide-[#f3f4f6]">
+            {recentActivity.map((entry) => (
+              <li key={entry.id} className="flex items-start gap-3 px-4 py-3">
+                <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f3f4f6] text-[#6b7280]">
+                  <ActivityIcon className="h-3 w-3" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] text-ink">{activitySentence(entry)}</p>
+                  <p className="text-[11px] text-[#9ca3af]">{timeAgo(entry.created_at)}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PermissionsMatrix() {
+  return (
+    <div className="space-y-6">
+      <p className="text-[13px] text-[#6b7280]">
+        What each role can do in this workspace. This reflects what the server actually enforces —
+        not just what the interface happens to show.
+      </p>
+      {PERMISSION_GROUPS.map((group) => (
+        <div key={group.label} className="rounded-lg border border-[#e5e7eb]">
+          <p className="border-b border-[#e5e7eb] bg-[#f9fafb] px-4 py-2.5 text-[12px] font-semibold uppercase tracking-wider text-[#6b7280]">
+            {group.label}
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[480px] text-left text-[13px]">
+              <thead>
+                <tr className="border-b border-[#e5e7eb] text-[11px] uppercase tracking-wider text-[#9ca3af]">
+                  <th className="px-4 py-2 font-semibold">Permission</th>
+                  <th className="px-4 py-2 text-center font-semibold">Owner</th>
+                  <th className="px-4 py-2 text-center font-semibold">Admin</th>
+                  <th className="px-4 py-2 text-center font-semibold">Member</th>
+                </tr>
+              </thead>
+              <tbody>
+                {group.rows.map((r) => (
+                  <tr key={r.label} className="border-b border-[#f3f4f6] last:border-0">
+                    <td className="px-4 py-2.5 text-ink">{r.label}</td>
+                    {(["owner", "admin", "member"] as const).map((role) => (
+                      <td key={role} className="px-4 py-2.5 text-center">
+                        {r.allowed[role] ? (
+                          <span className="text-[#166534]">✓</span>
+                        ) : (
+                          <span className="text-[#d1d5db]">–</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MemberProfileModal({
+  teamId,
+  member,
+  onClose,
+}: {
+  teamId: string;
+  member: Member;
+  onClose: () => void;
+}) {
+  const [data, setData] = useState<{
+    stats: { invoicesCreated: number; paymentsRecorded: number };
+    recentActivity: ActivityEntry[];
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/teams/${teamId}/members/${member.user_id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setData(d))
+      .finally(() => setLoading(false));
+  }, [teamId, member.user_id]);
+
+  return (
+    <Modal open onClose={onClose} title={member.name || member.email} maxWidth="480px">
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#166534] text-[14px] font-bold text-white">
+            {(member.name || member.email).charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <p className="text-[14px] font-semibold text-ink">{member.name || member.email}</p>
+            <p className="text-[12px] text-[#6b7280]">{member.email}</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3 text-[13px]">
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-[#9ca3af]">Role</p>
+            <p className={`mt-0.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${ROLE_BADGE[member.role]}`}>
+              {ROLE_LABEL[member.role]}
+            </p>
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-[#9ca3af]">Joined</p>
+            <p className="mt-0.5 text-ink">{new Date(member.joined_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
+          </div>
+        </div>
+
+        {loading ? (
+          <p className="text-[13px] text-[#6b7280]">Loading…</p>
+        ) : data ? (
+          <>
+            <div className="grid grid-cols-2 gap-3 text-[13px]">
+              <div>
+                <p className="text-[11px] uppercase tracking-wider text-[#9ca3af]">Invoices created</p>
+                <p className="mt-0.5 font-semibold text-ink">{data.stats.invoicesCreated}</p>
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-wider text-[#9ca3af]">Payments recorded</p>
+                <p className="mt-0.5 font-semibold text-ink">{data.stats.paymentsRecorded}</p>
+              </div>
+            </div>
+            <div>
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#9ca3af]">Recent activity</p>
+              {data.recentActivity.length === 0 ? (
+                <p className="text-[13px] text-[#6b7280]">No activity yet in this workspace.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {data.recentActivity.map((entry) => (
+                    <li key={entry.id} className="text-[13px] text-ink">
+                      {activitySentence(entry)}
+                      <span className="ml-1.5 text-[11px] text-[#9ca3af]">{timeAgo(entry.created_at)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </>
+        ) : null}
+      </div>
+    </Modal>
   );
 }

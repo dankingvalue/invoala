@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export function Modal({
   open,
@@ -78,6 +78,7 @@ export function ConfirmDialog({
   confirmLabel,
   danger = true,
   busy = false,
+  requireTypedConfirmation,
 }: {
   open: boolean;
   onClose: () => void;
@@ -87,10 +88,65 @@ export function ConfirmDialog({
   confirmLabel: string;
   danger?: boolean;
   busy?: boolean;
+  // When set, the confirm button stays disabled until the user types this
+  // exact string — extra friction for the handful of truly irreversible
+  // actions (deleting a workspace) where a plain click is too easy to
+  // trigger by mistake. Every other ConfirmDialog in the app omits this and
+  // keeps its existing single-click behavior.
+  requireTypedConfirmation?: string;
 }) {
   return (
     <Modal open={open} onClose={onClose} title={title} maxWidth="400px">
       <p className="text-[14px] leading-relaxed text-[#6b7280]">{body}</p>
+      {/* Modal fully unmounts its children while closed (returns null), so
+          this footer's own `typed` state is naturally fresh every time the
+          dialog reopens — no effect or ref needed to reset it. */}
+      <ConfirmDialogFooter
+        onClose={onClose}
+        onConfirm={onConfirm}
+        confirmLabel={confirmLabel}
+        danger={danger}
+        busy={busy}
+        requireTypedConfirmation={requireTypedConfirmation}
+      />
+    </Modal>
+  );
+}
+
+function ConfirmDialogFooter({
+  onClose,
+  onConfirm,
+  confirmLabel,
+  danger,
+  busy,
+  requireTypedConfirmation,
+}: {
+  onClose: () => void;
+  onConfirm: () => void;
+  confirmLabel: string;
+  danger: boolean;
+  busy: boolean;
+  requireTypedConfirmation?: string;
+}) {
+  const [typed, setTyped] = useState("");
+  const locked = !!requireTypedConfirmation && typed !== requireTypedConfirmation;
+
+  return (
+    <>
+      {requireTypedConfirmation ? (
+        <div className="mt-4">
+          <label className="mb-1.5 block text-[12px] font-medium text-[#6b7280]">
+            Type <span className="font-semibold text-ink">{requireTypedConfirmation}</span> to confirm
+          </label>
+          <input
+            type="text"
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            autoFocus
+            className="w-full rounded-lg border border-[#e5e7eb] px-3 py-2 text-[14px] outline-none focus:border-[#d70015] focus:ring-2 focus:ring-[#d70015]/15"
+          />
+        </div>
+      ) : null}
       <div className="mt-5 flex justify-end gap-2">
         <button
           type="button"
@@ -103,7 +159,7 @@ export function ConfirmDialog({
         <button
           type="button"
           onClick={onConfirm}
-          disabled={busy}
+          disabled={busy || locked}
           className={`rounded-full px-4 py-2 text-[13px] font-semibold text-white transition disabled:opacity-60 ${
             danger ? "bg-[#d70015] hover:bg-[#b0000f]" : "bg-[#166534] hover:bg-[#14532d]"
           }`}
@@ -111,6 +167,6 @@ export function ConfirmDialog({
           {busy ? "Working…" : confirmLabel}
         </button>
       </div>
-    </Modal>
+    </>
   );
 }

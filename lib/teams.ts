@@ -578,3 +578,55 @@ export async function getTeamInvoices(teamId: string): Promise<Array<{ id: strin
     teamId
   );
 }
+
+export type TeamOverviewStats = {
+  memberCount: number;
+  pendingInviteCount: number;
+  clientCount: number;
+  invoiceCount: number;
+  // Per-currency, since a workspace isn't guaranteed to bill in just one.
+  byCurrency: Array<{ currency: string; outstanding: number; paid: number }>;
+};
+
+// Aggregate counts via COUNT(*) rather than fetching full rows — only the
+// money breakdown needs row-level data (to reuse the same paid/outstanding
+// derivation as the Documents tab: lib/invoice-status.ts's remainingBalance,
+// fed by each invoice's stored status/total and its data blob's amountPaid).
+export async function getTeamOverviewStats(teamId: string): Promise<TeamOverviewStats> {
+  const [memberRow, inviteRow, clientRow, invoiceRows] = await Promise.all([
+    dbGet<{ n: number }>("SELECT COUNT(*) AS n FROM team_members WHERE team_id = ?", teamId),
+    dbGet<{ n: number }>("SELECT COUNT(*) AS n FROM team_invites WHERE team_id = ? AND expires_at > ?", teamId, Date.now()),
+    dbGet<{ n: number }>("SELECT COUNT(*) AS n FROM clients WHERE team_id = ?", teamId),
+    dbAll<{ status: string; total: number; currency: string; data: string }>(
+      "SELECT status, total, currency, data FROM invoices WHERE team_id = ?", teamId,
+    ),
+  ]);
+
+  const byCurrency = new Map<string, { outstanding: number; paid: number }>();
+  for (const row of invoiceRows) {
+    const currency = row.currency || "USD";
+    const bucket = byCurrency.get(currency) ?? { outstanding: 0, paid: 0 };
+    let amountPaid = 0;
+    if (row.status === "paid") {
+      amountPaid = row.total || 0;
+    } else {
+      try {
+        const parsed = JSON.parse(row.data) as { amountPaid?: number };
+        amountPaid = typeof parsed.amountPaid === "number" ? parsed.amountPaid : 0;
+      } catch {}
+    }
+    bucket.paid += amountPaid;
+    if (row.status !== "paid" && row.status !== "void" && row.status !== "cancelled") {
+      bucket.outstanding += Math.max(0, (row.total || 0) - amountPaid);
+    }
+    byCurrency.set(currency, bucket);
+  }
+
+  return {
+    memberCount: memberRow?.n ?? 0,
+    pendingInviteCount: inviteRow?.n ?? 0,
+    clientCount: clientRow?.n ?? 0,
+    invoiceCount: invoiceRows.length,
+    byCurrency: [...byCurrency.entries()].map(([currency, v]) => ({ currency, ...v })),
+  };
+}
