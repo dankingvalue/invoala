@@ -3,6 +3,7 @@ import "./globals.css";
 import { LazyLiveChat } from "@/components/LazyLiveChat";
 import { CookieConsent } from "@/components/CookieConsent";
 import { Analytics } from "@/components/Analytics";
+import { TRUSTPILOT } from "@/components/TrustStrip";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.invoala.com"),
@@ -86,7 +87,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     logo: "https://www.invoala.com/icon.svg",
     description: "Free online invoice generator for freelancers and small businesses",
     email: "hello@invoala.com",
-    sameAs: [],
+    sameAs: [TRUSTPILOT.url],
   };
 
   const appJsonLd = {
@@ -102,6 +103,18 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       price: "0",
       priceCurrency: "USD",
     },
+    // Only added once real reviews exist — TRUSTPILOT.hasReviews is the same
+    // flag the Trustpilot strip on the homepage checks, so this can never
+    // show a rating the page itself doesn't also show.
+    ...(TRUSTPILOT.hasReviews
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: TRUSTPILOT.score,
+            reviewCount: TRUSTPILOT.reviewCount,
+          },
+        }
+      : {}),
   };
 
   return (

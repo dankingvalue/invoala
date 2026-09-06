@@ -1,4 +1,10 @@
-const TRUSTPILOT = {
+// Exported so the homepage's SoftwareApplication schema (app/layout.tsx) can
+// read the exact same numbers this strip shows — an aggregateRating in
+// structured data that doesn't match what's on the page (or that exists
+// before any reviews do) is a Google structured-data policy violation, not
+// just bad practice. Flip hasReviews once real reviews exist and both
+// update together.
+export const TRUSTPILOT = {
   hasReviews: false,
   score: "4.9",
   stars: 5,

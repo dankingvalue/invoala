@@ -64,6 +64,23 @@ export function SeoTab() {
     robotsFollow: true,
   });
   const [savedNote, setSavedNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const [indexNowBusy, setIndexNowBusy] = useState(false);
+  const [indexNowMsg, setIndexNowMsg] = useState("");
+
+  async function submitIndexNow() {
+    setIndexNowBusy(true);
+    setIndexNowMsg("");
+    try {
+      const res = await fetch("/api/admin/indexnow", { method: "POST" });
+      const json = await res.json();
+      setIndexNowMsg(res.ok ? `Submitted ${json.submitted} URLs.` : json.error || "Submission failed.");
+    } catch {
+      setIndexNowMsg("Network error.");
+    } finally {
+      setIndexNowBusy(false);
+      setTimeout(() => setIndexNowMsg(""), 6000);
+    }
+  }
 
   async function load() {
     try {
@@ -247,6 +264,20 @@ export function SeoTab() {
             {counts.articles ?? 0} articles · {counts.comparisons ?? 0} comparisons
           </li>
         </ul>
+        <div className="mt-4 flex items-center gap-3 border-t border-[#e5e7eb] pt-4">
+          <button
+            type="button"
+            onClick={() => void submitIndexNow()}
+            disabled={indexNowBusy}
+            className="rounded-full bg-[#14532d] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0f3d22] disabled:opacity-50"
+          >
+            {indexNowBusy ? "Submitting…" : "Submit all pages to IndexNow"}
+          </button>
+          <span className="text-[13px] text-[#6b7280]">
+            Instantly notifies Bing &amp; Yandex of every URL in the sitemap above.
+          </span>
+          {indexNowMsg ? <span className="text-[13px] text-[#166534]">{indexNowMsg}</span> : null}
+        </div>
       </Panel>
 
       <Panel>

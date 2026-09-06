@@ -1,0 +1,36 @@
+# Invoala
+
+> Invoala is a free online invoice generator for freelancers and small businesses. Create professional PDF invoices, quotes, estimates, and receipts in seconds — no sign-up required for the core generator. A paid Pro/Teams tier adds saved clients, cloud sync, recurring invoices, and team workspaces.
+
+Invoala is free to use at the core: unlimited invoices, no watermark, no credit card required. Pricing for the optional paid tiers is listed at /pricing.
+
+## Product
+
+- [Invoice Generator](https://www.invoala.com/invoice-generator): the main free tool — create and download a PDF invoice with no account.
+- [Pricing](https://www.invoala.com/pricing): Free forever tier, plus Pro ($9/mo) and Teams ($29/mo) plans.
+- [Receipt Generator](https://www.invoala.com/receipt-generator)
+- [Estimate Generator](https://www.invoala.com/estimate-generator)
+- [Recurring Invoices](https://www.invoala.com/recurring-invoices)
+- [Invoice Payment Tracking](https://www.invoala.com/invoice-payment-tracking)
+
+## Tools
+
+Free calculators and generators: [/tools](https://www.invoala.com/tools) (VAT calculator, hourly rate calculator, profit margin calculator, invoice number generator, and more).
+
+## Templates
+
+Free downloadable invoice templates by industry and use case: [/templates](https://www.invoala.com/templates) (freelance, consulting, photography, contractor, retainer, and more).
+
+## Learn
+
+Guides on invoicing, freelancing, and getting paid: [/learn](https://www.invoala.com/learn).
+
+## Compare
+
+Honest, feature-by-feature comparisons against other invoicing tools: [/compare](https://www.invoala.com/compare) (Invoala vs. QuickBooks, Xero, FreshBooks, Wave, Zoho Invoice).
+
+## Company
+
+- [About](https://www.invoala.com/about)
+- [Security](https://www.invoala.com/security)
+- [Roadmap](https://www.invoala.com/roadmap): public feature roadmap and feedback board.
