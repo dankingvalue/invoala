@@ -1,32 +1,29 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMetadata } from "@/lib/seo";
+import { hreflangAlternates } from "@/lib/i18n";
 import { SeoFooter } from "@/components/seo/SeoPage";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Recurring Invoices — Automate Repetitive Billing",
-  description:
-    "Set up recurring invoices to automate repetitive billing. Save time, never miss a billing cycle, and get paid on schedule with Invoala's free recurring invoicing.",
-  keywords: [
-    "recurring invoices",
-    "recurring billing",
-    "automatic invoices",
-    "subscription invoicing",
-    "recurring invoice template",
-  ],
-  alternates: {
-    canonical: "https://www.invoala.com/recurring-invoices",
-  },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
     title: "Recurring Invoices — Automate Repetitive Billing",
     description:
+      "Set up recurring invoices to automate repetitive billing. Save time, never miss a billing cycle, and get paid on schedule with Invoala's free recurring invoicing.",
+    path: "/recurring-invoices",
+    keywords: [
+      "recurring invoices",
+      "recurring billing",
+      "automatic invoices",
+      "subscription invoicing",
+      "recurring invoice template",
+    ],
+    ogDescription:
       "Set up recurring invoices to automate repetitive billing. Save time, never miss a billing cycle, and get paid on schedule.",
-    url: "https://www.invoala.com/recurring-invoices",
-    siteName: "Invoala",
-    type: "website",
-  },
-};
+    hreflang: hreflangAlternates("/recurring-invoices"),
+  });
+}
 
 const faqs = [
   {

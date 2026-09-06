@@ -1,25 +1,24 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "How to Create an Invoice — Step-by-Step Guide",
-  description:
-    "Learn how to create a professional invoice in minutes. Free step-by-step guide with examples for freelancers, contractors, and small businesses.",
-  keywords: [
-    "how to create an invoice",
-    "how to make an invoice",
-    "invoice tutorial",
-    "create invoice online",
-    "freelance invoice guide",
-  ],
-  alternates: { canonical: "https://www.invoala.com/how-to-create-invoice" },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
     title: "How to Create an Invoice — Step-by-Step Guide",
     description:
+      "Learn how to create a professional invoice in minutes. Free step-by-step guide with examples for freelancers, contractors, and small businesses.",
+    path: "/how-to-create-invoice",
+    keywords: [
+      "how to create an invoice",
+      "how to make an invoice",
+      "invoice tutorial",
+      "create invoice online",
+      "freelance invoice guide",
+    ],
+    ogDescription:
       "Learn how to create a professional invoice in minutes. Free step-by-step guide for freelancers.",
-    url: "https://www.invoala.com/how-to-create-invoice",
-  },
-};
+  });
+}
 
 const steps = [
   {

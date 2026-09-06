@@ -1,16 +1,20 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
+import { hreflangAlternates } from "@/lib/i18n";
 import { SeoNav, SeoFooter, FaqSection, CtaBlock, JsonLd } from "@/components/seo/SeoPage";
 import { ProPricing } from "@/components/ProPricing";
 import { faqSchema } from "@/lib/seo";
 
-export const metadata: Metadata = pageMetadata({
-  title: "Pricing — Free Forever, Upgrade When You're Ready",
-  description:
-    "Invoala pricing: a genuinely free invoice generator, plus Pro and Teams plans for saved clients, quotes, and team billing. No credit card required to start.",
-  path: "/pricing",
-  keywords: ["invoala pricing", "free invoice software", "invoice generator cost"],
-});
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Pricing — Free Forever, Upgrade When You're Ready",
+    description:
+      "Invoala pricing: a genuinely free invoice generator, plus Pro and Teams plans for saved clients, quotes, and team billing. No credit card required to start.",
+    path: "/pricing",
+    keywords: ["invoala pricing", "free invoice software", "invoice generator cost"],
+    hreflang: hreflangAlternates("/pricing"),
+  });
+}
 
 const faqs = [
   {

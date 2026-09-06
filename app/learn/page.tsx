@@ -4,13 +4,15 @@ import { pageMetadata } from "@/lib/seo";
 import { ARTICLES_BY_CATEGORY } from "@/lib/learn-content";
 import { SeoNav, SeoFooter } from "@/components/seo/SeoPage";
 
-export const metadata: Metadata = pageMetadata({
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
   title: "Invoicing Learning Center — Guides & Best Practices",
   description:
     "Practical invoicing guides for freelancers and small businesses: getting paid faster, invoices vs receipts, VAT, payment terms, and more.",
   path: "/learn",
   keywords: ["invoicing guide", "invoice tips", "get paid faster", "invoice best practices"],
 });
+}
 
 export default function LearnPage() {
   return (

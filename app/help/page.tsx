@@ -3,13 +3,15 @@ import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
 import { SeoNav, SeoFooter } from "@/components/seo/SeoPage";
 
-export const metadata: Metadata = pageMetadata({
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
   title: "Help Center — Getting Started with Invoala",
   description:
     "Answers to common Invoala questions: creating invoices, saving clients, quotes, teams, billing, and getting paid faster.",
   path: "/help",
   keywords: ["invoala help", "invoice help", "how to use invoala"],
 });
+}
 
 const helpGroups = [
   {

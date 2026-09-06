@@ -3,13 +3,15 @@ import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
 import { SeoNav, SeoFooter } from "@/components/seo/SeoPage";
 
-export const metadata: Metadata = pageMetadata({
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
   title: "Invoala Invoice Payment Report — Original Research",
   description:
     "Invoala's original research on invoice payment behavior: how long invoices really take to be paid, what predicts late payment, and what helps. Methodology published with every release.",
   path: "/research/invoice-payment-report",
   keywords: ["invoice payment statistics", "late payment report", "invoicing research"],
 });
+}
 
 export default function ReportPage() {
   return (

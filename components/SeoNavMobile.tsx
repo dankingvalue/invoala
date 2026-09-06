@@ -2,18 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-
-const LINKS = [
-  { label: "Product", href: "/invoicing-software" },
-  { label: "Free tools", href: "/tools" },
-  { label: "Templates", href: "/templates" },
-  { label: "Learn", href: "/learn" },
-  { label: "Pricing", href: "/pricing" },
-];
+import { NAV_LABELS, localizedPath, type LocaleOrDefault } from "@/lib/i18n";
 
 // Mobile hamburger for the SEO header. Auth-aware: logged-in users get a
 // Dashboard entry instead of Sign in, mirroring the desktop bar.
-export function SeoNavMobile() {
+export function SeoNavMobile({ locale = "en" }: { locale?: LocaleOrDefault } = {}) {
+  const t = NAV_LABELS[locale];
+  const LINKS = [
+    { label: t.product, href: "/invoicing-software" },
+    { label: t.tools, href: "/tools" },
+    { label: t.templates, href: localizedPath("/templates", locale) },
+    { label: t.learn, href: localizedPath("/learn", locale) },
+    { label: t.pricing, href: localizedPath("/pricing", locale) },
+  ];
   const [open, setOpen] = useState(false);
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -73,7 +74,7 @@ export function SeoNavMobile() {
                 onClick={() => setOpen(false)}
                 className="block px-4 py-2.5 text-[14px] font-semibold text-[#14532d]"
               >
-                Dashboard
+                {t.dashboard}
               </Link>
               <div className="my-1 border-t border-[#e5e7eb]" />
             </>
@@ -95,7 +96,7 @@ export function SeoNavMobile() {
               onClick={() => setOpen(false)}
               className="block px-4 py-2.5 text-[14px] font-medium text-[#14532d]"
             >
-              Upgrade
+              {t.upgrade}
             </Link>
           ) : (
             <Link
@@ -103,15 +104,15 @@ export function SeoNavMobile() {
               onClick={() => setOpen(false)}
               className="block px-4 py-2.5 text-[14px] font-medium text-[#6b7280]"
             >
-              Sign in
+              {t.signIn}
             </Link>
           )}
           <Link
-            href="/invoice-generator"
+            href={localizedPath("/invoice-generator", locale)}
             onClick={() => setOpen(false)}
             className="block rounded-lg bg-[#14532d] px-4 py-2.5 text-center text-[14px] font-semibold text-white transition hover:bg-[#0f3d22]"
           >
-            Create invoice
+            {t.createInvoice}
           </Link>
         </div>
       ) : null}

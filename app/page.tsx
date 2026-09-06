@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { Reveal } from "@/components/Reveal";
@@ -10,6 +11,21 @@ import { ProPricing } from "@/components/ProPricing";
 import { ProductShowcase } from "@/components/ProductShowcase";
 import { SignupPrompt } from "@/components/SignupPrompt";
 import { getCurrentUser } from "@/lib/server-auth";
+import { hreflangAlternates } from "@/lib/i18n";
+
+// The root layout already sets title/description/OG/canonical for "/" —
+// this only adds hreflang alternates. Metadata objects are shallowly
+// merged by key, and a nested object (like `alternates`) is replaced
+// wholesale by whichever segment defines it, not deep-merged — so the
+// layout's canonical has to be repeated here or it would be lost.
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    alternates: {
+      canonical: "https://www.invoala.com",
+      languages: hreflangAlternates("/"),
+    },
+  };
+}
 
 const faqs = [
   {

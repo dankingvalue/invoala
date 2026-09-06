@@ -3,13 +3,15 @@ import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
 import { SeoNav, SeoFooter } from "@/components/seo/SeoPage";
 
-export const metadata: Metadata = pageMetadata({
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
   title: "Security — How Invoala Protects Your Data",
   description:
     "How Invoala keeps your invoices and client data safe: encrypted sessions, secure password hashing, private-by-default storage, and HTTPS everywhere.",
   path: "/security",
   keywords: ["invoala security", "invoice data privacy", "secure invoicing"],
 });
+}
 
 const items = [
   {

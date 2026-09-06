@@ -18,7 +18,7 @@ async function requireSeoAdmin(req: Request) {
 export async function GET(req: Request) {
   const user = await requireSeoAdmin(req);
   if (!user) return Response.json({ error: "Forbidden" }, { status: 403 });
-  return Response.json({ overrides: listSeoOverrides() });
+  return Response.json({ overrides: await listSeoOverrides() });
 }
 
 export async function POST(req: Request) {
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
     return Response.json({ error: "Invalid or non-editable path." }, { status: 400 });
   }
 
-  const saved = saveSeoOverride(path, {
+  const saved = await saveSeoOverride(path, {
     seoTitle: body.seoTitle,
     metaDescription: body.metaDescription,
     canonicalUrl: body.canonicalUrl,
@@ -66,6 +66,6 @@ export async function DELETE(req: Request) {
   const url = new URL(req.url);
   const path = url.searchParams.get("path");
   if (!path) return Response.json({ error: "Missing path." }, { status: 400 });
-  const removed = removeSeoOverride(path);
+  const removed = await removeSeoOverride(path);
   return Response.json({ ok: !!removed });
 }

@@ -1,26 +1,26 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMetadata } from "@/lib/seo";
+import { hreflangAlternates } from "@/lib/i18n";
 
-export const metadata: Metadata = {
-  title: "Free Invoice Template — Download & Customize",
-  description:
-    "Free invoice templates for freelancers and small businesses. Customize with your logo, line items, and payment terms. Download as PDF — no sign-up required.",
-  keywords: [
-    "invoice template",
-    "free invoice template",
-    "invoice template PDF",
-    "freelance invoice template",
-    "business invoice template",
-    "custom invoice template",
-  ],
-  alternates: { canonical: "https://www.invoala.com/invoice-template" },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
     title: "Free Invoice Template — Download & Customize",
     description:
-      "Free invoice templates for freelancers. Customize and download as PDF.",
-    url: "https://www.invoala.com/invoice-template",
-  },
-};
+      "Free invoice templates for freelancers and small businesses. Customize with your logo, line items, and payment terms. Download as PDF — no sign-up required.",
+    path: "/invoice-template",
+    keywords: [
+      "invoice template",
+      "free invoice template",
+      "invoice template PDF",
+      "freelance invoice template",
+      "business invoice template",
+      "custom invoice template",
+    ],
+    ogDescription: "Free invoice templates for freelancers. Customize and download as PDF.",
+    hreflang: hreflangAlternates("/invoice-template"),
+  });
+}
 
 const industries = [
   {

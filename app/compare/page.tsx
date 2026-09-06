@@ -4,13 +4,15 @@ import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
 import { SeoNav, SeoFooter } from "@/components/seo/SeoPage";
 
-export const metadata: Metadata = pageMetadata({
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
   title: "Invoicing Software Comparisons — Find Your Fit",
   description:
     "Honest, criteria-based guides to choosing invoicing software — including how Invoala compares and who each category of tool suits best.",
   path: "/compare",
   keywords: ["invoicing software comparison", "best invoicing software", "invoice software vs"],
 });
+}
 
 export default function ComparePage() {
   return (

@@ -1,33 +1,28 @@
 /* eslint-disable react/no-unescaped-entities */
 import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMetadata } from "@/lib/seo";
+import { hreflangAlternates } from "@/lib/i18n";
 import { SeoFooter } from "@/components/seo/SeoPage";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Invoicing Software — Simple Invoicing for Modern Businesses",
-  description:
-    "Invoala is simple invoicing software for freelancers and small businesses. Create professional invoices, track payments, and get paid faster — all for free.",
-  keywords: [
-    "invoicing software",
-    "invoice software",
-    "online invoicing",
-    "billing software",
-    "small business invoicing",
-  ],
-  alternates: {
-    canonical: "https://www.invoala.com/invoicing-software",
-  },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
     title: "Invoicing Software — Simple Invoicing for Modern Businesses",
     description:
       "Invoala is simple invoicing software for freelancers and small businesses. Create professional invoices, track payments, and get paid faster — all for free.",
-    url: "https://www.invoala.com/invoicing-software",
-    siteName: "Invoala",
-    type: "website",
-  },
-};
+    path: "/invoicing-software",
+    keywords: [
+      "invoicing software",
+      "invoice software",
+      "online invoicing",
+      "billing software",
+      "small business invoicing",
+    ],
+    hreflang: hreflangAlternates("/invoicing-software"),
+  });
+}
 
 const faqs = [
   {

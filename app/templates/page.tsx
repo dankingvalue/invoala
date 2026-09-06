@@ -4,13 +4,15 @@ import { pageMetadata } from "@/lib/seo";
 import { TEMPLATES } from "@/lib/template-content";
 import { SeoNav, SeoFooter } from "@/components/seo/SeoPage";
 
-export const metadata: Metadata = pageMetadata({
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
   title: "Free Invoice Templates — Edit & Download as PDF",
   description:
     "Free, editable invoice templates for freelancers, consultants, photographers, contractors, designers, and more. Fill in, preview, and download a PDF — no sign-up.",
   path: "/templates",
   keywords: ["invoice templates", "free invoice template", "invoice template PDF", "business invoice templates"],
 });
+}
 
 export default function TemplatesPage() {
   return (

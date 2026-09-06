@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMetadata } from "@/lib/seo";
+import { hreflangAlternates } from "@/lib/i18n";
 import { SeoFooter } from "@/components/seo/SeoPage";
 import { SeoNavMobile } from "@/components/SeoNavMobile";
 import { InvoiceGenerator } from "@/components/InvoiceGenerator";
@@ -7,29 +9,24 @@ import { getCurrentUser } from "@/lib/server-auth";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Receipt Generator — Create Professional Receipts Free",
-  description:
-    "Create a professional receipt in seconds. Record payments, show what was paid and when, and download a print-ready PDF receipt. Free, no sign-up.",
-  keywords: [
-    "receipt generator",
-    "free receipt maker",
-    "create receipt",
-    "payment receipt",
-    "sales receipt",
-  ],
-  alternates: {
-    canonical: "https://www.invoala.com/receipt-generator",
-  },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
     title: "Receipt Generator — Create Professional Receipts Free",
     description:
+      "Create a professional receipt in seconds. Record payments, show what was paid and when, and download a print-ready PDF receipt. Free, no sign-up.",
+    path: "/receipt-generator",
+    keywords: [
+      "receipt generator",
+      "free receipt maker",
+      "create receipt",
+      "payment receipt",
+      "sales receipt",
+    ],
+    ogDescription:
       "Create a professional receipt in seconds. Record payments and download a print-ready PDF. Free, no sign-up.",
-    url: "https://www.invoala.com/receipt-generator",
-    siteName: "Invoala",
-    type: "website",
-  },
-};
+    hreflang: hreflangAlternates("/receipt-generator"),
+  });
+}
 
 const faqs = [
   {

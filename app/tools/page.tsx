@@ -5,13 +5,15 @@ import { pageMetadata } from "@/lib/seo";
 import { TOOLS } from "@/lib/tool-content";
 import { SeoNav, SeoFooter } from "@/components/seo/SeoPage";
 
-export const metadata: Metadata = pageMetadata({
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
   title: "Free Invoicing Tools & Calculators",
   description:
     "Free tools for freelancers and small businesses: invoice number generator, VAT calculator, profit margin calculator, markup calculator, hourly rate calculator, and more.",
   path: "/tools",
   keywords: ["free invoice tools", "invoice calculators", "vat calculator", "profit margin calculator"],
 });
+}
 
 export default function ToolsPage() {
   return (

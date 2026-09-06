@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMetadata } from "@/lib/seo";
+import { hreflangAlternates } from "@/lib/i18n";
 import { SeoFooter } from "@/components/seo/SeoPage";
 import { SeoNavMobile } from "@/components/SeoNavMobile";
 import { InvoiceGenerator } from "@/components/InvoiceGenerator";
@@ -7,28 +9,23 @@ import { getCurrentUser } from "@/lib/server-auth";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Free Invoice Generator — Create Professional Invoices Online",
-  description:
-    "Use Invoala's free invoice generator to create professional invoices in seconds. No sign-up required — just fill in the form and download a polished PDF.",
-  keywords: [
-    "invoice generator",
-    "free invoice generator",
-    "online invoice generator",
-    "invoice maker",
-  ],
-  alternates: {
-    canonical: "https://www.invoala.com/invoice-generator",
-  },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
     title: "Free Invoice Generator — Create Professional Invoices Online",
     description:
+      "Use Invoala's free invoice generator to create professional invoices in seconds. No sign-up required — just fill in the form and download a polished PDF.",
+    path: "/invoice-generator",
+    keywords: [
+      "invoice generator",
+      "free invoice generator",
+      "online invoice generator",
+      "invoice maker",
+    ],
+    ogDescription:
       "Use Invoala's free invoice generator to create professional invoices in seconds. No sign-up required.",
-    url: "https://www.invoala.com/invoice-generator",
-    siteName: "Invoala",
-    type: "website",
-  },
-};
+    hreflang: hreflangAlternates("/invoice-generator"),
+  });
+}
 
 const faqs = [
   {

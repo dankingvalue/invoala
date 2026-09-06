@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Terms of Service",
-  description: "Invoala terms of service.",
-  alternates: { canonical: "https://www.invoala.com/terms" },
-  robots: { index: true, follow: true },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Terms of Service",
+    description: "Invoala terms of service.",
+    path: "/terms",
+  });
+}
 
 export default function TermsPage() {
   return (

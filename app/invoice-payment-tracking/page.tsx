@@ -1,33 +1,28 @@
 /* eslint-disable react/no-unescaped-entities */
 import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMetadata } from "@/lib/seo";
 import { SeoFooter } from "@/components/seo/SeoPage";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Invoice Payment Tracking — Know Who Owes You",
-  description:
-    "Track every invoice from sent to paid. Know who owes you, when it's due, and what's overdue with Invoala's free invoice payment tracking.",
-  keywords: [
-    "invoice payment tracking",
-    "track invoices",
-    "unpaid invoices",
-    "invoice tracking",
-    "payment tracking software",
-  ],
-  alternates: {
-    canonical: "https://www.invoala.com/invoice-payment-tracking",
-  },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
     title: "Invoice Payment Tracking — Know Who Owes You",
     description:
+      "Track every invoice from sent to paid. Know who owes you, when it's due, and what's overdue with Invoala's free invoice payment tracking.",
+    path: "/invoice-payment-tracking",
+    keywords: [
+      "invoice payment tracking",
+      "track invoices",
+      "unpaid invoices",
+      "invoice tracking",
+      "payment tracking software",
+    ],
+    ogDescription:
       "Track every invoice from sent to paid. Know who owes you, when it's due, and what's overdue.",
-    url: "https://www.invoala.com/invoice-payment-tracking",
-    siteName: "Invoala",
-    type: "website",
-  },
-};
+  });
+}
 
 const faqs = [
   {

@@ -1,23 +1,24 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMetadata } from "@/lib/seo";
 import { SeoNav, SeoFooter } from "@/components/seo/SeoPage";
 import { SOLUTIONS } from "@/lib/solution-content";
 
-export const metadata: Metadata = {
-  title: "Invoicing by Industry — Solutions for Every Trade",
-  description:
-    "Invoicing guides built for your industry: freelancers, contractors, agencies, consultants, photographers, and more. See common billing models and recommended invoice fields.",
-  keywords: [
-    "invoicing by industry",
-    "freelancer invoicing",
-    "contractor invoicing",
-    "agency invoicing",
-    "consultant invoicing",
-  ],
-  alternates: {
-    canonical: "https://www.invoala.com/industries",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Invoicing by Industry — Solutions for Every Trade",
+    description:
+      "Invoicing guides built for your industry: freelancers, contractors, agencies, consultants, photographers, and more. See common billing models and recommended invoice fields.",
+    path: "/industries",
+    keywords: [
+      "invoicing by industry",
+      "freelancer invoicing",
+      "contractor invoicing",
+      "agency invoicing",
+      "consultant invoicing",
+    ],
+  });
+}
 
 export default function IndustriesPage() {
   return (

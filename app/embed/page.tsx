@@ -3,13 +3,15 @@ import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
 import { LazyInvoiceGenerator } from "@/components/LazyInvoiceGenerator";
 
-export const metadata: Metadata = pageMetadata({
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
   title: "Free Invoice Generator — Powered by Invoala",
   description:
     "Embed this free invoice generator on your site. Professional invoices in seconds, powered by Invoala.",
   path: "/embed",
   noIndex: true,
 });
+}
 
 export default function EmbedPage() {
   return (

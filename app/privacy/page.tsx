@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy",
-  description: "Invoala privacy policy — how we handle your data.",
-  alternates: { canonical: "https://www.invoala.com/privacy" },
-  robots: { index: true, follow: true },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Privacy Policy",
+    description: "Invoala privacy policy — how we handle your data.",
+    path: "/privacy",
+  });
+}
 
 export default function PrivacyPage() {
   return (

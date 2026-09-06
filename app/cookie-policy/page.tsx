@@ -3,13 +3,15 @@ import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
 import { SeoNav, SeoFooter } from "@/components/seo/SeoPage";
 
-export const metadata: Metadata = pageMetadata({
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
   title: "Cookie Policy — How Invoala Uses Cookies",
   description:
     "Invoala's cookie policy: we use essential cookies only, no advertising or tracking cookies. You control consent in the banner.",
   path: "/cookie-policy",
   keywords: ["cookie policy", "invoala cookies", "privacy"],
 });
+}
 
 const items = [
   {

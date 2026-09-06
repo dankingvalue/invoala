@@ -7,6 +7,7 @@ import {
   type BreadcrumbItem,
   type FaqItem,
 } from "@/lib/seo";
+import { FOOTER_LABELS, NAV_LABELS, localizedPath, type LocaleOrDefault } from "@/lib/i18n";
 
 export function JsonLd({ data }: { data: Record<string, unknown> }) {
   return (
@@ -17,11 +18,13 @@ export function JsonLd({ data }: { data: Record<string, unknown> }) {
   );
 }
 
-export function SeoNav() {
+export function SeoNav({ locale = "en" }: { locale?: LocaleOrDefault } = {}) {
+  const t = NAV_LABELS[locale];
+  const lp = (path: string) => localizedPath(path, locale);
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-[#e5e7eb] bg-white/95 backdrop-blur-md">
       <nav className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-5 sm:px-8" aria-label="Main navigation">
-        <Link href="/" className="flex items-center gap-2 font-bold text-[#111827]" aria-label="Invoala home">
+        <Link href={lp("/")} className="flex items-center gap-2 font-bold text-[#111827]" aria-label="Invoala home">
           <svg width="22" height="22" viewBox="0 0 64 64" aria-hidden="true">
             <rect width="64" height="64" rx="14.5" fill="#166534" />
             <path d="M35.5 10 19 37h9.5l-3 17L43 27h-9.5l2-17z" fill="#fff" />
@@ -29,20 +32,20 @@ export function SeoNav() {
           Invoala
         </Link>
         <div className="hidden items-center gap-6 text-[14px] font-medium text-[#6b7280] md:flex">
-          <Link href="/invoicing-software" className="hover:text-[#111827]">Product</Link>
-          <Link href="/tools" className="hover:text-[#111827]">Free tools</Link>
-          <Link href="/templates" className="hover:text-[#111827]">Templates</Link>
-          <Link href="/learn" className="hover:text-[#111827]">Learn</Link>
-          <Link href="/pricing" className="hover:text-[#111827]">Pricing</Link>
+          <Link href="/invoicing-software" className="hover:text-[#111827]">{t.product}</Link>
+          <Link href="/tools" className="hover:text-[#111827]">{t.tools}</Link>
+          <Link href={lp("/templates")} className="hover:text-[#111827]">{t.templates}</Link>
+          <Link href={lp("/learn")} className="hover:text-[#111827]">{t.learn}</Link>
+          <Link href={lp("/pricing")} className="hover:text-[#111827]">{t.pricing}</Link>
         </div>
         <div className="flex items-center gap-3">
           <div className="hidden md:block">
-            <SeoNavAuth />
+            <SeoNavAuth locale={locale} />
           </div>
-          <Link href="/invoice-generator" className="rounded-lg bg-[#14532d] px-4 py-2 text-[14px] font-semibold text-white transition hover:bg-[#0f3d22]">
-            Create invoice
+          <Link href={lp("/invoice-generator")} className="rounded-lg bg-[#14532d] px-4 py-2 text-[14px] font-semibold text-white transition hover:bg-[#0f3d22]">
+            {t.createInvoice}
           </Link>
-          <SeoNavMobile />
+          <SeoNavMobile locale={locale} />
         </div>
       </nav>
     </header>
@@ -153,60 +156,62 @@ export function FaqSection({ items, title = "Frequently asked questions" }: { it
   );
 }
 
-export function SeoFooter() {
+export function SeoFooter({ locale = "en" }: { locale?: LocaleOrDefault } = {}) {
+  const t = FOOTER_LABELS[locale];
+  const lp = (path: string) => localizedPath(path, locale);
   return (
     <footer className="border-t border-[#e5e7eb] bg-[#f3f4f6] px-6 py-10">
       <div className="mx-auto max-w-[1024px]">
         <div className="grid gap-8 text-[13px] text-[#6b7280] sm:grid-cols-2 lg:grid-cols-5">
           <div>
-            <h4 className="mb-3 text-[13px] font-semibold text-[#111827]">Product</h4>
+            <h4 className="mb-3 text-[13px] font-semibold text-[#111827]">{t.headings.product}</h4>
             <ul className="space-y-2">
-              <li><Link href="/invoicing-software" className="hover:text-[#166534]">Invoicing Software</Link></li>
-              <li><Link href="/invoice-generator" className="hover:text-[#166534]">Invoice Generator</Link></li>
-              <li><Link href="/online-invoicing" className="hover:text-[#166534]">Online Invoicing</Link></li>
-              <li><Link href="/recurring-invoices" className="hover:text-[#166534]">Recurring Invoices</Link></li>
-              <li><Link href="/invoice-payment-tracking" className="hover:text-[#166534]">Payment Tracking</Link></li>
+              <li><Link href={lp("/invoicing-software")} className="hover:text-[#166534]">{t.product.invoicingSoftware}</Link></li>
+              <li><Link href={lp("/invoice-generator")} className="hover:text-[#166534]">{t.product.invoiceGenerator}</Link></li>
+              <li><Link href={lp("/online-invoicing")} className="hover:text-[#166534]">{t.product.onlineInvoicing}</Link></li>
+              <li><Link href={lp("/recurring-invoices")} className="hover:text-[#166534]">{t.product.recurringInvoices}</Link></li>
+              <li><Link href="/invoice-payment-tracking" className="hover:text-[#166534]">{t.product.paymentTracking}</Link></li>
             </ul>
           </div>
           <div>
-            <h4 className="mb-3 text-[13px] font-semibold text-[#111827]">Solutions</h4>
+            <h4 className="mb-3 text-[13px] font-semibold text-[#111827]">{t.headings.solutions}</h4>
             <ul className="space-y-2">
-              <li><Link href="/invoicing-for-freelancers" className="hover:text-[#166534]">For Freelancers</Link></li>
-              <li><Link href="/invoicing-for-small-businesses" className="hover:text-[#166534]">For Small Businesses</Link></li>
-              <li><Link href="/invoicing-for-consultants" className="hover:text-[#166534]">For Consultants</Link></li>
-              <li><Link href="/invoicing-for-agencies" className="hover:text-[#166534]">For Agencies</Link></li>
-              <li><Link href="/invoicing-for-contractors" className="hover:text-[#166534]">For Contractors</Link></li>
+              <li><Link href="/invoicing-for-freelancers" className="hover:text-[#166534]">{t.solutions.freelancers}</Link></li>
+              <li><Link href="/invoicing-for-small-businesses" className="hover:text-[#166534]">{t.solutions.smallBusinesses}</Link></li>
+              <li><Link href="/invoicing-for-consultants" className="hover:text-[#166534]">{t.solutions.consultants}</Link></li>
+              <li><Link href="/invoicing-for-agencies" className="hover:text-[#166534]">{t.solutions.agencies}</Link></li>
+              <li><Link href="/invoicing-for-contractors" className="hover:text-[#166534]">{t.solutions.contractors}</Link></li>
             </ul>
           </div>
           <div>
-            <h4 className="mb-3 text-[13px] font-semibold text-[#111827]">Tools</h4>
+            <h4 className="mb-3 text-[13px] font-semibold text-[#111827]">{t.headings.tools}</h4>
             <ul className="space-y-2">
-              <li><Link href="/tools/invoice-generator" className="hover:text-[#166534]">Invoice Generator</Link></li>
-              <li><Link href="/tools/vat-calculator" className="hover:text-[#166534]">VAT Calculator</Link></li>
-              <li><Link href="/tools/profit-margin-calculator" className="hover:text-[#166534]">Profit Margin Calculator</Link></li>
-              <li><Link href="/tools/hourly-rate-calculator" className="hover:text-[#166534]">Hourly Rate Calculator</Link></li>
-              <li><Link href="/tools/invoice-number-generator" className="hover:text-[#166534]">Invoice Number Generator</Link></li>
+              <li><Link href="/tools/invoice-generator" className="hover:text-[#166534]">{t.tools.invoiceGenerator}</Link></li>
+              <li><Link href="/tools/vat-calculator" className="hover:text-[#166534]">{t.tools.vatCalculator}</Link></li>
+              <li><Link href="/tools/profit-margin-calculator" className="hover:text-[#166534]">{t.tools.profitMarginCalculator}</Link></li>
+              <li><Link href="/tools/hourly-rate-calculator" className="hover:text-[#166534]">{t.tools.hourlyRateCalculator}</Link></li>
+              <li><Link href="/tools/invoice-number-generator" className="hover:text-[#166534]">{t.tools.invoiceNumberGenerator}</Link></li>
             </ul>
           </div>
           <div>
-            <h4 className="mb-3 text-[13px] font-semibold text-[#111827]">Resources</h4>
+            <h4 className="mb-3 text-[13px] font-semibold text-[#111827]">{t.headings.resources}</h4>
             <ul className="space-y-2">
-              <li><Link href="/templates" className="hover:text-[#166534]">Templates</Link></li>
-              <li><Link href="/learn" className="hover:text-[#166534]">Learning Center</Link></li>
-              <li><Link href="/compare" className="hover:text-[#166534]">Comparisons</Link></li>
-              <li><Link href="/research/invoice-payment-report" className="hover:text-[#166534]">Payment Research</Link></li>
-              <li><Link href="/how-to-create-invoice" className="hover:text-[#166534]">How to Create an Invoice</Link></li>
+              <li><Link href={lp("/templates")} className="hover:text-[#166534]">{t.resources.templates}</Link></li>
+              <li><Link href={lp("/learn")} className="hover:text-[#166534]">{t.resources.learningCenter}</Link></li>
+              <li><Link href="/compare" className="hover:text-[#166534]">{t.resources.comparisons}</Link></li>
+              <li><Link href="/research/invoice-payment-report" className="hover:text-[#166534]">{t.resources.paymentResearch}</Link></li>
+              <li><Link href="/how-to-create-invoice" className="hover:text-[#166534]">{t.resources.howToCreateInvoice}</Link></li>
             </ul>
           </div>
           <div>
-            <h4 className="mb-3 text-[13px] font-semibold text-[#111827]">Company</h4>
+            <h4 className="mb-3 text-[13px] font-semibold text-[#111827]">{t.headings.company}</h4>
             <ul className="space-y-2">
-              <li><Link href="/pricing" className="hover:text-[#166534]">Pricing</Link></li>
-              <li><Link href="/roadmap" className="hover:text-[#166534]">Roadmap</Link></li>
-              <li><Link href="/about" className="hover:text-[#166534]">About</Link></li>
-              <li><Link href="/security" className="hover:text-[#166534]">Security</Link></li>
-              <li><Link href="/contact" className="hover:text-[#166534]">Contact</Link></li>
-              <li><a href="mailto:hello@invoala.com" className="hover:text-[#166534]">Email Us</a></li>
+              <li><Link href={lp("/pricing")} className="hover:text-[#166534]">{t.company.pricing}</Link></li>
+              <li><Link href="/roadmap" className="hover:text-[#166534]">{t.company.roadmap}</Link></li>
+              <li><Link href="/about" className="hover:text-[#166534]">{t.company.about}</Link></li>
+              <li><Link href="/security" className="hover:text-[#166534]">{t.company.security}</Link></li>
+              <li><Link href="/contact" className="hover:text-[#166534]">{t.company.contact}</Link></li>
+              <li><a href="mailto:hello@invoala.com" className="hover:text-[#166534]">{t.company.emailUs}</a></li>
             </ul>
           </div>
         </div>
@@ -219,20 +224,15 @@ export function SeoFooter() {
             Invoala
           </div>
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <Link href="/privacy" className="hover:text-[#111827]">Privacy</Link>
-            <Link href="/terms" className="hover:text-[#111827]">Terms</Link>
-            <Link href="/cookie-policy" className="hover:text-[#111827]">Cookies</Link>
-            <Link href="/refund-policy" className="hover:text-[#111827]">Refunds</Link>
-            <Link href="/security" className="hover:text-[#111827]">Security</Link>
+            <Link href="/privacy" className="hover:text-[#111827]">{t.legal.privacy}</Link>
+            <Link href="/terms" className="hover:text-[#111827]">{t.legal.terms}</Link>
+            <Link href="/cookie-policy" className="hover:text-[#111827]">{t.legal.cookies}</Link>
+            <Link href="/refund-policy" className="hover:text-[#111827]">{t.legal.refunds}</Link>
+            <Link href="/security" className="hover:text-[#111827]">{t.legal.security}</Link>
           </div>
-          <p>&copy; 2026 Invoala. All rights reserved.</p>
+          <p>{t.rights}</p>
         </div>
-        <p className="mt-4 text-[11px] leading-relaxed text-[#6b7280]">
-          Invoala is a free online invoice generator for freelancers and small businesses. Create
-          professional invoices with your own logo, line items, tax, and multiple currencies — then
-          download them as print-ready PDF files. No account required, and your data never leaves
-          your browser.
-        </p>
+        <p className="mt-4 text-[11px] leading-relaxed text-[#6b7280]">{t.tagline}</p>
       </div>
     </footer>
   );

@@ -3,13 +3,15 @@ import { pageMetadata } from "@/lib/seo";
 import { SeoNav, SeoFooter } from "@/components/seo/SeoPage";
 import { RoadmapBoard } from "@/components/RoadmapBoard";
 
-export const metadata: Metadata = pageMetadata({
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
   title: "Roadmap",
   description:
     "See what we're building next at Invoala — planned features, what's in progress, and what's shipped. Suggest an idea or vote on one.",
   path: "/roadmap",
   keywords: ["invoala roadmap", "feature requests", "product feedback"],
 });
+}
 
 export default function RoadmapPage() {
   return (

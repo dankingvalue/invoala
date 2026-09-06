@@ -5,6 +5,7 @@ import { TEMPLATES } from "@/lib/template-content";
 import { SOLUTIONS } from "@/lib/solution-content";
 import { ARTICLES, LEARN_CATEGORIES } from "@/lib/learn-content";
 import { COMPARISONS } from "@/lib/compare-content";
+import { LOCALES, TRANSLATED_PAGES, hreflangAlternates, localizedPath } from "@/lib/i18n";
 
 const NOW = new Date();
 
@@ -13,7 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: SITE_URL, lastModified: NOW, changeFrequency: "weekly", priority: 1 },
     { url: `${SITE_URL}/invoicing-software`, lastModified: NOW, changeFrequency: "monthly", priority: 0.9 },
     { url: `${SITE_URL}/online-invoicing`, lastModified: NOW, changeFrequency: "monthly", priority: 0.9 },
-    { url: `${SITE_URL}/invoice-generator`, lastModified: NOW, changeFrequency: "weekly", priority: 1 },
+    { url: `${SITE_URL}/invoice-generator`, lastModified: NOW, changeFrequency: "weekly", priority: 1, alternates: { languages: hreflangAlternates("/invoice-generator") } },
     { url: `${SITE_URL}/receipt-generator`, lastModified: NOW, changeFrequency: "weekly", priority: 0.9 },
     { url: `${SITE_URL}/estimate-generator`, lastModified: NOW, changeFrequency: "weekly", priority: 0.9 },
     { url: `${SITE_URL}/invoice-maker`, lastModified: NOW, changeFrequency: "monthly", priority: 0.8 },
@@ -83,6 +84,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.6,
   }));
 
+  // Translated page variants (see lib/i18n.ts's TRANSLATED_PAGES) — each
+  // locale of a page shares the same reciprocal hreflang alternates.
+  const translatedPages = TRANSLATED_PAGES.flatMap((enPath) =>
+    LOCALES.map((l) => ({
+      url: `${SITE_URL}${localizedPath(enPath, l)}`,
+      lastModified: NOW,
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+      alternates: { languages: hreflangAlternates(enPath) },
+    }))
+  );
+
   return [
     ...corePages,
     ...toolPages,
@@ -91,5 +104,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...articlePages,
     ...categoryPages,
     ...comparisonPages,
+    ...translatedPages,
   ];
 }

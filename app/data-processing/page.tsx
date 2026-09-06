@@ -3,13 +3,15 @@ import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
 import { SeoNav, SeoFooter } from "@/components/seo/SeoPage";
 
-export const metadata: Metadata = pageMetadata({
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
   title: "Data Processing — How Invoala Handles Your Data",
   description:
     "How Invoala processes, stores, and protects your data: browser-local drafts, encrypted transport, managed storage, and your rights.",
   path: "/data-processing",
   keywords: ["data processing", "invoala data", "data protection"],
 });
+}
 
 export default function DataProcessingPage() {
   return (

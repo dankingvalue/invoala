@@ -1,33 +1,30 @@
 /* eslint-disable react/no-unescaped-entities */
 import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMetadata } from "@/lib/seo";
+import { hreflangAlternates } from "@/lib/i18n";
 import { SeoFooter } from "@/components/seo/SeoPage";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Online Invoicing — Create & Send Invoices from Anywhere",
-  description:
-    "Create and send professional invoices from any device with Invoala's free online invoicing tool. No software to install — just open your browser and start billing.",
-  keywords: [
-    "online invoicing",
-    "online invoice",
-    "create invoice online",
-    "send invoice online",
-    "free online invoicing",
-  ],
-  alternates: {
-    canonical: "https://www.invoala.com/online-invoicing",
-  },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
     title: "Online Invoicing — Create & Send Invoices from Anywhere",
     description:
+      "Create and send professional invoices from any device with Invoala's free online invoicing tool. No software to install — just open your browser and start billing.",
+    path: "/online-invoicing",
+    keywords: [
+      "online invoicing",
+      "online invoice",
+      "create invoice online",
+      "send invoice online",
+      "free online invoicing",
+    ],
+    ogDescription:
       "Create and send professional invoices from any device with Invoala's free online invoicing tool. No software to install.",
-    url: "https://www.invoala.com/online-invoicing",
-    siteName: "Invoala",
-    type: "website",
-  },
-};
+    hreflang: hreflangAlternates("/online-invoicing"),
+  });
+}
 
 const faqs = [
   {

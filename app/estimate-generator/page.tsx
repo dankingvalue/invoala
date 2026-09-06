@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMetadata } from "@/lib/seo";
+import { hreflangAlternates } from "@/lib/i18n";
 import { SeoFooter } from "@/components/seo/SeoPage";
 import { SeoNavMobile } from "@/components/SeoNavMobile";
 import { InvoiceGenerator } from "@/components/InvoiceGenerator";
@@ -7,29 +9,24 @@ import { getCurrentUser } from "@/lib/server-auth";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Estimate Generator — Free Job Estimates & Quotes",
-  description:
-    "Create a professional job estimate in seconds. Outline costs before work begins, win the project, then convert the estimate to an invoice in one click. Free, no sign-up.",
-  keywords: [
-    "estimate generator",
-    "free estimate maker",
-    "job estimate",
-    "cost estimate",
-    "estimate template",
-  ],
-  alternates: {
-    canonical: "https://www.invoala.com/estimate-generator",
-  },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
     title: "Estimate Generator — Free Job Estimates & Quotes",
     description:
+      "Create a professional job estimate in seconds. Outline costs before work begins, win the project, then convert the estimate to an invoice in one click. Free, no sign-up.",
+    path: "/estimate-generator",
+    keywords: [
+      "estimate generator",
+      "free estimate maker",
+      "job estimate",
+      "cost estimate",
+      "estimate template",
+    ],
+    ogDescription:
       "Create a professional job estimate in seconds and convert it to an invoice when the work is approved. Free, no sign-up.",
-    url: "https://www.invoala.com/estimate-generator",
-    siteName: "Invoala",
-    type: "website",
-  },
-};
+    hreflang: hreflangAlternates("/estimate-generator"),
+  });
+}
 
 const faqs = [
   {

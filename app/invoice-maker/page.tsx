@@ -1,34 +1,31 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMetadata } from "@/lib/seo";
+import { hreflangAlternates } from "@/lib/i18n";
 import { SeoFooter } from "@/components/seo/SeoPage";
 import { InvoiceGenerator } from "@/components/InvoiceGenerator";
 import { getCurrentUser } from "@/lib/server-auth";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Invoice Maker — Create Professional Invoices in Seconds",
-  description:
-    "Invoala is an invoice maker that helps you create professional invoices in seconds. Fast, free, and no sign-up required. Download a polished PDF now.",
-  keywords: [
-    "invoice maker",
-    "make an invoice",
-    "create invoice",
-    "professional invoice",
-    "invoice creator",
-  ],
-  alternates: {
-    canonical: "https://www.invoala.com/invoice-maker",
-  },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
     title: "Invoice Maker — Create Professional Invoices in Seconds",
     description:
+      "Invoala is an invoice maker that helps you create professional invoices in seconds. Fast, free, and no sign-up required. Download a polished PDF now.",
+    path: "/invoice-maker",
+    keywords: [
+      "invoice maker",
+      "make an invoice",
+      "create invoice",
+      "professional invoice",
+      "invoice creator",
+    ],
+    ogDescription:
       "Invoala is an invoice maker that helps you create professional invoices in seconds. Fast, free, and no sign-up required.",
-    url: "https://www.invoala.com/invoice-maker",
-    siteName: "Invoala",
-    type: "website",
-  },
-};
+    hreflang: hreflangAlternates("/invoice-maker"),
+  });
+}
 
 const faqs = [
   {

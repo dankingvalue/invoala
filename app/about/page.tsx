@@ -3,13 +3,15 @@ import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
 import { SeoNav, SeoFooter, CtaBlock } from "@/components/seo/SeoPage";
 
-export const metadata: Metadata = pageMetadata({
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
   title: "About Invoala — Free Invoicing for Small Business",
   description:
     "Invoala is a free online invoice generator for freelancers and small businesses. Learn what we're building and why we keep the core tool free.",
   path: "/about",
   keywords: ["about invoala", "invoicing for freelancers", "free invoice software"],
 });
+}
 
 export default function AboutPage() {
   return (

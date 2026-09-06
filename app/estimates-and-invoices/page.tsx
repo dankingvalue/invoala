@@ -1,33 +1,28 @@
 /* eslint-disable react/no-unescaped-entities */
 import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMetadata } from "@/lib/seo";
 import { SeoFooter } from "@/components/seo/SeoPage";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Estimates and Invoices — What's the Difference?",
-  description:
-    "Understand the difference between estimates and invoices, when to use each, and how to convert an estimate into a professional invoice with Invoala.",
-  keywords: [
-    "estimate vs invoice",
-    "invoice vs estimate",
-    "proforma invoice",
-    "quote vs invoice",
-    "estimate vs quote",
-  ],
-  alternates: {
-    canonical: "https://www.invoala.com/estimates-and-invoices",
-  },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
     title: "Estimates and Invoices — What's the Difference?",
     description:
+      "Understand the difference between estimates and invoices, when to use each, and how to convert an estimate into a professional invoice with Invoala.",
+    path: "/estimates-and-invoices",
+    keywords: [
+      "estimate vs invoice",
+      "invoice vs estimate",
+      "proforma invoice",
+      "quote vs invoice",
+      "estimate vs quote",
+    ],
+    ogDescription:
       "Understand the difference between estimates and invoices, when to use each, and how to convert an estimate into a professional invoice.",
-    url: "https://www.invoala.com/estimates-and-invoices",
-    siteName: "Invoala",
-    type: "website",
-  },
-};
+  });
+}
 
 const faqs = [
   {

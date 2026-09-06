@@ -1,33 +1,28 @@
 /* eslint-disable react/no-unescaped-entities */
 import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMetadata } from "@/lib/seo";
 import { SeoFooter } from "@/components/seo/SeoPage";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Invoice Reminders — Automated Follow-Ups That Get You Paid",
-  description:
-    "Send smart invoice reminders to get paid faster. Write friendly, firm, or final follow-ups with ready-to-use templates and timing strategies.",
-  keywords: [
-    "invoice reminders",
-    "payment reminders",
-    "follow up invoice",
-    "late payment",
-    "invoice follow up template",
-  ],
-  alternates: {
-    canonical: "https://www.invoala.com/invoice-reminders",
-  },
-  openGraph: {
-  title: "Invoice Reminders — Automated Follow-Ups That Get You Paid",
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
+    title: "Invoice Reminders — Automated Follow-Ups That Get You Paid",
     description:
+      "Send smart invoice reminders to get paid faster. Write friendly, firm, or final follow-ups with ready-to-use templates and timing strategies.",
+    path: "/invoice-reminders",
+    keywords: [
+      "invoice reminders",
+      "payment reminders",
+      "follow up invoice",
+      "late payment",
+      "invoice follow up template",
+    ],
+    ogDescription:
       "Send smart invoice reminders to get paid faster. Write friendly, firm, or final follow-ups with ready-to-use templates.",
-    url: "https://www.invoala.com/invoice-reminders",
-    siteName: "Invoala",
-    type: "website",
-  },
-};
+  });
+}
 
 const faqs = [
   {

@@ -3,13 +3,15 @@ import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
 import { SeoNav, SeoFooter } from "@/components/seo/SeoPage";
 
-export const metadata: Metadata = pageMetadata({
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
   title: "Contact Invoala",
   description:
     "Get in touch with Invoala: support, feedback, or partnerships. Email hello@invoala.com or use the live chat in the corner.",
   path: "/contact",
   keywords: ["contact invoala", "invoala support", "invoice help"],
 });
+}
 
 export default function ContactPage() {
   return (

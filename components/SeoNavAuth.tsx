@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { NAV_LABELS, type LocaleOrDefault } from "@/lib/i18n";
 
 // Swaps "Sign in" for "Dashboard" once we know the visitor is authenticated.
 // Client-side so the ~90 SEO pages that render SeoNav stay statically cached.
-export function SeoNavAuth() {
+export function SeoNavAuth({ locale = "en" }: { locale?: LocaleOrDefault } = {}) {
+  const t = NAV_LABELS[locale];
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -25,7 +27,7 @@ export function SeoNavAuth() {
 
   if (signedIn === null) {
     // Match the Sign in link's size so layout doesn't jump.
-    return <span className="hidden text-[14px] text-transparent sm:block">Sign in</span>;
+    return <span className="hidden text-[14px] text-transparent sm:block">{t.signIn}</span>;
   }
 
   return signedIn ? (
@@ -39,14 +41,14 @@ export function SeoNavAuth() {
         <rect x="14" y="12" width="7" height="9" rx="1.5" />
         <rect x="3" y="16" width="7" height="5" rx="1.5" />
       </svg>
-      Dashboard
+      {t.dashboard}
     </Link>
   ) : (
     <Link
       href="/login"
       className="hidden text-[14px] font-medium text-[#6b7280] hover:text-[#111827] sm:block"
     >
-      Sign in
+      {t.signIn}
     </Link>
   );
 }

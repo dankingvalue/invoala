@@ -3,13 +3,15 @@ import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
 import { SeoNav, SeoFooter } from "@/components/seo/SeoPage";
 
-export const metadata: Metadata = pageMetadata({
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata({
   title: "Refund Policy",
   description:
     "Invoala's refund policy for Pro, Teams, and Lifetime plans. What's refundable, how to request a refund, and how cancellations work.",
   path: "/refund-policy",
   keywords: ["refund policy", "invoala refunds", "cancel subscription"],
 });
+}
 
 export default function RefundPolicyPage() {
   return (

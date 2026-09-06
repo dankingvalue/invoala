@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { existsSync, readFileSync } from "fs";
-import { join } from "path";
+import { getSeoOverrideAsync } from "@/lib/seo-overrides.server";
 
 export const SITE_URL = "https://www.invoala.com";
 export const SITE_NAME = "Invoala";
@@ -19,35 +18,8 @@ export type SeoOverride = {
   updatedAt?: number;
 };
 
-let overrideCache: Record<string, SeoOverride> | null = null;
-let overrideCacheAt = 0;
-const OVERRIDE_CACHE_TTL = 30_000;
-
-function loadOverrides(): Record<string, SeoOverride> {
-  const now = Date.now();
-  if (overrideCache && now - overrideCacheAt < OVERRIDE_CACHE_TTL) {
-    return overrideCache;
-  }
-  try {
-    const file = join(process.cwd(), "data", "seo-overrides.json");
-    if (existsSync(file)) {
-      const parsed = JSON.parse(readFileSync(file, "utf8")) as {
-        overrides?: SeoOverride[];
-      };
-      const map: Record<string, SeoOverride> = {};
-      for (const o of parsed.overrides ?? []) map[o.path] = o;
-      overrideCache = map;
-      overrideCacheAt = now;
-      return map;
-    }
-  } catch {}
-  overrideCache = {};
-  overrideCacheAt = now;
-  return overrideCache;
-}
-
-export function getSeoOverride(path: string): SeoOverride | undefined {
-  return loadOverrides()[path];
+export function getSeoOverride(path: string): Promise<SeoOverride | undefined> {
+  return getSeoOverrideAsync(path);
 }
 
 type PageMetadataInput = {
@@ -59,6 +31,10 @@ type PageMetadataInput = {
   noIndex?: boolean;
   ogTitle?: string;
   ogDescription?: string;
+  /** hreflang alternates, e.g. { en: "...", es: "...", "x-default": "..." } — see lib/i18n.ts's hreflangAlternates(). */
+  hreflang?: Record<string, string>;
+  /** BCP 47 locale for og:locale (e.g. "es_ES"). Defaults to English. */
+  ogLocale?: string;
 };
 
 export function absoluteUrl(path = "/"): string {
@@ -66,7 +42,7 @@ export function absoluteUrl(path = "/"): string {
   return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-export function pageMetadata({
+export async function pageMetadata({
   title,
   description,
   path,
@@ -75,7 +51,9 @@ export function pageMetadata({
   noIndex = false,
   ogTitle = title,
   ogDescription = description,
-}: PageMetadataInput): Metadata {
+  hreflang,
+  ogLocale,
+}: PageMetadataInput): Promise<Metadata> {
   const canonical = absoluteUrl(path);
   const fullTitle = title.includes(SITE_NAME) ? title : `${title} | ${SITE_NAME}`;
   const ogImage = `${DEFAULT_OG_IMAGE}?${new URLSearchParams({
@@ -83,7 +61,7 @@ export function pageMetadata({
     description: ogDescription,
   }).toString()}`;
 
-  const override = getSeoOverride(path);
+  const override = await getSeoOverride(path);
 
   const finalTitle = override?.seoTitle
     ? override.seoTitle.includes(SITE_NAME)
@@ -106,7 +84,10 @@ export function pageMetadata({
     title: { absolute: finalTitle },
     description: finalDescription,
     keywords,
-    alternates: { canonical: finalCanonical },
+    alternates: {
+      canonical: finalCanonical,
+      ...(hreflang ? { languages: hreflang } : {}),
+    },
     robots: !index || !follow
       ? { index, follow, noarchive: true }
       : {
@@ -127,6 +108,7 @@ export function pageMetadata({
       title: finalTitle,
       description: finalOgDescription,
       images: [{ url: finalOgImage, width: 1200, height: 630, alt: finalOgTitle }],
+      ...(ogLocale ? { locale: ogLocale } : {}),
     },
     twitter: {
       card: "summary_large_image",
