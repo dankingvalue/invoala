@@ -42,7 +42,7 @@ type SeoOverride = {
   updatedAt?: number;
 };
 
-const TYPE_ORDER = ["PRODUCT", "TOOL", "TEMPLATE", "SOLUTION", "ARTICLE", "COMPARISON", "LEGAL", "PRIVATE"];
+const TYPE_ORDER = ["PRODUCT", "TOOL", "TEMPLATE", "SOLUTION", "ARTICLE", "COMPARISON", "TRANSLATED", "LEGAL", "PRIVATE"];
 
 export function SeoTab() {
   const [data, setData] = useState<SeoData | null>(null);
@@ -261,7 +261,8 @@ export function SeoTab() {
           </li>
           <li className="text-[13px] text-[#6b7280]">
             {counts.tools ?? 0} tools · {counts.templates ?? 0} templates · {counts.solutions ?? 0} solutions ·{" "}
-            {counts.articles ?? 0} articles · {counts.comparisons ?? 0} comparisons
+            {counts.articles ?? 0} articles · {counts.comparisons ?? 0} comparisons ·{" "}
+            {counts.translated ?? 0} translated (ES/PT/FR/DE)
           </li>
         </ul>
         <div className="mt-4 flex items-center gap-3 border-t border-[#e5e7eb] pt-4">

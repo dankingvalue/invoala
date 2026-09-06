@@ -5,6 +5,7 @@ import { SOLUTIONS } from "@/lib/solution-content";
 import { ARTICLES } from "@/lib/learn-content";
 import { COMPARISONS } from "@/lib/compare-content";
 import { listRedirects } from "@/lib/redirects";
+import { TRANSLATED_PAGES, LOCALES, LOCALE_NAMES, localizedPath } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -86,6 +87,21 @@ export async function GET(req: Request) {
     })),
   ];
 
+  // Translated (ES/PT/FR/DE) variants of the pages above — kept in a
+  // separate block since they share a title with their English original
+  // instead of having their own entry in CORE_PAGES/the content registries.
+  const titleByPath = new Map(pages.map((p) => [p.url, p.title]));
+  const translatedPages = TRANSLATED_PAGES.flatMap((enPath) =>
+    LOCALES.map((l) => ({
+      url: localizedPath(enPath, l),
+      title: `${titleByPath.get(enPath) ?? enPath} (${LOCALE_NAMES[l]})`,
+      type: "TRANSLATED" as const,
+      inSitemap: true,
+      indexable: true,
+    }))
+  );
+  pages.push(...translatedPages);
+
   const redirects = await listRedirects(false);
 
   return Response.json({
@@ -102,6 +118,7 @@ export async function GET(req: Request) {
       solutions: SOLUTIONS.length,
       articles: ARTICLES.length,
       comparisons: COMPARISONS.length,
+      translated: translatedPages.length,
       redirects: redirects.length,
     },
   });
