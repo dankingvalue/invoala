@@ -246,21 +246,30 @@ export function InvoiceGenerator({
     setHydrated(true);
   }, [preset]);
 
-  // Applies the user's saved business profile (Settings → General →
-  // Business profile) as defaults for a genuinely fresh invoice — never
-  // overwrites a resumed draft or edit payload, both of which already have
-  // a non-empty businessName by the time this checks. Templates supply
-  // their own placeholder business info, so this skips presets entirely.
+  // Applies the user's saved workspace defaults (Settings → General) to a
+  // genuinely fresh invoice — never overwrites a resumed draft or edit
+  // payload, both of which already have a non-empty businessName by the
+  // time this checks. Templates supply their own placeholder business info,
+  // so this skips presets entirely. Reads the same "last-chosen workspace"
+  // localStorage key the clients/services fetch effect below uses (not a
+  // hardcoded "personal") so a user actively on a team workspace gets that
+  // team's currency/payment-terms/numbering, not their personal account's.
   const profileAppliedRef = useRef(false);
   useEffect(() => {
     if (!hydrated || !user || preset || profileAppliedRef.current) return;
     profileAppliedRef.current = true;
-    fetch("/api/workspace-settings?workspace=personal")
+    let workspace = "personal";
+    try {
+      const saved = window.localStorage.getItem("invoala.workspace");
+      if (saved === "personal" || saved?.startsWith("team:")) workspace = saved;
+    } catch {}
+    fetch(`/api/workspace-settings?workspace=${encodeURIComponent(workspace)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { settings?: {
         businessName: string; businessEmail: string; businessAddress: string; logo: string;
         defaultTaxRate: number | null; defaultNotes: string; defaultPaymentInstructions: string;
-        defaultPaymentTermsDays: number;
+        defaultPaymentTermsDays: number; defaultCurrency: string;
+        invoicePrefix: string; nextInvoiceNumber: number;
       } } | null) => {
         const s = data?.settings;
         if (!s) return;
@@ -276,6 +285,19 @@ export function InvoiceGenerator({
           if (s.defaultPaymentInstructions) {
             patch.paymentInstructions = s.defaultPaymentInstructions;
             patch.paymentEnabled = true;
+          }
+          if (s.defaultCurrency) patch.currency = s.defaultCurrency;
+          if (typeof s.defaultPaymentTermsDays === "number" && inv.issueDate) {
+            const due = new Date(`${inv.issueDate}T00:00:00Z`);
+            due.setUTCDate(due.getUTCDate() + s.defaultPaymentTermsDays);
+            patch.dueDate = due.toISOString().slice(0, 10);
+          }
+          // Preview only — the real number is allocated atomically on save
+          // (see upsertInvoice) so it can never collide with one another
+          // in-flight invoice. This just replaces the generic "INV-001"
+          // placeholder with what the workspace's own format will produce.
+          if (s.invoicePrefix && typeof s.nextInvoiceNumber === "number") {
+            patch.invoiceNumber = `${s.invoicePrefix}${String(s.nextInvoiceNumber).padStart(4, "0")}`;
           }
           return Object.keys(patch).length ? { ...inv, ...patch } : inv;
         });
@@ -458,10 +480,17 @@ export function InvoiceGenerator({
         setSaveNote("");
         return;
       }
-      const json = (await res.json()) as { ok?: boolean; id?: string; error?: string };
+      const json = (await res.json()) as { ok?: boolean; id?: string; invoiceNumber?: string; error?: string };
       if (res.ok && json.ok && json.id) {
         setSavedId(json.id);
-        trackEvent("invoice_saved_to_account", { invoiceNumber: invoice.invoiceNumber });
+        // A brand-new invoice's number is allocated server-side (see
+        // upsertInvoice) — apply it here so the on-screen preview, PDF, and
+        // print/email all reflect the real stored number, not whatever
+        // placeholder was showing before save.
+        if (json.invoiceNumber && json.invoiceNumber !== invoice.invoiceNumber) {
+          setInvoice((inv) => ({ ...inv, invoiceNumber: json.invoiceNumber! }));
+        }
+        trackEvent("invoice_saved_to_account", { invoiceNumber: json.invoiceNumber ?? invoice.invoiceNumber });
         setSaveNote("Saved to your dashboard ✓");
       } else {
         setSaveNote(json.error || "Could not save.");

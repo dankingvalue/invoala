@@ -29,7 +29,7 @@ let schemaInitialized = false;
 // measurable latency on a fresh instance. This gate makes that a single
 // cheap read on every cold start except the one right after a deploy that
 // actually changed the schema.
-const SCHEMA_VERSION = "2026-09-05.2";
+const SCHEMA_VERSION = "2026-09-06.2";
 
 async function ensureSchema(): Promise<void> {
   const db = getDb();
@@ -372,13 +372,35 @@ async function ensureSchema(): Promise<void> {
     await db.execute("CREATE INDEX IF NOT EXISTS idx_seo_redirects_source ON seo_redirects(source)");
   } catch {}
 
+  // Was a local JSON file (data/seo-overrides.json) — same ephemeral/read-only
+  // filesystem problem as the flags migration above: writes on Vercel either
+  // threw or silently vanished on the next cold start, so per-page SEO
+  // overrides saved in the admin UI never actually persisted in production.
+  try {
+    await db.execute(`CREATE TABLE IF NOT EXISTS seo_overrides (
+      path TEXT PRIMARY KEY,
+      seo_title TEXT,
+      meta_description TEXT,
+      canonical_url TEXT,
+      og_title TEXT,
+      og_description TEXT,
+      og_image TEXT,
+      robots_index INTEGER,
+      robots_follow INTEGER,
+      updated_at INTEGER NOT NULL
+    )`);
+  } catch {}
+
   // Migration: per-user business/invoice-defaults profile — the "General
   // settings" backing store for the Personal workspace (no team active).
   // Applied as defaults when starting a brand-new invoice (see
   // InvoiceGenerator's hydration effect) and by /api/account/settings.
-  // Deliberately a smaller field set than teams' below (no quote/branding/
-  // email-template richness) — those are workspace-configuration concepts
-  // that belong to a team, not a solo account. See lib/workspace-settings.ts.
+  // Deliberately a smaller field set than teams' below (no legal-name/
+  // address/tax-registration richness — those are workspace-configuration
+  // concepts that belong to a team) — but branding and regional settings
+  // (currency, date format, logo, brand color) are genuinely per-person and
+  // the General Settings UI already exposes them for a personal workspace,
+  // so they need real columns here too. See lib/workspace-settings.ts.
   for (const col of [
     "business_name TEXT NOT NULL DEFAULT ''",
     "business_email TEXT NOT NULL DEFAULT ''",
@@ -392,6 +414,12 @@ async function ensureSchema(): Promise<void> {
     "default_tax_rate REAL",
     "default_notes TEXT NOT NULL DEFAULT ''",
     "default_payment_instructions TEXT NOT NULL DEFAULT ''",
+    "brand_color TEXT NOT NULL DEFAULT ''",
+    "show_logo_on_documents INTEGER NOT NULL DEFAULT 1",
+    "business_name_display TEXT NOT NULL DEFAULT 'business_name'",
+    "default_currency TEXT NOT NULL DEFAULT 'USD'",
+    "date_format TEXT NOT NULL DEFAULT 'MM/DD/YYYY'",
+    "language TEXT NOT NULL DEFAULT 'en'",
   ]) {
     try {
       await db.execute(`ALTER TABLE users ADD COLUMN ${col}`);

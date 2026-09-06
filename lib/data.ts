@@ -113,7 +113,7 @@ export async function upsertInvoice(
   userId: string,
   invoice: Invoice,
   opts: { id?: string; status?: string; clientId?: string | null; teamId?: string | null } = {},
-): Promise<{ id: string }> {
+): Promise<{ id: string; invoiceNumber?: string }> {
   const now = Date.now();
   let id = opts.id || "";
 
@@ -162,15 +162,19 @@ export async function upsertInvoice(
     return { id };
   }
 
-  // A team workspace gets its invoice number allocated atomically
-  // server-side (see lib/workspace-settings.ts) instead of trusting
-  // whatever the client sent — required so two members creating an invoice
-  // at the same moment can't collide. A personal (non-team) invoice keeps
-  // today's free-text numbering, unchanged.
+  // A new invoice's number is always allocated atomically server-side (see
+  // lib/workspace-settings.ts) instead of trusting whatever the client
+  // sent — required so two team members creating an invoice at the same
+  // moment can't collide, and so a personal workspace's own numbering
+  // format/prefix (set in General settings) actually gets applied instead
+  // of whatever placeholder the client-side form started with.
   const teamId = opts.teamId ?? null;
-  const finalInvoice = teamId
-    ? { ...invoice, invoiceNumber: await allocateInvoiceNumber({ type: "team", teamId }) }
-    : invoice;
+  const finalInvoice = {
+    ...invoice,
+    invoiceNumber: await allocateInvoiceNumber(
+      teamId ? { type: "team", teamId } : { type: "personal", userId }
+    ),
+  };
   const total = computeTotals(finalInvoice).total;
 
   id = randomUUID();
@@ -202,7 +206,7 @@ export async function upsertInvoice(
       actor: await actorFor(userId),
     });
   }
-  return { id };
+  return { id, invoiceNumber: finalInvoice.invoiceNumber };
 }
 
 export async function setInvoiceStatus(userId: string, id: string, status: string): Promise<boolean> {

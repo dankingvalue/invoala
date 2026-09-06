@@ -71,6 +71,12 @@ type UserSettingsRow = {
   default_tax_rate: number | null;
   default_notes: string;
   default_payment_instructions: string;
+  brand_color: string;
+  show_logo_on_documents: number;
+  business_name_display: string;
+  default_currency: string;
+  date_format: string;
+  language: string;
 };
 
 type TeamSettingsRow = {
@@ -120,7 +126,8 @@ export async function getWorkspaceSettings(scope: WorkspaceScope): Promise<Works
     const row = await dbGet<UserSettingsRow>(
       `SELECT name, business_name, business_email, business_address, business_logo, business_phone,
         business_website, timezone, invoice_prefix, next_invoice_number, default_payment_terms_days,
-        default_tax_rate, default_notes, default_payment_instructions
+        default_tax_rate, default_notes, default_payment_instructions, brand_color,
+        show_logo_on_documents, business_name_display, default_currency, date_format, language
        FROM users WHERE id = ?`,
       scope.userId,
     );
@@ -137,13 +144,13 @@ export async function getWorkspaceSettings(scope: WorkspaceScope): Promise<Works
       city: "", state: "", country: "", postalCode: "",
       taxNumber: "", businessRegNumber: "",
       logo: row.business_logo,
-      brandColor: "",
-      showLogoOnDocuments: true,
-      businessNameDisplay: "business_name",
-      defaultCurrency: "USD",
-      dateFormat: "MM/DD/YYYY",
+      brandColor: row.brand_color,
+      showLogoOnDocuments: !!row.show_logo_on_documents,
+      businessNameDisplay: row.business_name_display === "legal_business_name" ? "legal_business_name" : "business_name",
+      defaultCurrency: row.default_currency,
+      dateFormat: row.date_format,
       timezone: row.timezone,
-      language: "en",
+      language: row.language,
       defaultTaxRate: row.default_tax_rate,
       defaultNotes: row.default_notes,
       defaultPaymentInstructions: row.default_payment_instructions,
@@ -288,7 +295,9 @@ export async function updateWorkspaceSettings(
     result = await dbRun(
       `UPDATE users SET business_name = ?, business_email = ?, business_address = ?, business_logo = ?,
         business_phone = ?, business_website = ?, invoice_prefix = ?, default_payment_terms_days = ?,
-        default_tax_rate = ?, default_notes = ?, default_payment_instructions = ? WHERE id = ?`,
+        default_tax_rate = ?, default_notes = ?, default_payment_instructions = ?, brand_color = ?,
+        show_logo_on_documents = ?, business_name_display = ?, default_currency = ?, date_format = ?,
+        language = ? WHERE id = ?`,
       input.businessName ?? current.businessName,
       input.businessEmail ?? current.businessEmail,
       input.businessAddress ?? current.businessAddress,
@@ -300,6 +309,12 @@ export async function updateWorkspaceSettings(
       input.defaultTaxRate !== undefined ? input.defaultTaxRate : current.defaultTaxRate,
       input.defaultNotes ?? current.defaultNotes,
       input.defaultPaymentInstructions ?? current.defaultPaymentInstructions,
+      input.brandColor ?? current.brandColor,
+      (input.showLogoOnDocuments ?? current.showLogoOnDocuments) ? 1 : 0,
+      input.businessNameDisplay ?? current.businessNameDisplay,
+      input.defaultCurrency ?? current.defaultCurrency,
+      input.dateFormat ?? current.dateFormat,
+      input.language ?? current.language,
       scope.userId,
     );
   } else {
