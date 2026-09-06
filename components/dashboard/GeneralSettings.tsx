@@ -124,9 +124,18 @@ export function GeneralSettings({ workspace }: { workspace: string }) {
   const teamId = isTeam ? workspace.slice(5) : null;
 
   useEffect(() => {
+    // A workspace switch (including the automatic stale-workspace ->
+    // Personal correction in DashboardClient) fires this effect again
+    // before the previous request necessarily finished — fetch() doesn't
+    // cancel just because a newer effect run started. Without this guard,
+    // a slow failing response for the OLD (now-superseded) workspace could
+    // resolve after the new one already succeeded and clobber good state
+    // with "Could not load settings."
+    let ignore = false;
     fetch(`/api/workspace-settings?workspace=${encodeURIComponent(workspace)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { settings?: Settings; canEdit?: boolean } | null) => {
+        if (ignore) return;
         if (data?.settings) {
           setSettings(data.settings);
           setCanEdit(!!data.canEdit);
@@ -135,8 +144,9 @@ export function GeneralSettings({ workspace }: { workspace: string }) {
           setError("Could not load settings.");
         }
       })
-      .catch(() => setError("Network error while loading settings."))
-      .finally(() => setLoading(false));
+      .catch(() => { if (!ignore) setError("Network error while loading settings."); })
+      .finally(() => { if (!ignore) setLoading(false); });
+    return () => { ignore = true; };
   }, [workspace]);
 
   useEffect(() => {

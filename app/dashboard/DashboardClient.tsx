@@ -309,7 +309,23 @@ export function DashboardClient({
     fetch("/api/teams")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (data?.teams) setTeams(data.teams);
+        if (!data?.teams) return;
+        setTeams(data.teams);
+        // The active workspace read from localStorage on mount is whatever
+        // it was last time — if the user was removed from that team, left
+        // it, or it was deleted since, the server correctly refuses it, but
+        // nothing was re-validating this against the real list until now,
+        // so every tab that fetches per-workspace data (General, Documents,
+        // Clients, Messages) would keep hitting that same 403/404 forever,
+        // with no obvious way for the user to recover short of manually
+        // reopening the workspace switcher themselves.
+        setActiveWorkspace((current) => {
+          if (current.startsWith("team:") && !data.teams.some((t: WorkspaceTeam) => `team:${t.id}` === current)) {
+            try { window.localStorage.setItem("invoala.workspace", "personal"); } catch {}
+            return "personal";
+          }
+          return current;
+        });
       })
       .catch(() => {});
   }
