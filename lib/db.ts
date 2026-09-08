@@ -29,7 +29,7 @@ let schemaInitialized = false;
 // measurable latency on a fresh instance. This gate makes that a single
 // cheap read on every cold start except the one right after a deploy that
 // actually changed the schema.
-const SCHEMA_VERSION = "2026-09-06.2";
+const SCHEMA_VERSION = "2026-09-08.1";
 
 async function ensureSchema(): Promise<void> {
   const db = getDb();
@@ -284,6 +284,156 @@ async function ensureSchema(): Promise<void> {
       UNIQUE(item_id, voter_key)
     )` },
     { sql: `CREATE INDEX IF NOT EXISTS idx_roadmap_votes_item ON roadmap_votes(item_id)` },
+
+    // ---- Support operations platform -----------------------------------
+    // Structured escalations. One table for both Support->Admin and
+    // Admin->SuperAdmin hops (from_role/to_role distinguish them) rather than
+    // a second "decision" table — the decision_* columns double as the
+    // Super Admin decision record when to_role = 'superadmin'.
+    { sql: `CREATE TABLE IF NOT EXISTS escalations (
+      id TEXT PRIMARY KEY,
+      ref TEXT NOT NULL,
+      conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+      from_role TEXT NOT NULL,
+      to_role TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'other',
+      subcategory TEXT NOT NULL DEFAULT '',
+      impact TEXT NOT NULL DEFAULT 'individual_customer',
+      severity TEXT NOT NULL DEFAULT 'p3',
+      issue_statement TEXT NOT NULL DEFAULT '',
+      attempted TEXT NOT NULL DEFAULT '',
+      evidence TEXT NOT NULL DEFAULT '',
+      assessment TEXT NOT NULL DEFAULT '',
+      requested_action TEXT NOT NULL DEFAULT '',
+      is_emergency INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'pending',
+      incident_id TEXT,
+      created_by TEXT NOT NULL REFERENCES users(id),
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      decision TEXT,
+      decision_reason TEXT,
+      decision_by TEXT,
+      decision_at INTEGER,
+      resolved_at INTEGER
+    )` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_escalations_conv ON escalations(conversation_id)` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_escalations_status ON escalations(to_role, status, created_at DESC)` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_escalations_incident ON escalations(incident_id)` },
+
+    { sql: `CREATE TABLE IF NOT EXISTS incidents (
+      id TEXT PRIMARY KEY,
+      ref TEXT NOT NULL UNIQUE,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      severity TEXT NOT NULL DEFAULT 'p2',
+      status TEXT NOT NULL DEFAULT 'investigating',
+      created_by TEXT NOT NULL REFERENCES users(id),
+      assigned_admin TEXT,
+      started_at INTEGER NOT NULL,
+      detected_at INTEGER NOT NULL,
+      root_cause TEXT NOT NULL DEFAULT '',
+      investigation TEXT NOT NULL DEFAULT '',
+      workaround TEXT NOT NULL DEFAULT '',
+      resolution TEXT NOT NULL DEFAULT '',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      resolved_at INTEGER
+    )` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_incidents_status ON incidents(status, severity)` },
+
+    { sql: `CREATE TABLE IF NOT EXISTS incident_conversations (
+      id TEXT PRIMARY KEY,
+      incident_id TEXT NOT NULL REFERENCES incidents(id) ON DELETE CASCADE,
+      conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+      linked_by TEXT NOT NULL REFERENCES users(id),
+      created_at INTEGER NOT NULL,
+      UNIQUE(incident_id, conversation_id)
+    )` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_incident_conv_incident ON incident_conversations(incident_id)` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_incident_conv_conv ON incident_conversations(conversation_id)` },
+
+    { sql: `CREATE TABLE IF NOT EXISTS incident_updates (
+      id TEXT PRIMARY KEY,
+      incident_id TEXT NOT NULL REFERENCES incidents(id) ON DELETE CASCADE,
+      author_id TEXT NOT NULL REFERENCES users(id),
+      body TEXT NOT NULL,
+      status_at_time TEXT NOT NULL,
+      is_customer_broadcast INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL
+    )` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_incident_updates_incident ON incident_updates(incident_id, created_at)` },
+
+    { sql: `CREATE TABLE IF NOT EXISTS qa_reviews (
+      id TEXT PRIMARY KEY,
+      conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+      agent_id TEXT NOT NULL REFERENCES users(id),
+      reviewer_id TEXT NOT NULL REFERENCES users(id),
+      accuracy INTEGER NOT NULL,
+      helpfulness INTEGER NOT NULL,
+      professionalism INTEGER NOT NULL,
+      policy_compliance INTEGER NOT NULL,
+      correct_escalation INTEGER NOT NULL,
+      correct_resolution INTEGER NOT NULL,
+      documentation_quality INTEGER NOT NULL,
+      score INTEGER NOT NULL,
+      notes TEXT NOT NULL DEFAULT '',
+      created_at INTEGER NOT NULL
+    )` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_qa_reviews_agent ON qa_reviews(agent_id, created_at DESC)` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_qa_reviews_conv ON qa_reviews(conversation_id)` },
+
+    { sql: `CREATE TABLE IF NOT EXISTS support_macros (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'general',
+      response_text TEXT NOT NULL,
+      internal_instructions TEXT NOT NULL DEFAULT '',
+      applicable_plans TEXT NOT NULL DEFAULT '',
+      active INTEGER NOT NULL DEFAULT 1,
+      usage_count INTEGER NOT NULL DEFAULT 0,
+      created_by TEXT NOT NULL REFERENCES users(id),
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_macros_active ON support_macros(active, category)` },
+
+    { sql: `CREATE TABLE IF NOT EXISTS knowledge_articles (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'general',
+      audience TEXT NOT NULL DEFAULT 'internal',
+      verified INTEGER NOT NULL DEFAULT 0,
+      archived INTEGER NOT NULL DEFAULT 0,
+      created_by TEXT NOT NULL REFERENCES users(id),
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_kb_audience ON knowledge_articles(audience, archived)` },
+
+    { sql: `CREATE TABLE IF NOT EXISTS shift_reports (
+      id TEXT PRIMARY KEY,
+      agent_id TEXT NOT NULL REFERENCES users(id),
+      shift_date TEXT NOT NULL,
+      data TEXT NOT NULL,
+      recommendations TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'draft',
+      submitted_at INTEGER,
+      amended_from TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_shift_reports_agent ON shift_reports(agent_id, shift_date DESC)` },
+
+    { sql: `CREATE TABLE IF NOT EXISTS agent_skills (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      skill TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      UNIQUE(user_id, skill)
+    )` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_agent_skills_user ON agent_skills(user_id)` },
   ]);
 
   const versionRow = await db.execute("SELECT value FROM app_settings WHERE key = 'schema_version'");
@@ -554,6 +704,52 @@ async function ensureSchema(): Promise<void> {
   } catch {}
   try {
     await db.execute("CREATE INDEX IF NOT EXISTS idx_email_log_invoice ON email_log(invoice_id)");
+  } catch {}
+
+  // Migration: support-operations fields on conversations — priority/SLA,
+  // assignment, category, AI vs human attribution, and reopen tracking.
+  // Extends the existing table (see lib/db.ts conversations above) rather
+  // than a parallel "ticket" model.
+  for (const col of [
+    "priority TEXT NOT NULL DEFAULT 'p3'",
+    "category TEXT NOT NULL DEFAULT ''",
+    "subcategory TEXT NOT NULL DEFAULT ''",
+    "required_skill TEXT NOT NULL DEFAULT ''",
+    "assigned_to TEXT",
+    "first_response_at INTEGER",
+    "resolved_at INTEGER",
+    "reopened_count INTEGER NOT NULL DEFAULT 0",
+    "human_handled INTEGER NOT NULL DEFAULT 0",
+    "sla_first_response_due INTEGER",
+    "sla_resolution_due INTEGER",
+    "sla_first_response_breached INTEGER NOT NULL DEFAULT 0",
+    "sla_resolution_breached INTEGER NOT NULL DEFAULT 0",
+    "product_feedback_tag TEXT",
+    "emergency INTEGER NOT NULL DEFAULT 0",
+  ]) {
+    try {
+      await db.execute(`ALTER TABLE conversations ADD COLUMN ${col}`);
+    } catch {}
+  }
+  try {
+    await db.execute("CREATE INDEX IF NOT EXISTS idx_conversations_assigned ON conversations(assigned_to, status)");
+  } catch {}
+  try {
+    await db.execute("CREATE INDEX IF NOT EXISTS idx_conversations_priority ON conversations(priority, status)");
+  } catch {}
+
+  // Migration: internal notes (support-only, never shown to the customer)
+  // and macro-usage attribution on messages.
+  for (const col of ["is_internal_note INTEGER NOT NULL DEFAULT 0", "macro_id TEXT"]) {
+    try {
+      await db.execute(`ALTER TABLE messages ADD COLUMN ${col}`);
+    } catch {}
+  }
+
+  // Migration: per-agent availability (support/admin/superadmin only, but
+  // harmless as a column on every user) for workload-aware routing.
+  try {
+    await db.execute("ALTER TABLE users ADD COLUMN agent_available INTEGER NOT NULL DEFAULT 1");
   } catch {}
 
   await db.execute({
