@@ -10,6 +10,7 @@ import { ClientProfile } from "@/components/dashboard/ClientProfile";
 import { PlusIcon, SearchIcon, ViewIcon, EditIcon, ArchiveIcon, DeleteIcon, EmailIcon, ReceiptIcon, HistoryIcon, SendIcon, BuildingIcon } from "@/components/dashboard/icons";
 import { RowMenu, type RowMenuItem } from "@/components/dashboard/RowMenu";
 import { ProductTour, type TourStep } from "@/components/ProductTour";
+import { ProBadge } from "@/components/ProBadge";
 
 const CLIENTS_TOUR_STEPS: TourStep[] = [
   {
@@ -40,6 +41,7 @@ function zero(): ClientFinancials {
 
 function ClientRowMenu({
   client,
+  isPro,
   onView,
   onNewInvoice,
   onNewQuote,
@@ -51,6 +53,7 @@ function ClientRowMenu({
   onDelete,
 }: {
   client: ClientRow;
+  isPro: boolean;
   onView: () => void;
   onNewInvoice: () => void;
   onNewQuote: () => void;
@@ -65,8 +68,8 @@ function ClientRowMenu({
     { key: "view", label: "View client", icon: <ViewIcon />, onClick: onView },
     { key: "invoice", label: "Create invoice", icon: <PlusIcon />, onClick: onNewInvoice },
     { key: "quote", label: "Create quote", icon: <ReceiptIcon />, onClick: onNewQuote },
-    { key: "statement", label: "Send statement", icon: <SendIcon />, onClick: onStatement },
-    { key: "download-statement", label: "Download statement", icon: <ReceiptIcon />, onClick: onDownloadStatement },
+    { key: "statement", label: isPro ? "Send statement" : "Send statement (Pro)", icon: <SendIcon />, onClick: onStatement },
+    { key: "download-statement", label: isPro ? "Download statement" : "Download statement (Pro)", icon: <ReceiptIcon />, onClick: onDownloadStatement },
     { key: "history", label: "View payments", icon: <HistoryIcon />, onClick: onView },
     { key: "email", label: "Email client", icon: <EmailIcon />, onClick: onEmail },
     { key: "edit", label: "Edit client", icon: <EditIcon />, onClick: onEdit },
@@ -82,7 +85,7 @@ function ClientRowMenu({
   return <RowMenu items={items} />;
 }
 
-export function ClientsTab({ teams, workspace = "personal" }: { teams: Team[]; workspace?: string }) {
+export function ClientsTab({ teams, workspace = "personal", isPro = false }: { teams: Team[]; workspace?: string; isPro?: boolean }) {
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [financials, setFinancials] = useState<Record<string, ClientFinancials>>({});
   const [loading, setLoading] = useState(true);
@@ -260,10 +263,20 @@ export function ClientsTab({ teams, workspace = "personal" }: { teams: Team[]; w
     setBusyId(null);
   }
 
+  function openNewClient() {
+    if (!isPro) {
+      window.location.assign("/dashboard?tab=billing");
+      return;
+    }
+    setEditingClient(null);
+    setModalOpen(true);
+  }
+
   if (viewingId) {
     return (
       <ClientProfile
         clientId={viewingId}
+        isPro={isPro}
         onBack={() => { setViewingId(null); load(); }}
         onEdit={(c) => { setEditingClient(c); setModalOpen(true); }}
         onArchiveChanged={load}
@@ -277,10 +290,12 @@ export function ClientsTab({ teams, workspace = "personal" }: { teams: Team[]; w
         <button
           id="tour-new-client"
           type="button"
-          onClick={() => { setEditingClient(null); setModalOpen(true); }}
+          onClick={openNewClient}
+          title={!isPro ? "Saved clients is a Pro feature" : undefined}
           className="flex items-center gap-1.5 rounded-full bg-[#166534] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#14532d]"
         >
           <PlusIcon /> New client
+          {!isPro ? <ProBadge /> : null}
         </button>
       </div>
 
@@ -345,13 +360,15 @@ export function ClientsTab({ teams, workspace = "personal" }: { teams: Team[]; w
         <div className="rounded-xl border border-dashed border-[#e5e7eb] py-16 text-center">
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-fog text-[#9ca3af]"><BuildingIcon /></div>
           <p className="text-[15px] font-medium text-ink">No clients yet</p>
-          <p className="mt-1 text-[13px] text-[#6b7280]">Add your first client to start creating invoices faster.</p>
+          <p className="mt-1 text-[13px] text-[#6b7280]">
+            {isPro ? "Add your first client to start creating invoices faster." : "Saved clients is a Pro feature."}
+          </p>
           <button
             type="button"
-            onClick={() => { setEditingClient(null); setModalOpen(true); }}
+            onClick={openNewClient}
             className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#166534] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#14532d]"
           >
-            <PlusIcon /> Add client
+            <PlusIcon /> {isPro ? "Add client" : "Upgrade to add clients"}
           </button>
         </div>
       ) : filtered.length === 0 ? (
@@ -398,6 +415,7 @@ export function ClientsTab({ teams, workspace = "personal" }: { teams: Team[]; w
                         </button>
                         <ClientRowMenu
                           client={c}
+                          isPro={isPro}
                           onView={() => setViewingId(c.id)}
                           onNewInvoice={() => startNewInvoice(c)}
                           onNewQuote={() => startNewInvoice(c, "quote")}

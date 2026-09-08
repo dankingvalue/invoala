@@ -5,6 +5,7 @@ import { sendEmail, buildBusinessSignoff } from "@/lib/email";
 import { formatMoney } from "@/lib/invoice";
 import { buildStatementData } from "@/lib/statement-html";
 import { statementPdfBuffer } from "@/lib/statement-pdf";
+import { requireProFeature } from "@/lib/entitlements";
 
 // Builds a running-balance statement from the real invoice/payment ledger and
 // sends it as a styled PDF attachment (same Chromium pipeline as invoice
@@ -13,6 +14,8 @@ import { statementPdfBuffer } from "@/lib/statement-pdf";
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser(req);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await requireProFeature(user, "client_statement");
+  if (denied) return denied;
   const { id } = await params;
 
   const profile = await getClientProfile(user.id, id);

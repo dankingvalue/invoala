@@ -3,6 +3,7 @@ import { getClientProfile } from "@/lib/data";
 import { getWorkspaceSettings } from "@/lib/workspace-settings";
 import { buildStatementData } from "@/lib/statement-html";
 import { statementPdfBuffer } from "@/lib/statement-pdf";
+import { requireProFeature } from "@/lib/entitlements";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -12,6 +13,8 @@ export const maxDuration = 60;
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser(req);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await requireProFeature(user, "client_statement");
+  if (denied) return denied;
   const { id } = await params;
 
   const profile = await getClientProfile(user.id, id);

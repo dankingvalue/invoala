@@ -1,6 +1,7 @@
 import { getSessionUser } from "@/lib/server-auth";
 import { listInvoices, setInvoiceStatus, upsertInvoice } from "@/lib/data";
 import { isTeamMember } from "@/lib/teams";
+import { requireProFeature } from "@/lib/entitlements";
 import type { Invoice } from "@/lib/invoice";
 
 function isValidInvoice(v: unknown): v is Invoice {
@@ -69,6 +70,15 @@ export async function PUT(req: Request) {
 
   if (!isValidInvoice(body.invoice)) {
     return Response.json({ error: "Invalid invoice payload." }, { status: 400 });
+  }
+
+  // Saving a brand-new invoice to the account is the Pro-gated action
+  // ("Save invoices to the cloud" on the pricing page) — editing an invoice
+  // a user already has saved (body.id present) stays open so nothing a free
+  // user saved before this gate existed becomes stuck/unmanageable.
+  if (!body.id) {
+    const denied = await requireProFeature(user, "save_invoice");
+    if (denied) return denied;
   }
 
   // Only relevant for a brand-new invoice (upsertInvoice ignores it on an

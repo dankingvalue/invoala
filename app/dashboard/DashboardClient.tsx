@@ -18,6 +18,7 @@ import { ClientsTab } from "@/components/dashboard/ClientsTab";
 import { TeamsTab } from "@/components/dashboard/TeamsTab";
 import { GeneralSettings } from "@/components/dashboard/GeneralSettings";
 import { WorkspaceSwitcher, type WorkspaceTeam, type WorkspaceValue } from "@/components/dashboard/WorkspaceSwitcher";
+import { ProBadge } from "@/components/ProBadge";
 
 type Props = {
   userId: string;
@@ -1404,9 +1405,9 @@ export function DashboardClient({
                                   type="button"
                                   onClick={() => void emailInvoice(row)}
                                   className="flex items-center gap-1 text-[#6b7280] hover:text-[#166534]"
-                                  title="Email invoice as PDF"
+                                  title={isPro ? "Email invoice as PDF" : "Emailing invoices is a Pro feature"}
                                 >
-                                  <EmailIcon /> Email
+                                  <EmailIcon /> Email {!isPro ? <ProBadge /> : null}
                                 </button>
                                 {isDraft ? (
                                   <button
@@ -1440,6 +1441,7 @@ export function DashboardClient({
                                   isVoid={isVoid}
                                   canReceipt={row.status === "paid"}
                                   hasClient={!!row.client_id}
+                                  isPro={isPro}
                                   busy={rowBusy === row.id}
                                   onView={() => void viewInvoice(row)}
                                   onDuplicate={() => void duplicateInvoiceRow(row)}
@@ -1525,7 +1527,7 @@ export function DashboardClient({
 
           {/* Clients Tab */}
           {tab === "clients" && (
-            <ClientsTab teams={teams.map((t) => ({ id: t.id, name: t.name }))} workspace={activeWorkspace} />
+            <ClientsTab teams={teams.map((t) => ({ id: t.id, name: t.name }))} workspace={activeWorkspace} isPro={isPro} />
           )}
 
           {/* Teams Tab */}

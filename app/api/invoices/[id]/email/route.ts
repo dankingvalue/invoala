@@ -3,10 +3,13 @@ import { getSessionUser } from "@/lib/server-auth";
 import { dbGet } from "@/lib/db";
 import { sendEmail, buildBusinessSignoff } from "@/lib/email";
 import { invoicePdfBuffer } from "@/lib/invoice-pdf";
+import { requireProFeature } from "@/lib/entitlements";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser(req);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await requireProFeature(user, "email_invoice");
+  if (denied) return denied;
 
   const { id } = await params;
 

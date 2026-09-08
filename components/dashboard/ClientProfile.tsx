@@ -26,11 +26,13 @@ function activeTotal(invoices: InvoiceRow[]): number {
 
 export function ClientProfile({
   clientId,
+  isPro = false,
   onBack,
   onEdit,
   onArchiveChanged,
 }: {
   clientId: string;
+  isPro?: boolean;
   onBack: () => void;
   onEdit: (client: ClientRow) => void;
   onArchiveChanged: () => void;
@@ -207,9 +209,9 @@ export function ClientProfile({
             label="Statement actions"
             busy={statementBusy}
             items={[
-              { key: "view-statement", label: "View statement", icon: <ViewIcon />, onClick: viewStatement },
-              { key: "send-statement", label: "Send statement", icon: <SendIcon />, onClick: () => void sendStatement() },
-              { key: "download-statement", label: "Download statement", icon: <DownloadIcon />, onClick: () => void downloadStatement() },
+              { key: "view-statement", label: isPro ? "View statement" : "View statement (Pro)", icon: <ViewIcon />, onClick: viewStatement },
+              { key: "send-statement", label: isPro ? "Send statement" : "Send statement (Pro)", icon: <SendIcon />, onClick: () => void sendStatement() },
+              { key: "download-statement", label: isPro ? "Download statement" : "Download statement (Pro)", icon: <DownloadIcon />, onClick: () => void downloadStatement() },
             ] satisfies RowMenuItem[]}
           />
           <button

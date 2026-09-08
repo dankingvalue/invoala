@@ -3,6 +3,7 @@ import { getInvoice } from "@/lib/data";
 import { sendEmail, buildBusinessSignoff } from "@/lib/email";
 import { invoicePdfBuffer } from "@/lib/invoice-pdf";
 import { remainingBalance } from "@/lib/invoice-status";
+import { requireProFeature } from "@/lib/entitlements";
 
 // Reuses the exact same email + PDF pipeline as the regular "Email" action —
 // a reminder is just that email with a nudge subject/body, not a second
@@ -10,6 +11,8 @@ import { remainingBalance } from "@/lib/invoice-status";
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser(req);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await requireProFeature(user, "email_invoice");
+  if (denied) return denied;
   const { id } = await params;
 
   const row = await getInvoice(user.id, id);

@@ -19,6 +19,7 @@ export function InvoiceRowMenu({
   isVoid,
   canReceipt,
   hasClient,
+  isPro,
   busy,
   onView,
   onDuplicate,
@@ -36,6 +37,7 @@ export function InvoiceRowMenu({
   isVoid: boolean;
   canReceipt: boolean;
   hasClient: boolean;
+  isPro: boolean;
   busy?: boolean;
   onView: () => void;
   onDuplicate: () => void;
@@ -55,9 +57,9 @@ export function InvoiceRowMenu({
   items.push({ key: "print", label: "Print", icon: <PrintIcon />, onClick: onPrint });
   if (!isDraft) items.push({ key: "link", label: "Copy invoice link", icon: <LinkIcon />, onClick: onCopyLink });
   if (!isDraft) items.push({ key: "history", label: "Payment history", icon: <HistoryIcon />, onClick: onPaymentHistory });
-  if (!isDraft && !isVoid) items.push({ key: "remind", label: "Send reminder", icon: <ReminderIcon />, onClick: onRemind });
+  if (!isDraft && !isVoid) items.push({ key: "remind", label: isPro ? "Send reminder" : "Send reminder (Pro)", icon: <ReminderIcon />, onClick: onRemind });
   if (canReceipt) items.push({ key: "receipt", label: "Generate receipt", icon: <ReceiptIcon />, onClick: onReceipt });
-  if (!hasClient) items.push({ key: "save-client", label: "Save as client", icon: <BuildingIcon />, onClick: onSaveClient });
+  if (!hasClient) items.push({ key: "save-client", label: isPro ? "Save as client" : "Save as client (Pro)", icon: <BuildingIcon />, onClick: onSaveClient });
   if (isVoid) {
     items.push({ key: "reopen", label: "Reopen invoice", icon: <VoidIcon />, onClick: onReopen });
   } else if (!isDraft) {

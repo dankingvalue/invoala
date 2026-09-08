@@ -21,6 +21,7 @@ import { trackEvent } from "@/lib/analytics";
 import { copyToClipboard } from "@/lib/clipboard";
 import type { ClientRow } from "@/lib/data";
 import type { ServiceItem } from "@/lib/service-items";
+import { ProBadge } from "@/components/ProBadge";
 
 // Printable area on an A4 page with 8mm margins (print flow).
 const PRINT_W_MM = 194;
@@ -862,9 +863,11 @@ export function InvoiceGenerator({
               type="button"
               onClick={() => void emailInvoice()}
               disabled={sendingEmail || downloading}
-              className="rounded-full bg-[#e8e8ed] px-6 py-3.5 text-[17px] font-medium text-ink transition hover:bg-[#dcdce1] active:scale-[0.99] disabled:pointer-events-none disabled:opacity-60"
+              title={user && !user.isPro ? "Emailing invoices is a Pro feature" : undefined}
+              className="flex items-center gap-1.5 rounded-full bg-[#e8e8ed] px-6 py-3.5 text-[17px] font-medium text-ink transition hover:bg-[#dcdce1] active:scale-[0.99] disabled:pointer-events-none disabled:opacity-60"
             >
               {sendingEmail ? "Sending…" : "Email"}
+              {user && !user.isPro ? <ProBadge /> : null}
             </button>
             <button
               type="button"
@@ -886,9 +889,11 @@ export function InvoiceGenerator({
             <button
               type="button"
               onClick={() => void saveToAccount()}
-              className="rounded-full border border-hairline px-5 py-2 text-sm font-medium text-ink transition hover:border-accent hover:text-accent"
+              title={user && !user.isPro && !savedId ? "Saving new invoices to your account is a Pro feature" : undefined}
+              className="flex items-center gap-1.5 rounded-full border border-hairline px-5 py-2 text-sm font-medium text-ink transition hover:border-accent hover:text-accent"
             >
               {savedId ? "Update saved invoice" : user ? "Save to dashboard" : "Save to account"}
+              {user && !user.isPro && !savedId ? <ProBadge /> : null}
             </button>
             {saveNote ? <span className="text-xs text-subtle">{saveNote}</span> : null}
           </div>

@@ -1,6 +1,7 @@
 import { getSessionUser } from "@/lib/server-auth";
 import { createClient, listClients, listClientsForWorkspace, upsertClient, getClientFinancials, type ClientInput } from "@/lib/data";
 import { getTeamMemberRole, isTeamMember } from "@/lib/teams";
+import { requireProFeature } from "@/lib/entitlements";
 
 export async function GET(req: Request) {
   const user = await getSessionUser(req);
@@ -37,6 +38,8 @@ const ERROR_MESSAGES: Record<string, string> = {
 export async function POST(req: Request) {
   const user = await getSessionUser(req);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await requireProFeature(user, "client_book");
+  if (denied) return denied;
   let body: Partial<ClientInput> & { teamId?: string | null; quickSave?: boolean };
   try {
     body = await req.json();
