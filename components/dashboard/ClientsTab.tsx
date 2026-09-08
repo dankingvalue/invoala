@@ -9,6 +9,25 @@ import { ClientModal } from "@/components/dashboard/ClientModal";
 import { ClientProfile } from "@/components/dashboard/ClientProfile";
 import { PlusIcon, SearchIcon, ViewIcon, EditIcon, ArchiveIcon, DeleteIcon, EmailIcon, ReceiptIcon, HistoryIcon, SendIcon, BuildingIcon } from "@/components/dashboard/icons";
 import { RowMenu, type RowMenuItem } from "@/components/dashboard/RowMenu";
+import { ProductTour, type TourStep } from "@/components/ProductTour";
+
+const CLIENTS_TOUR_STEPS: TourStep[] = [
+  {
+    selector: "#tour-new-client",
+    title: "Add your first client",
+    body: "Save their name, email, and address once — it autofills every invoice or quote you create for them.",
+  },
+  {
+    selector: "#tour-clients-table",
+    title: "Everything at a glance",
+    body: "See total invoiced, paid, and outstanding balance per client, right in the list.",
+  },
+  {
+    selector: "#tour-client-actions",
+    title: "Statements and more",
+    body: "From here you can view, send, or download a client's statement, create a new invoice, or email them directly.",
+  },
+];
 
 type Team = { id: string; name: string };
 
@@ -256,6 +275,7 @@ export function ClientsTab({ teams, workspace = "personal" }: { teams: Team[]; w
     <div>
       <div className="mb-5 flex justify-end">
         <button
+          id="tour-new-client"
           type="button"
           onClick={() => { setEditingClient(null); setModalOpen(true); }}
           className="flex items-center gap-1.5 rounded-full bg-[#166534] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#14532d]"
@@ -337,7 +357,7 @@ export function ClientsTab({ teams, workspace = "personal" }: { teams: Team[]; w
       ) : filtered.length === 0 ? (
         <p className="py-12 text-center text-[14px] text-[#6b7280]">No clients match your search/filter.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-[#e5e7eb]">
+        <div id="tour-clients-table" className="overflow-x-auto rounded-lg border border-[#e5e7eb]">
           <table className="w-full min-w-[760px] text-left text-[13px]">
             <thead className="bg-[#f9fafb] text-[11px] uppercase tracking-wider text-[#6b7280]">
               <tr>
@@ -347,7 +367,7 @@ export function ClientsTab({ teams, workspace = "personal" }: { teams: Team[]; w
                 <th className="px-4 py-2.5 text-right font-semibold">Paid</th>
                 <th className="px-4 py-2.5 text-right font-semibold">Outstanding</th>
                 <th className="px-4 py-2.5 font-semibold">Last invoice</th>
-                <th className="px-4 py-2.5 text-right font-semibold">Actions</th>
+                <th id="tour-client-actions" className="px-4 py-2.5 text-right font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -422,6 +442,8 @@ export function ClientsTab({ teams, workspace = "personal" }: { teams: Team[]; w
         confirmLabel="Delete client"
         busy={!!deleteTarget && busyId === deleteTarget.id}
       />
+
+      <ProductTour tourId="dashboard-clients" steps={CLIENTS_TOUR_STEPS} />
     </div>
   );
 }

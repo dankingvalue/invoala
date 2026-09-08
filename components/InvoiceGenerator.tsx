@@ -913,7 +913,7 @@ export function InvoiceGenerator({
           ) : null}
         </div>
       </div>
-      <ProductTour tourId="invoice-generator" steps={GENERATOR_TOUR_STEPS} />
+      {user ? <ProductTour tourId="invoice-generator" steps={GENERATOR_TOUR_STEPS} /> : null}
     </div>
   );
 }
