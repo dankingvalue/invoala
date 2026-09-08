@@ -378,15 +378,6 @@ export function InvoiceForm({
               + Add item
             </button>
           </div>
-          <label className="flex w-full items-center gap-2 text-sm text-subtle">
-            <input
-              type="checkbox"
-              checked={!!invoice.hideEmptyRows}
-              onChange={(e) => onChange({ hideEmptyRows: e.target.checked })}
-              className="h-4 w-4 accent-accent"
-            />
-            Hide blank rows and empty fields (address, email) on the final invoice
-          </label>
         </div>
 
         {servicesOpen ? (

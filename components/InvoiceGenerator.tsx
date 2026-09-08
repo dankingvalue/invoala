@@ -820,6 +820,16 @@ export function InvoiceGenerator({
         </div>
 
         <div className="lg:sticky lg:top-20">
+          <label className="mb-3 flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm text-subtle shadow-sm ring-1 ring-black/5">
+            <input
+              type="checkbox"
+              checked={!!invoice.hideEmptyRows}
+              onChange={(e) => update({ hideEmptyRows: e.target.checked })}
+              className="h-4 w-4 accent-accent"
+            />
+            Hide blank rows and empty fields (address, email) on the final invoice
+          </label>
+
           <div className="rounded-[28px] bg-white p-3 shadow-lg ring-1 ring-black/5">
             <div id="invoice-paper" className="overflow-hidden rounded-2xl ring-1 ring-black/5">
               <InvoicePreview invoice={invoice} innerRef={previewRef} />
