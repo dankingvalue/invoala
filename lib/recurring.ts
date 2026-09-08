@@ -63,17 +63,19 @@ export async function generateDueRecurringInvoice(row: RecurringRow): Promise<bo
   if (!nextDate || nextDate > new Date().toISOString().slice(0, 10)) return false;
 
   const count = Number(row.data.recurring_count) || 1;
-  const baseNumber = row.number || row.data.invoiceNumber || "INV";
-  const childNumber = `${baseNumber}-${count + 1}`;
 
   const dueOffset = row.data.dueDate
     ? isoDaysBetween(row.data.issueDate || nextDate, row.data.dueDate)
     : 14;
 
-  // Build the next invoice without propagating the recurrence settings.
+  // Build the next invoice without propagating the recurrence settings. The
+  // invoiceNumber here is a placeholder only — upsertInvoice() always
+  // allocates the real, atomically-numbered value on create (see
+  // lib/data.ts) and discards whatever's sent, so using it for the email/PDF
+  // before saving would show the client a different number than what's
+  // actually in the dashboard. Wait for the real one below instead.
   const childInvoice: Invoice = {
     ...row.data,
-    invoiceNumber: childNumber,
     issueDate: nextDate,
     dueDate: isoPlusDays(nextDate, dueOffset),
     recurring: "",
@@ -82,7 +84,9 @@ export async function generateDueRecurringInvoice(row: RecurringRow): Promise<bo
   delete (childInvoice as Partial<Invoice>).recurring_count;
 
   try {
-    const { id: childId } = await upsertInvoice(row.user_id, childInvoice);
+    const { id: childId, invoiceNumber } = await upsertInvoice(row.user_id, childInvoice);
+    const childNumber = invoiceNumber || childInvoice.invoiceNumber;
+    childInvoice.invoiceNumber = childNumber;
     await setInvoiceStatus(row.user_id, childId, "sent");
 
     // Generate the styled PDF first. If BOTH generators fail we still send the
