@@ -2,6 +2,8 @@ import { randomUUID } from "crypto";
 import { getSessionUser } from "@/lib/server-auth";
 import { dbGet, dbAll, dbRun } from "@/lib/db";
 import { generateAiResponse, sendToTelegram } from "@/lib/ai";
+import { detectPriority, detectCategory } from "@/lib/support-classify";
+import { getSlaPolicy, computeSlaDueDates } from "@/lib/sla";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser(_req);
@@ -99,7 +101,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const aiResponse = await generateAiResponse(content);
 
     if (aiResponse.escalate) {
-      await dbRun("UPDATE conversations SET status = 'escalated', updated_at = ? WHERE id = ?", now + 1, id);
+      // Classify + start the SLA clock the moment a human is actually
+      // needed — AI already answered instantly, so measuring "first
+      // response" from account creation would be meaningless.
+      const priority = detectPriority(content);
+      const detected = detectCategory(content);
+      const policy = await getSlaPolicy();
+      const { firstResponseDue, resolutionDue } = computeSlaDueDates(now + 1, priority, policy);
+      await dbRun(
+        `UPDATE conversations SET status = 'escalated', priority = ?, category = COALESCE(NULLIF(category, ''), ?), subcategory = COALESCE(NULLIF(subcategory, ''), ?), sla_first_response_due = ?, sla_resolution_due = ?, updated_at = ? WHERE id = ?`,
+        priority, detected?.category ?? "", detected?.subcategory ?? "", firstResponseDue, resolutionDue, now + 1, id,
+      );
 
       await dbRun(
         `INSERT INTO messages (id, conversation_id, sender_type, sender_id, content, created_at)

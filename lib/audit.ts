@@ -38,7 +38,33 @@ export type AuditAction =
   | "payment_deleted"
   | "client_created"
   | "client_updated"
-  | "client_deleted";
+  | "client_deleted"
+  // Support operations platform
+  | "conversation_assigned"
+  | "conversation_priority_changed"
+  | "conversation_reopened"
+  | "conversation_internal_note"
+  | "escalation_created"
+  | "escalation_decided"
+  | "escalation_status_changed"
+  | "emergency_escalation"
+  | "incident_created"
+  | "incident_updated"
+  | "incident_conversation_linked"
+  | "incident_conversation_unlinked"
+  | "incident_broadcast"
+  | "qa_review_created"
+  | "rating_moderated"
+  | "macro_created"
+  | "macro_updated"
+  | "macro_deleted"
+  | "knowledge_article_created"
+  | "knowledge_article_updated"
+  | "agent_skills_updated"
+  | "agent_availability_changed"
+  | "shift_report_submitted"
+  | "document_viewed"
+  | "document_downloaded";
 
 export async function logAudit(opts: {
   action: AuditAction;
