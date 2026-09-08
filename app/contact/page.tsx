@@ -48,6 +48,20 @@ export default function ContactPage() {
                 answers are instant; you can ask for a human when you need one.
               </p>
             </div>
+            <div className="rounded-xl border border-[#e5e7eb] bg-white p-6 sm:col-span-2">
+              <h2 className="text-[17px] font-bold tracking-tight text-[#111827]">Support hours</h2>
+              <p className="mt-2 text-[15px] text-[#6b7280]">
+                Monday–Friday, 9am–4pm EAT for all users.
+              </p>
+              <p className="mt-2 text-[14px] leading-relaxed text-[#6b7280]">
+                On a{" "}
+                <Link href="/pricing" className="text-[#166534] hover:underline">
+                  Pro or Lifetime plan
+                </Link>
+                ? Priority support is available 24/7 — just mention your plan when
+                you reach out.
+              </p>
+            </div>
           </section>
 
           <section className="mb-14">
