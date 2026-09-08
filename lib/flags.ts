@@ -81,7 +81,7 @@ export const FLAG_DEFS: FlagDef[] = [
     key: "proTeaser",
     label: "Pro pricing section",
     description:
-      "Dark pricing section on the homepage — Free vs Pro ($9/mo · $79/yr) with CTA",
+      "Dark pricing section on the homepage — Free vs Pro ($14/mo · $140/yr) with CTA",
     defaultValue: true,
     group: "pro",
     status: "ready",

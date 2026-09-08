@@ -5,6 +5,7 @@ export type PlanPitch = {
   id: "free" | "pro" | "teams" | "lifetime";
   name: string;
   price: string;
+  compareAtPrice?: string;
   priceNote: string;
   tag: string | null;
   cta: string;
@@ -35,8 +36,8 @@ export const PLAN_PITCHES: PlanPitch[] = [
   {
     id: "pro",
     name: "Pro",
-    price: "$9",
-    priceNote: "/mo or $79/yr — save 27%",
+    price: "$14",
+    priceNote: "/mo or $140/yr — save 17%",
     tag: "Popular",
     cta: "Get Pro",
     features: [
@@ -74,7 +75,8 @@ export const PLAN_PITCHES: PlanPitch[] = [
   {
     id: "lifetime",
     name: "Lifetime",
-    price: "$499",
+    price: "$899",
+    compareAtPrice: "$1,200",
     priceNote: "one-time — forever",
     tag: "Best value",
     cta: "Get Lifetime",

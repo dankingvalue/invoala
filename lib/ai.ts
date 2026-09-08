@@ -28,7 +28,7 @@ Rules:
 const KNOWLEDGE_BASE: { patterns: RegExp[]; reply: string; escalate?: boolean }[] = [
   {
     patterns: [/pric|cost|plan|how much|subscription/i],
-    reply: "We offer these plans:\n\n• Free — Basic invoicing\n• Pro Monthly — $9/mo\n• Pro Yearly — $79/yr (save 27%)\n• Teams Monthly — $29/mo\n• Teams Yearly — $249/yr\n• Lifetime — $499 (one-time)\n\nAll paid plans include unlimited invoices, AI-powered drafting, and priority support. Visit invoala.com/#pricing for details.",
+    reply: "We offer these plans:\n\n• Free — Basic invoicing\n• Pro Monthly — $14/mo\n• Pro Yearly — $140/yr (save 17%)\n• Teams Monthly — $29/mo\n• Teams Yearly — $249/yr\n• Lifetime — $899 (one-time)\n\nAll paid plans include unlimited invoices, AI-powered drafting, and priority support. Visit invoala.com/#pricing for details.",
   },
   {
     patterns: [/how.*(create|make|invoice|start)|invoice.*(create|make|start|how)/i],

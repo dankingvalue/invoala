@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser, verificationRequired } from "@/lib/server-auth";
 import { getSubscription, isUserPro, isPlan } from "@/lib/billing";
-import { getActivePromo } from "@/lib/promo";
 import { runRecurringPass } from "@/lib/recurring";
 import { ensureLatestRates, ratesForDay } from "@/lib/fx";
 import { listInvoices, type InvoiceRow } from "@/lib/data";
@@ -30,7 +29,6 @@ export default async function DashboardPage({
   const invoices = await listInvoices(user.id);
   const subscription = await getSubscription(user.id);
   const pro = await isUserPro(user.id, user.role);
-  const promo = await getActivePromo(user.id).catch(() => null);
 
   // Lazy recurring trigger: generate any due recurring invoices for this
   // account when the dashboard loads, so Pro users get them even if the
@@ -95,7 +93,6 @@ export default async function DashboardPage({
             initialInvoices={invoices}
             subscription={subscription}
             isPro={pro}
-            promo={promo ? { code: promo.code, expires_at: promo.expires_at } : null}
             needsVerification={verificationRequired() && !user.email_verified}
             userRole={user.role}
             fxLatest={fxLatest}

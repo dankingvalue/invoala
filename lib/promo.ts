@@ -7,6 +7,14 @@ export const PROMO_PERCENT = 50;
 export const PROMO_DAYS_VALID = 10;
 export const PROMO_LIFETIME_MS = PROMO_DAYS_VALID * 24 * 60 * 60 * 1000;
 
+// Lifetime is now itself sold at a discount off its own compare-at price
+// (see LIFETIME_COMPARE_AT_CENTS in lib/billing.ts) — stacking an additional
+// automatic 50% off on top would cut the real charged price roughly in half
+// again, undoing the point of that repricing. New issuance is switched off
+// here; existing/in-flight promo records (createUserPromo returns them
+// as-is below) keep working until they expire naturally.
+const NEW_PROMO_ISSUANCE_ENABLED = false;
+
 export type UserPromo = {
   id: string;
   user_id: string;
@@ -39,6 +47,7 @@ export async function createUserPromo(user: {
 
   const existing = await getActivePromo(user.id).catch(() => null);
   if (existing) return existing;
+  if (!NEW_PROMO_ISSUANCE_ENABLED) return null;
 
   const now = Date.now();
   try {
@@ -80,21 +89,3 @@ export async function getActivePromo(userId: string): Promise<UserPromo | null> 
   return row ?? null;
 }
 
-// Any promo that is still valid, even if the welcome email has not been sent
-// (used by the reminder job to catch up on failed welcome sends).
-export async function getLatestPromo(userId: string): Promise<UserPromo | null> {
-  const row = await dbGet<UserPromo>(
-    "SELECT * FROM promos WHERE user_id = ? AND expires_at > ? ORDER BY created_at DESC LIMIT 1",
-    userId,
-    Date.now(),
-  );
-  return row ?? null;
-}
-
-export async function markPromoReminderSent(id: string): Promise<void> {
-  await dbRun("UPDATE promos SET reminder_sent = 1 WHERE id = ?", id);
-}
-
-export async function markPromoWelcomeSent(id: string): Promise<void> {
-  await dbRun("UPDATE promos SET welcome_sent = 1 WHERE id = ?", id);
-}

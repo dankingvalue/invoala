@@ -2,12 +2,19 @@ import { randomUUID } from "crypto";
 import { dbGet, dbRun } from "@/lib/db";
 
 export const PLANS = {
-  pro_monthly: { label: "Pro Monthly", amountCents: 900, interval: "month" as const },
-  pro_yearly: { label: "Pro Yearly", amountCents: 7900, interval: "year" as const },
+  pro_monthly: { label: "Pro Monthly", amountCents: 1400, interval: "month" as const },
+  pro_yearly: { label: "Pro Yearly", amountCents: 14000, interval: "year" as const },
   teams_monthly: { label: "Teams Monthly", amountCents: 2900, interval: "month" as const },
   teams_yearly: { label: "Teams Yearly", amountCents: 24900, interval: "year" as const },
-  lifetime: { label: "Lifetime", amountCents: 49900, interval: "lifetime" as const },
+  lifetime: { label: "Lifetime", amountCents: 89900, interval: "lifetime" as const },
 };
+
+// Lifetime's marketing "compare at" price — shown struck through next to the
+// real charged price (lib/plans-content.ts, components/ProPricing.tsx). Not
+// a real prior price point, just the reference value the discount is framed
+// against; kept here so every display of it stays in sync with the actual
+// charged amount above instead of drifting as a separate hardcoded string.
+export const LIFETIME_COMPARE_AT_CENTS = 120000;
 
 export type PlanId = keyof typeof PLANS;
 

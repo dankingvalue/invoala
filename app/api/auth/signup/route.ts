@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 import { dbGet, dbRun } from "@/lib/db";
 import { hashPassword, rateLimit, createSession, USER_COOKIE, verificationRequired, issueVerifyTokens, validatePassword } from "@/lib/server-auth";
 import { sendEmail, sendVerificationEmail, sendWelcomeEmail } from "@/lib/email";
-import { createUserPromo } from "@/lib/promo";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -50,16 +49,12 @@ export async function POST(req: Request) {
 
   const { token } = await createSession(id);
 
-  // New-account offer: 50% off Lifetime for 10 days, included in the
-  // welcome email. Never blocks signup if it fails.
-  const promo = await createUserPromo({ id, email, name }).catch(() => null);
-
   if (required) {
     const { code, linkToken } = await issueVerifyTokens(id, 24 * 60 * 60e3);
     await sendVerificationEmail({ to: email, userId: id, code, linkToken });
-    await sendWelcomeEmail({ to: email, name, promoCode: promo?.code, promoExpiresAt: promo?.expires_at });
+    await sendWelcomeEmail({ to: email, name });
   } else {
-    await sendWelcomeEmail({ to: email, name, promoCode: promo?.code, promoExpiresAt: promo?.expires_at });
+    await sendWelcomeEmail({ to: email, name });
   }
 
   const res = NextResponse.json({ ok: true, role: "user", needsVerification: required });

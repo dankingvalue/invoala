@@ -52,7 +52,7 @@ const PLAN_TARGETS: Record<string, string> = {
 
 // Billing term variants shown when the Monthly/Yearly toggle is set to yearly.
 const ANNUAL_VARIANTS: Record<string, { price: string; note: string; plan: string }> = {
-  pro: { price: "$79", note: "/yr · save 27% vs monthly", plan: "pro_yearly" },
+  pro: { price: "$140", note: "/yr · save 17% vs monthly", plan: "pro_yearly" },
   teams: { price: "$249", note: "/yr · save 29% vs monthly", plan: "teams_yearly" },
 };
 
@@ -81,7 +81,7 @@ export function ProPricing() {
           {(
             [
               [false, "Monthly"],
-              [true, "Yearly — save ~28%"],
+              [true, "Yearly — save up to 29%"],
             ] as const
           ).map(([value, label]) => (
             <button
@@ -125,7 +125,14 @@ export function ProPricing() {
                     </span>
                   ) : null}
                   <p className={s.name}>{plan.name}</p>
-                  <p className={s.price}>{price}</p>
+                  <p className={s.price}>
+                    {plan.compareAtPrice ? (
+                      <span className="mr-2 text-[20px] font-medium text-[#86efac]/60 line-through">
+                        {plan.compareAtPrice}
+                      </span>
+                    ) : null}
+                    {price}
+                  </p>
                   <p className={s.note}>{note}</p>
                   <ul className="mt-6 space-y-3 text-[14px]">
                     {plan.features.map((f) => (
@@ -165,11 +172,6 @@ export function ProPricing() {
           })}
         </div>
 
-        <Reveal delay={300}>
-          <p className="mt-10 text-center text-[12px] text-[#86efac]">
-            New accounts get 50% off Lifetime — your personal code lands in your welcome email.
-          </p>
-        </Reveal>
       </div>
     </section>
   );
