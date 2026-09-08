@@ -30,6 +30,7 @@ export function ConversationHeaderExtras({
 }) {
   const [escalateOpen, setEscalateOpen] = useState(false);
   const [emergencyOpen, setEmergencyOpen] = useState(false);
+  const [linkOpen, setLinkOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function patch(fields: Record<string, unknown>) {
@@ -57,6 +58,8 @@ export function ConversationHeaderExtras({
 
       {incident ? (
         <span className="rounded-full bg-[#ede9fe] px-2 py-1 font-semibold text-[#5b21b6]">Incident: {incident.ref}</span>
+      ) : myRole !== "support" ? (
+        <button onClick={() => setLinkOpen(true)} className="rounded-full border border-[#e5e7eb] bg-white px-2.5 py-1 font-medium text-[#5b21b6] hover:bg-[#f5f3ff]">Link incident</button>
       ) : null}
 
       {!conv.assigned_to ? (
@@ -74,6 +77,49 @@ export function ConversationHeaderExtras({
 
       {escalateOpen ? <EscalateModal conversationId={conv.id} myRole={myRole} onClose={() => { setEscalateOpen(false); onUpdated(); }} /> : null}
       {emergencyOpen ? <EmergencyModal conversationId={conv.id} onClose={() => { setEmergencyOpen(false); onUpdated(); }} /> : null}
+      {linkOpen ? <LinkIncidentModal conversationId={conv.id} onClose={() => { setLinkOpen(false); onUpdated(); }} /> : null}
+    </div>
+  );
+}
+
+function LinkIncidentModal({ conversationId, onClose }: { conversationId: string; onClose: () => void }) {
+  const [incidents, setIncidents] = useState<Array<{ id: string; ref: string; title: string; status: string }>>([]);
+  const [linking, setLinking] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/support/incidents?active=1")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { incidents?: typeof incidents } | null) => setIncidents(d?.incidents ?? []));
+  }, []);
+
+  async function link(incidentId: string) {
+    setLinking(incidentId);
+    await fetch(`/api/admin/support/incidents/${incidentId}/link`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversationId }),
+    }).catch(() => {});
+    setLinking(null);
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="max-h-[70vh] w-full max-w-sm overflow-y-auto rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-lg font-semibold tracking-tight">Link to incident</h3>
+        {incidents.length === 0 ? (
+          <p className="mt-3 text-sm text-subtle">No active incidents. Create one from Support Ops → Incidents.</p>
+        ) : (
+          <div className="mt-3 space-y-1.5">
+            {incidents.map((inc) => (
+              <button key={inc.id} disabled={!!linking} onClick={() => link(inc.id)} className="flex w-full items-center justify-between rounded-lg border border-[#e5e7eb] p-2.5 text-left text-sm hover:border-[#166534] disabled:opacity-50">
+                <span>{inc.ref} — {inc.title}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        <button onClick={onClose} className="mt-4 text-xs font-medium text-subtle hover:text-ink">Cancel</button>
+      </div>
     </div>
   );
 }

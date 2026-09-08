@@ -488,11 +488,107 @@ function MessagesTab({ myId }: { myId: string }) {
 
 function ActivityTab() {
   return (
+    <div className="space-y-6">
+      <ShiftReportPanel />
+      <Panel>
+        <SectionHead title="My activity" subtitle="Your personal audit trail. Only your actions are shown." />
+        <div className="mt-4">
+          <AuditTable role="support" />
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+type ShiftDraft = {
+  conversationsHandled: number;
+  customersHelped: number;
+  resolved: number;
+  pending: number;
+  waitingForCustomer: number;
+  escalated: number;
+  p1p2Count: number;
+  slaBreaches: number;
+  topIssues: Array<{ category: string; count: number }>;
+  complaints: number;
+  featureRequests: number;
+};
+
+function ShiftReportPanel() {
+  const [draft, setDraft] = useState<ShiftDraft | null>(null);
+  const [recommendations, setRecommendations] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [hours, setHours] = useState(8);
+
+  function loadDraft() {
+    const to = Date.now();
+    const from = to - hours * 3600_000;
+    fetch(`/api/admin/support/reports/shift?mode=draft&from=${from}&to=${to}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { draft?: ShiftDraft } | null) => setDraft(d?.draft ?? null));
+  }
+  useEffect(loadDraft, [hours]);
+
+  async function submit() {
+    if (!draft) return;
+    setSubmitting(true);
+    const shiftDate = new Date().toISOString().slice(0, 10);
+    const res = await fetch("/api/admin/support/reports/shift", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ shiftDate, data: draft, recommendations }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setSubmitting(false);
+    if (data.ok) {
+      setSubmitted(true);
+      setRecommendations("");
+    }
+  }
+
+  return (
     <Panel>
-      <SectionHead title="My activity" subtitle="Your personal audit trail. Only your actions are shown." />
-      <div className="mt-4">
-        <AuditTable role="support" />
+      <div className="flex items-center justify-between">
+        <SectionHead title="Shift report" subtitle="Auto-computed from your activity — review before submitting." />
+        <select value={hours} onChange={(e) => { setHours(Number(e.target.value)); setSubmitted(false); }} className="rounded-lg border border-[#e5e7eb] px-2.5 py-1.5 text-xs">
+          <option value={4}>Last 4h</option>
+          <option value={8}>Last 8h</option>
+          <option value={12}>Last 12h</option>
+        </select>
       </div>
+
+      {submitted ? (
+        <p className="mt-4 rounded-lg bg-[#dcfce7] px-3 py-2.5 text-sm text-[#166534]">Shift report submitted and locked.</p>
+      ) : draft ? (
+        <>
+          <div className="mt-4 grid grid-cols-2 gap-3 text-[13px] sm:grid-cols-4">
+            <div><p className="text-[11px] text-subtle">Handled</p><p className="font-semibold">{draft.conversationsHandled}</p></div>
+            <div><p className="text-[11px] text-subtle">Resolved</p><p className="font-semibold">{draft.resolved}</p></div>
+            <div><p className="text-[11px] text-subtle">Pending</p><p className="font-semibold">{draft.pending}</p></div>
+            <div><p className="text-[11px] text-subtle">Escalated</p><p className="font-semibold">{draft.escalated}</p></div>
+            <div><p className="text-[11px] text-subtle">P1/P2</p><p className="font-semibold">{draft.p1p2Count}</p></div>
+            <div><p className="text-[11px] text-subtle">SLA breaches</p><p className="font-semibold">{draft.slaBreaches}</p></div>
+            <div><p className="text-[11px] text-subtle">Complaints</p><p className="font-semibold">{draft.complaints}</p></div>
+            <div><p className="text-[11px] text-subtle">Feature requests</p><p className="font-semibold">{draft.featureRequests}</p></div>
+          </div>
+          {draft.topIssues.length > 0 ? (
+            <p className="mt-3 text-[12px] text-subtle">Top issues: {draft.topIssues.map((i) => `${i.category.replace(/_/g, " ")} (${i.count})`).join(", ")}</p>
+          ) : null}
+          <textarea
+            value={recommendations}
+            onChange={(e) => setRecommendations(e.target.value)}
+            placeholder="Recommendations, unresolved issues, or anything Admin should know…"
+            rows={2}
+            className="mt-3 w-full rounded-lg border border-[#e5e7eb] p-2.5 text-sm outline-none focus:border-[#166534]"
+          />
+          <button disabled={submitting} onClick={submit} className="mt-3 rounded-full bg-[#166534] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
+            {submitting ? "Submitting…" : "Submit shift report"}
+          </button>
+        </>
+      ) : (
+        <p className="mt-4 text-sm text-subtle">Loading…</p>
+      )}
     </Panel>
   );
 }

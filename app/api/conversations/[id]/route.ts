@@ -4,6 +4,20 @@ import { dbGet, dbAll, dbRun } from "@/lib/db";
 import { generateAiResponse, sendToTelegram } from "@/lib/ai";
 import { detectPriority, detectCategory } from "@/lib/support-classify";
 import { getSlaPolicy, computeSlaDueDates } from "@/lib/sla";
+import { pickAgentForConversation, type Skill } from "@/lib/agent-skills";
+
+// Maps an escalation category to the skill most likely to resolve it —
+// used only to pick a routing candidate, never a hard requirement (a
+// conversation with no clean mapping is simply left unassigned, per
+// lib/agent-skills.ts pickAgentForConversation's own fallback).
+const CATEGORY_SKILL: Partial<Record<string, Skill>> = {
+  payment: "payments",
+  billing: "billing",
+  account: "account",
+  technical_bug: "technical",
+  infrastructure: "technical",
+  security: "technical",
+};
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser(_req);
@@ -108,9 +122,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       const detected = detectCategory(content);
       const policy = await getSlaPolicy();
       const { firstResponseDue, resolutionDue } = computeSlaDueDates(now + 1, priority, policy);
+      const requiredSkill = detected ? CATEGORY_SKILL[detected.category] ?? null : null;
+      // Best-effort routing suggestion — workload-aware, skill-matched when
+      // possible, never blocks escalation if nobody's available (spec
+      // section 19/20: consider availability/workload/skill, don't force a
+      // bad match; an unassigned conversation just sits in the open queue).
+      const suggestedAgent = await pickAgentForConversation(requiredSkill).catch(() => null);
       await dbRun(
-        `UPDATE conversations SET status = 'escalated', priority = ?, category = COALESCE(NULLIF(category, ''), ?), subcategory = COALESCE(NULLIF(subcategory, ''), ?), sla_first_response_due = ?, sla_resolution_due = ?, updated_at = ? WHERE id = ?`,
-        priority, detected?.category ?? "", detected?.subcategory ?? "", firstResponseDue, resolutionDue, now + 1, id,
+        `UPDATE conversations SET status = 'escalated', priority = ?, category = COALESCE(NULLIF(category, ''), ?), subcategory = COALESCE(NULLIF(subcategory, ''), ?), required_skill = ?, assigned_to = COALESCE(assigned_to, ?), sla_first_response_due = ?, sla_resolution_due = ?, updated_at = ? WHERE id = ?`,
+        priority, detected?.category ?? "", detected?.subcategory ?? "", requiredSkill ?? "", suggestedAgent, firstResponseDue, resolutionDue, now + 1, id,
       );
 
       await dbRun(
