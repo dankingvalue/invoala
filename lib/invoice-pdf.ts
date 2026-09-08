@@ -294,7 +294,8 @@ function fdate(iso?: string): string {
 
 async function jsPdfEmergency(invoice: Invoice): Promise<Buffer> {
   const { jsPDF } = await import("jspdf");
-  const { computeTotals, themeColor, visibleLineItems } = await import("@/lib/invoice");
+  const { computeTotals, themeColor, visibleLineItems, displayField } = await import("@/lib/invoice");
+  const hideEmpty = invoice.hideEmptyRows;
   const doc: jsPDF = new jsPDF({ unit: "pt", format: "a4", compress: true });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -318,10 +319,13 @@ async function jsPdfEmergency(invoice: Invoice): Promise<Buffer> {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
   setC(doc, F_INK);
-  doc.text(invoice.businessName.trim() || "Your Company", M, y + 10);
-  const lines = ((invoice.businessAddress || "Your address") + (invoice.businessEmail ? `\n${invoice.businessEmail}` : "")).split("\n").filter(Boolean);
+  doc.text(displayField(invoice.businessName, "Your Company", hideEmpty), M, y + 10);
+  const bizLines = [
+    displayField(invoice.businessAddress, "Your address", hideEmpty),
+    displayField(invoice.businessEmail, "you@example.com", hideEmpty),
+  ].filter(Boolean).join("\n").split("\n").filter(Boolean);
   let ly = y + 10;
-  for (const line of lines) {
+  for (const line of bizLines) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     setC(doc, F_SUBTLE);
@@ -357,8 +361,11 @@ async function jsPdfEmergency(invoice: Invoice): Promise<Buffer> {
   doc.text((isReceipt ? "Received from" : "Billed to").toUpperCase(), M, billedY);
   doc.setFontSize(11);
   setC(doc, F_INK);
-  doc.text(invoice.clientName.trim() || "Client Name", M, billedY + 13);
-  const cLines = ((invoice.clientAddress || "Client address") + (invoice.clientEmail ? `\n${invoice.clientEmail}` : "")).split("\n").filter(Boolean);
+  doc.text(displayField(invoice.clientName, "Client Name", hideEmpty), M, billedY + 13);
+  const cLines = [
+    displayField(invoice.clientAddress, "Client address", hideEmpty),
+    invoice.clientEmail.trim(),
+  ].filter(Boolean).join("\n").split("\n").filter(Boolean);
   let cy = billedY + 13;
   for (const line of cLines) {
     doc.setFont("helvetica", "normal");

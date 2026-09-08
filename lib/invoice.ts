@@ -86,6 +86,13 @@ export function visibleLineItems(invoice: Invoice): LineItem[] {
   return invoice.hideEmptyRows ? invoice.items.filter((item) => !isEmptyLineItem(item)) : invoice.items;
 }
 
+/** A single field's display text: the real value if filled in, otherwise a placeholder (default) or "" when hideEmptyRows is on — so an unfilled optional field (address, email, name) doesn't print fake placeholder text on the actual document. Same hideEmptyRows flag also drives visibleLineItems, so one toggle governs "don't show anything the user never actually filled in." */
+export function displayField(value: string, placeholder: string, hideEmpty: boolean | undefined): string {
+  const trimmed = value.trim();
+  if (trimmed) return trimmed;
+  return hideEmpty ? "" : placeholder;
+}
+
 export const RECURRING_OPTIONS = [
   { value: "", label: "One-time" },
   { value: "weekly", label: "Repeats weekly" },

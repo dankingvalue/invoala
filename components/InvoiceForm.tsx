@@ -385,7 +385,7 @@ export function InvoiceForm({
               onChange={(e) => onChange({ hideEmptyRows: e.target.checked })}
               className="h-4 w-4 accent-accent"
             />
-            Hide blank rows on the final invoice
+            Hide blank rows and empty fields (address, email) on the final invoice
           </label>
         </div>
 

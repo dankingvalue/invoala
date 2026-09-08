@@ -1,4 +1,4 @@
-import { themeColor, visibleLineItems, type Invoice } from "@/lib/invoice";
+import { displayField, themeColor, visibleLineItems, type Invoice } from "@/lib/invoice";
 import { INTER_400_BASE64, INTER_600_BASE64, INTER_700_BASE64 } from "@/lib/invoice-font";
 
 // One source of truth for the *printed* invoice design — the same layout
@@ -50,8 +50,17 @@ export function buildInvoiceHtml(invoice: Invoice, { money }: { money: (n: numbe
   const dueLabel = isQuote ? "Valid until" : isReceipt ? "Received" : "Due";
   const metaLabel = isReceipt ? "Receipt #" : `${title} #`;
 
-  const businessName = invoice.businessName.trim() || "Your Company";
-  const clientName = invoice.clientName.trim() || "Client Name";
+  const hideEmpty = invoice.hideEmptyRows;
+  const businessName = displayField(invoice.businessName, "Your Company", hideEmpty);
+  const clientName = displayField(invoice.clientName, "Client Name", hideEmpty);
+  const businessAddrText = [
+    displayField(invoice.businessAddress, "Your address", hideEmpty),
+    displayField(invoice.businessEmail, "you@example.com", hideEmpty),
+  ].filter(Boolean).join("\n");
+  const clientAddrText = [
+    displayField(invoice.clientAddress, "Client address", hideEmpty),
+    invoice.clientEmail.trim(),
+  ].filter(Boolean).join("\n");
 
   const rows: Array<{ d: string; q: string; r: string; a: string }> = [];
   for (const item of visibleLineItems(invoice)) {
@@ -82,8 +91,6 @@ export function buildInvoiceHtml(invoice: Invoice, { money }: { money: (n: numbe
   const moneyShip = money(shipping);
   const moneyTax = money(tax);
   const moneyTotal = money(total);
-
-  const lines = (s?: string) => (s || "").split("\n").filter(Boolean);
 
   const totalRowsHtml = `
     ${disc > 0 ? `<tr><td>${invoice.discountMode === "fixed" ? "Discount" : `Discount (${Number(invoice.discount) || 0}%)`}</td><td>−${moneyDisc}</td></tr>` : ""}
@@ -192,7 +199,7 @@ export function buildInvoiceHtml(invoice: Invoice, { money }: { money: (n: numbe
     <div class="biz">
       ${invoice.logoDataUrl ? `<img src="${invoice.logoDataUrl}" alt="" style="max-height: 12mm; max-width: 42mm; margin-bottom: 2mm; object-fit: contain;" />` : ""}
       <div class="name">${esc(businessName)}</div>
-      <div class="addr">${esc((invoice.businessAddress || "Your address") + (invoice.businessEmail ? `\n${invoice.businessEmail}` : ""))}</div>
+      <div class="addr">${esc(businessAddrText)}</div>
     </div>
     <div class="doc">
       <h1>${esc(title)}</h1>
@@ -210,7 +217,7 @@ export function buildInvoiceHtml(invoice: Invoice, { money }: { money: (n: numbe
   <div class="billed">
     <div class="sec">${isReceipt ? "Received from" : "Billed to"}</div>
     <div class="name">${esc(clientName)}</div>
-    <div class="addr">${esc((invoice.clientAddress || "Client address") + (invoice.clientEmail ? `\n${invoice.clientEmail}` : ""))}</div>
+    <div class="addr">${esc(clientAddrText)}</div>
   </div>
 
   <table class="items">

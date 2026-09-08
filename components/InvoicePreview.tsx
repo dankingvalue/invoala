@@ -1,5 +1,6 @@
 import {
   computeTotals,
+  displayField,
   docTitle,
   formatDate,
   formatMoney,
@@ -21,8 +22,17 @@ export function InvoicePreview({
   innerRef?: React.RefObject<HTMLDivElement | null>;
 }) {
   const { subtotal, taxAmount, total, discountAmount, shipping } = computeTotals(invoice);
-  const businessName = invoice.businessName.trim() || "Your Company";
-  const clientName = invoice.clientName.trim() || "Client Name";
+  const hideEmpty = invoice.hideEmptyRows;
+  const businessName = displayField(invoice.businessName, "Your Company", hideEmpty);
+  const clientName = displayField(invoice.clientName, "Client Name", hideEmpty);
+  const businessAddressLines = [
+    displayField(invoice.businessAddress, "Your address", hideEmpty),
+    displayField(invoice.businessEmail, "you@example.com", hideEmpty),
+  ].filter(Boolean).join("\n");
+  const clientAddressLines = [
+    displayField(invoice.clientAddress, "Client address", hideEmpty),
+    invoice.clientEmail.trim(),
+  ].filter(Boolean).join("\n");
   const accent = themeColor(invoice.theme);
   const isQuote = invoice.docType === "quote" || invoice.docType === "estimate";
   const isReceipt = invoice.docType === "receipt";
@@ -50,9 +60,7 @@ export function InvoicePreview({
             {businessName}
           </p>
           <div className="mt-2 whitespace-pre-line text-xs leading-relaxed" style={{ color: subtle }}>
-            {invoice.businessAddress || "Your address"}
-            <br />
-            {invoice.businessEmail || "you@example.com"}
+            {businessAddressLines}
           </div>
         </div>
 
@@ -101,13 +109,7 @@ export function InvoicePreview({
           {clientName}
         </p>
         <div className="mt-1 whitespace-pre-line text-xs leading-relaxed" style={{ color: subtle }}>
-          {invoice.clientAddress || "Client address"}
-          {invoice.clientEmail ? (
-            <>
-              <br />
-              {invoice.clientEmail}
-            </>
-          ) : null}
+          {clientAddressLines}
         </div>
       </div>
 
