@@ -44,6 +44,7 @@ export const PLAN_PITCHES: PlanPitch[] = [
       "Everything in Free",
       "Save invoices to the cloud — access from any device",
       "Client book with history & one-click auto-fill",
+      "Client account statements — view, send, or download",
       "Email invoices straight to your client",
       "Public share links with open/view notifications",
       "Quotes & estimates that convert to invoices in one click",

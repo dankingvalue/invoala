@@ -25,7 +25,7 @@ const faqs = [
   {
     question: "What does the Pro plan add?",
     answer:
-      "Pro adds saved client profiles and history, quotes and estimates, multi-business profiles, and priority support. You keep everything in the free tier.",
+      "Pro adds saved client profiles and history, account statements, quotes and estimates, recurring invoices, and priority support. You keep everything in the free tier. Multiple team/business profiles are part of the Teams plan.",
   },
   {
     question: "Can I cancel anytime?",
