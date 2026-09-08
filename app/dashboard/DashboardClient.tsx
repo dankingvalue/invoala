@@ -1854,6 +1854,7 @@ const EMAIL_KIND_LABEL: Record<string, string> = {
   quote: "Quote",
   receipt: "Receipt",
   reminder: "Payment reminder",
+  statement: "Statement",
   other: "Email",
 };
 

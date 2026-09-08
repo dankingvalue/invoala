@@ -1,12 +1,15 @@
 import { getSessionUser } from "@/lib/server-auth";
 import { getClientProfile } from "@/lib/data";
+import { getWorkspaceSettings } from "@/lib/workspace-settings";
 import { sendEmail } from "@/lib/email";
 import { formatMoney } from "@/lib/invoice";
-import { remainingBalance } from "@/lib/invoice-status";
+import { buildStatementData } from "@/lib/statement-html";
+import { statementPdfBuffer } from "@/lib/statement-pdf";
 
-// Builds a running-balance statement from the real invoice/payment ledger
-// and sends it with the existing email infrastructure (lib/email.ts) — no
-// second email system, no new PDF renderer.
+// Builds a running-balance statement from the real invoice/payment ledger and
+// sends it as a styled PDF attachment (same Chromium pipeline as invoice
+// emails) with a short readable text body — not a monospace-padded text wall,
+// which most email clients render as an unreadable jumble.
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser(req);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -26,50 +29,42 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return Response.json({ error: "Valid recipient email required." }, { status: 400 });
   }
 
-  const currency = profile.client.currency || "USD";
-  const activeInvoices = profile.invoices.filter((i) => i.status !== "void" && i.status !== "cancelled");
+  const business = await getWorkspaceSettings(
+    profile.client.team_id ? { type: "team", teamId: profile.client.team_id } : { type: "personal", userId: user.id },
+  );
+  if (!business) return Response.json({ error: "Workspace settings not found." }, { status: 500 });
 
-  type Line = { date: number; label: string; debit: number; credit: number };
-  const lines: Line[] = [
-    ...activeInvoices.map((i) => ({ date: i.created_at, label: `Invoice ${i.number}`, debit: i.total, credit: 0 })),
-    ...profile.payments.map((p) => ({
-      date: p.created_at,
-      label: `Payment received — ${p.invoice_number}${p.reference ? ` (${p.reference})` : ""}`,
-      debit: 0,
-      credit: p.amount,
-    })),
-  ].sort((a, b) => a.date - b.date);
+  const statement = buildStatementData(profile.client, business, profile.invoices, profile.payments);
 
-  let running = 0;
-  const rows = lines.map((l) => {
-    running += l.debit - l.credit;
-    const date = new Date(l.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-    const amount = l.debit ? formatMoney(l.debit, currency) : `-${formatMoney(l.credit, currency)}`;
-    return `${date}  ${l.label.padEnd(40)} ${amount.padStart(14)}  bal: ${formatMoney(running, currency)}`;
-  });
+  let pdfAttachment: { filename: string; content: string } | undefined;
+  try {
+    const { buffer } = await statementPdfBuffer(statement);
+    pdfAttachment = {
+      filename: `Statement-${profile.client.name.replace(/[^\w.-]+/g, "-")}.pdf`,
+      content: buffer.toString("base64"),
+    };
+  } catch (err) {
+    console.error("[email:statement] PDF generation failed — sending text summary only", err);
+  }
 
-  const totalInvoiced = activeInvoices.reduce((s, i) => s + i.total, 0);
-  const totalPaid = profile.payments.reduce((s, p) => s + p.amount, 0);
-  const closingBalance = remainingBalance(totalInvoiced, totalPaid);
-
-  const text = [
-    `Statement for ${profile.client.name}`,
-    `Opening balance: ${formatMoney(0, currency)}`,
-    "",
-    ...rows,
-    "",
-    `Closing balance due: ${formatMoney(closingBalance, currency)}`,
-    "",
-    `— sent via Invoala`,
-  ].join("\n");
+  const closing = formatMoney(statement.closingBalance, statement.currency);
+  const text = pdfAttachment
+    ? `Hi ${profile.client.name},\n\nPlease find your account statement attached.\n\nClosing balance due: ${closing}\n\n— ${business.businessName || "Invoala"}`
+    : `Hi ${profile.client.name},\n\nHere is your account statement.\n\n${statement.rows
+        .map((r) => `${new Date(r.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} — ${r.label}: ${r.debit ? formatMoney(r.debit, statement.currency) : `-${formatMoney(r.credit, statement.currency)}`}`)
+        .join("\n")}\n\nClosing balance due: ${closing}\n\n— ${business.businessName || "Invoala"}`;
 
   const result = await sendEmail({
     to: toEmail,
     subject: `Statement — ${profile.client.name}`,
     text,
+    attachments: pdfAttachment ? [pdfAttachment] : undefined,
+    userId: user.id,
+    teamId: profile.client.team_id,
+    kind: "statement",
   });
   if (result.status === "failed") {
     return Response.json({ error: "Failed to send statement." }, { status: 500 });
   }
-  return Response.json({ ok: true, status: result.status });
+  return Response.json({ ok: true, status: result.status, attachedPdf: !!pdfAttachment });
 }

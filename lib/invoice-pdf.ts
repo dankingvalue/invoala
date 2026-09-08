@@ -141,10 +141,12 @@ async function notifyPdfIncident(detail: string): Promise<void> {
 // ---- Render (retry with fresh browser + backoff) --------------------------
 const MAX_ATTEMPTS = 5;
 
-async function renderStyledPdfWithMeta(
-  invoice: Invoice,
-  html: string,
-): Promise<{ buffer: Buffer; engine: "chromium" | "emergency" }> {
+// One Chromium HTML→PDF renderer shared by every styled document (invoices,
+// statements, ...). Retries with a fresh browser + backoff; throws (after
+// firing the throttled incident alert) if every attempt fails, leaving the
+// emergency fallback to each caller since only invoices have a full
+// styled-lite jsPDF renderer to fall back to.
+export async function renderHtmlToPdf(html: string): Promise<Buffer> {
   let lastError = "unknown";
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const browser = await launchChromium();
@@ -173,10 +175,10 @@ async function renderStyledPdfWithMeta(
             setTimeout(() => reject(new Error("pdf render timed out after 25s")), 25_000),
           ),
         ]);
-        return { buffer: Buffer.from(result), engine: "chromium" as const };
+        return Buffer.from(result);
       } catch (err) {
         lastError = err instanceof Error ? err.message.slice(0, 500) : String(err);
-        console.error(`[invoice-pdf] render attempt ${attempt}/${MAX_ATTEMPTS} failed`, lastError);
+        console.error(`[html-pdf] render attempt ${attempt}/${MAX_ATTEMPTS} failed`, lastError);
       } finally {
         await browser.close().catch(() => {});
       }
@@ -185,16 +187,27 @@ async function renderStyledPdfWithMeta(
       await new Promise((r) => setTimeout(r, 750 * attempt));
     }
   }
-  // Emergency path: after all styled attempts fail we still deliver a
-  // COMPLETE invoice (styled-lite jsPDF with all data, accents and layout) —
-  // an invoice app must never block on sending. The alert below tells us the
-  // styled engine is sick so we can repair it.
   await notifyPdfIncident(lastError);
+  throw new Error(lastError);
+}
+
+async function renderStyledPdfWithMeta(
+  invoice: Invoice,
+  html: string,
+): Promise<{ buffer: Buffer; engine: "chromium" | "emergency" }> {
   try {
-    return { buffer: await jsPdfEmergency(invoice), engine: "emergency" as const };
-  } catch (err2) {
-    console.error("[invoice-pdf] emergency render also failed", err2);
-    throw new Error("The invoice PDF engine is unavailable right now; no document was generated.");
+    const buffer = await renderHtmlToPdf(html);
+    return { buffer, engine: "chromium" as const };
+  } catch {
+    // Emergency path: after all styled attempts fail we still deliver a
+    // COMPLETE invoice (styled-lite jsPDF with all data, accents and layout) —
+    // an invoice app must never block on sending.
+    try {
+      return { buffer: await jsPdfEmergency(invoice), engine: "emergency" as const };
+    } catch (err2) {
+      console.error("[invoice-pdf] emergency render also failed", err2);
+      throw new Error("The invoice PDF engine is unavailable right now; no document was generated.");
+    }
   }
 }
 

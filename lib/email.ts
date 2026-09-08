@@ -3,7 +3,7 @@ import { dbRun } from "@/lib/db";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
-export type EmailKind = "invoice" | "quote" | "receipt" | "reminder" | "other";
+export type EmailKind = "invoice" | "quote" | "receipt" | "reminder" | "statement" | "other";
 
 export async function sendEmail(opts: {
   to: string;

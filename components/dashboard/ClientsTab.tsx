@@ -25,6 +25,7 @@ function ClientRowMenu({
   onNewInvoice,
   onNewQuote,
   onStatement,
+  onDownloadStatement,
   onEmail,
   onEdit,
   onArchiveToggle,
@@ -35,6 +36,7 @@ function ClientRowMenu({
   onNewInvoice: () => void;
   onNewQuote: () => void;
   onStatement: () => void;
+  onDownloadStatement: () => void;
   onEmail: () => void;
   onEdit: () => void;
   onArchiveToggle: () => void;
@@ -45,6 +47,7 @@ function ClientRowMenu({
     { key: "invoice", label: "Create invoice", icon: <PlusIcon />, onClick: onNewInvoice },
     { key: "quote", label: "Create quote", icon: <ReceiptIcon />, onClick: onNewQuote },
     { key: "statement", label: "Send statement", icon: <SendIcon />, onClick: onStatement },
+    { key: "download-statement", label: "Download statement", icon: <ReceiptIcon />, onClick: onDownloadStatement },
     { key: "history", label: "View payments", icon: <HistoryIcon />, onClick: onView },
     { key: "email", label: "Email client", icon: <EmailIcon />, onClick: onEmail },
     { key: "edit", label: "Edit client", icon: <EditIcon />, onClick: onEdit },
@@ -184,6 +187,27 @@ export function ClientsTab({ teams, workspace = "personal" }: { teams: Team[]; w
       flash(json.ok ? "Statement sent" : json.error || "Could not send statement.");
     } catch {
       flash("Network error while sending the statement.");
+    }
+    setBusyId(null);
+  }
+
+  async function downloadStatement(client: ClientRow) {
+    setBusyId(client.id);
+    try {
+      const res = await fetch(`/api/clients/${client.id}/statement/pdf`);
+      if (!res.ok) {
+        const json = (await res.json().catch(() => null)) as { error?: string } | null;
+        flash(json?.error || "Could not generate the statement right now.");
+        return;
+      }
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `Statement-${client.name.replace(/[^\w.-]+/g, "-")}.pdf`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch {
+      flash("Network error while downloading the statement.");
     }
     setBusyId(null);
   }
@@ -358,6 +382,7 @@ export function ClientsTab({ teams, workspace = "personal" }: { teams: Team[]; w
                           onNewInvoice={() => startNewInvoice(c)}
                           onNewQuote={() => startNewInvoice(c, "quote")}
                           onStatement={() => void sendStatement(c)}
+                          onDownloadStatement={() => void downloadStatement(c)}
                           onEmail={() => { if (c.email) window.location.href = `mailto:${c.email}`; else flash("This client has no email on file."); }}
                           onEdit={() => { setEditingClient(c); setModalOpen(true); }}
                           onArchiveToggle={() => void toggleArchive(c)}
