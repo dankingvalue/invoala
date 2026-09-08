@@ -524,7 +524,7 @@ export default async function HomePt() {
               </svg>
               Invoala
             </div>
-            <nav className="flex items-center gap-6">
+            <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
               <a href="#features" className="transition-colors hover:text-ink">Recursos</a>
               <a href="#faq" className="transition-colors hover:text-ink">Perguntas</a>
               <Link href="/how-to-create-invoice" className="transition-colors hover:text-ink">Guia</Link>

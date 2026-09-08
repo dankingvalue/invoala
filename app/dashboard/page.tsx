@@ -116,7 +116,7 @@ export default async function DashboardPage({
               </svg>
               Invoala
             </div>
-            <nav className="flex items-center gap-6">
+            <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
               <Link href="/" className="transition-colors hover:text-ink">Home</Link>
               <Link href="/dashboard?tab=general" className="transition-colors hover:text-ink">Dashboard</Link>
               <Link href="/roadmap" className="transition-colors hover:text-ink">Roadmap</Link>
