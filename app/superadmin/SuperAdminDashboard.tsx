@@ -11,13 +11,17 @@ import { BroadcastTab } from "@/components/admin/BroadcastTab";
 import { SubscribersTab } from "@/components/admin/SubscribersTab";
 import { RoadmapTab } from "@/components/admin/RoadmapTab";
 import { RangePicker, type RangeId } from "@/components/admin/RangePicker";
+import { SupportOpsTab } from "@/components/admin/SupportOpsTab";
+import { ExecutivePanel } from "@/components/admin/support-ops/ExecutivePanel";
 
 type Tab =
   | "overview"
+  | "executive"
   | "users"
   | "subscriptions"
   | "invoices"
   | "messages"
+  | "supportops"
   | "flags"
   | "email"
   | "audit"
@@ -73,10 +77,12 @@ type Message = {
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
+  { id: "executive", label: "Executive" },
   { id: "users", label: "Users" },
   { id: "subscriptions", label: "Subscriptions" },
   { id: "invoices", label: "Invoices" },
   { id: "messages", label: "Messages" },
+  { id: "supportops", label: "Support Ops" },
   { id: "flags", label: "Flags" },
   { id: "email", label: "Email" },
   { id: "audit", label: "Audit Trail" },
@@ -110,10 +116,12 @@ export function SuperAdminDashboard() {
       </div>
 
       {tab === "overview" && <OverviewTab />}
+      {tab === "executive" && <ExecutivePanel />}
       {tab === "users" && <UsersTab />}
       {tab === "subscriptions" && <SubscriptionsTab />}
       {tab === "invoices" && <InvoicesTab />}
       {tab === "messages" && <MessagesTab />}
+      {tab === "supportops" && <SupportOpsTab myRole="superadmin" />}
       {tab === "flags" && <FlagsTab />}
       {tab === "email" && <EmailTab />}
       {tab === "audit" && <AuditTab />}

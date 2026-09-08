@@ -11,8 +11,9 @@ import { BroadcastTab } from "@/components/admin/BroadcastTab";
 import { SubscribersTab } from "@/components/admin/SubscribersTab";
 import { RoadmapTab } from "@/components/admin/RoadmapTab";
 import { RangePicker, type RangeId } from "@/components/admin/RangePicker";
+import { SupportOpsTab } from "@/components/admin/SupportOpsTab";
 
-type Tab = "overview" | "users" | "invoices" | "messages" | "flags" | "email" | "audit" | "seo" | "notify" | "subscribers" | "roadmap";
+type Tab = "overview" | "users" | "invoices" | "messages" | "supportops" | "flags" | "email" | "audit" | "seo" | "notify" | "subscribers" | "roadmap";
 
 type Stats = {
   users: number;
@@ -62,6 +63,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "users", label: "Users" },
   { id: "invoices", label: "Invoices" },
   { id: "messages", label: "Messages" },
+  { id: "supportops", label: "Support Ops" },
   { id: "flags", label: "Flags" },
   { id: "email", label: "Email" },
   { id: "audit", label: "Audit Trail" },
@@ -96,6 +98,7 @@ export function AdminDashboard({ myRole }: { myRole: string }) {
       {tab === "users" && <UsersTab myRole={myRole} />}
       {tab === "invoices" && <InvoicesTab />}
       {tab === "messages" && <MessagesTab />}
+      {tab === "supportops" && <SupportOpsTab myRole={myRole} />}
       {tab === "flags" && <FlagsTab />}
       {tab === "email" && <EmailTab />}
       {tab === "audit" && <AuditTab />}
