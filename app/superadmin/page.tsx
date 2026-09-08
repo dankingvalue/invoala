@@ -49,7 +49,7 @@ export default async function SuperAdminPage() {
             </span>
           </div>
         </header>
-        <SuperAdminDashboard />
+        <SuperAdminDashboard myId={user.id} />
       </div>
     </main>
   );

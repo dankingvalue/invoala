@@ -36,7 +36,7 @@ export default async function SupportPage() {
             Support
           </span>
         </header>
-        <SupportDashboard />
+        <SupportDashboard myId={user.id} />
       </div>
     </main>
   );

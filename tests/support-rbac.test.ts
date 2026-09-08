@@ -7,7 +7,6 @@ function user(role: string): SessionUser {
 }
 
 const ADMIN_ONLY: SupportPermission[] = [
-  "support.conversations.assign",
   "support.conversations.reassign",
   "support.escalations.manage",
   "admin.support.manage",
@@ -38,6 +37,7 @@ const BASE_SUPPORT: SupportPermission[] = [
   "support.conversations.internal_note",
   "support.conversations.resolve",
   "support.conversations.reopen",
+  "support.conversations.assign",
   "support.customers.view",
   "support.documents.view",
   "support.documents.download",

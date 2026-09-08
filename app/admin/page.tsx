@@ -39,7 +39,7 @@ export default async function AdminPage() {
             Admin · {user.role}
           </span>
         </header>
-        <AdminDashboard myRole={user.role} />
+        <AdminDashboard myRole={user.role} myId={user.id} />
       </div>
     </main>
   );

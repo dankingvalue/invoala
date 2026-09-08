@@ -5,16 +5,17 @@ import { StatCard, Panel, SectionHead } from "@/components/admin/Panel";
 import { AuditTable } from "@/components/admin/AuditTable";
 import { InvoiceTable } from "@/components/admin/InvoiceTable";
 import { CustomerSlideOut } from "@/components/admin/CustomerSlideOut";
+import { ConversationHeaderExtras, MacroPicker } from "@/components/admin/ConversationExtras";
 
 type Tab = "overview" | "customers" | "invoices" | "messages" | "activity";
 
 type Stats = {
   users: number;
-  newUsers7d: number;
+  newUsersInRange: number;
   invoices: number;
-  invoices30d: number;
+  invoicesInRange: number;
   activeSubs: number;
-  emailsSent7d: number;
+  emailsInRange: number;
 };
 
 type User = {
@@ -39,6 +40,9 @@ type Conversation = {
   unread_count: number;
   created_at: number;
   updated_at: number;
+  priority?: string;
+  category?: string;
+  assigned_to?: string | null;
 };
 
 type Message = {
@@ -46,6 +50,7 @@ type Message = {
   sender_type: string;
   sender_id: string | null;
   content: string;
+  is_internal_note?: number;
   created_at: number;
 };
 
@@ -57,7 +62,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "activity", label: "My Activity" },
 ];
 
-export function SupportDashboard() {
+export function SupportDashboard({ myId }: { myId: string }) {
   const [tab, setTab] = useState<Tab>("overview");
 
   return (
@@ -81,7 +86,7 @@ export function SupportDashboard() {
       {tab === "overview" && <OverviewTab />}
       {tab === "customers" && <CustomersTab />}
       {tab === "invoices" && <InvoicesTab />}
-      {tab === "messages" && <MessagesTab />}
+      {tab === "messages" && <MessagesTab myId={myId} />}
       {tab === "activity" && <ActivityTab />}
     </div>
   );
@@ -117,10 +122,10 @@ function OverviewTab() {
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         <StatCard label="Open Chats" value={openChats.toLocaleString()} sub="Awaiting response" />
-        <StatCard label="Users" value={stats.users.toLocaleString()} sub={`+${stats.newUsers7d} this week`} />
-        <StatCard label="Documents" value={stats.invoices.toLocaleString()} sub={`${stats.invoices30d} in 30 days`} />
+        <StatCard label="Users" value={stats.users.toLocaleString()} sub={`+${stats.newUsersInRange} this week`} />
+        <StatCard label="Documents" value={stats.invoices.toLocaleString()} sub={`${stats.invoicesInRange} in range`} />
         <StatCard label="Pro Subscribers" value={stats.activeSubs.toLocaleString()} />
-        <StatCard label="Emails (7d)" value={stats.emailsSent7d.toLocaleString()} />
+        <StatCard label="Emails" value={stats.emailsInRange.toLocaleString()} />
       </div>
 
       {metrics && (
@@ -284,11 +289,14 @@ function InvoicesTab() {
   );
 }
 
-function MessagesTab() {
+function MessagesTab({ myId }: { myId: string }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [incident, setIncident] = useState<{ ref: string; title: string } | null>(null);
   const [reply, setReply] = useState("");
+  const [isInternalNote, setIsInternalNote] = useState(false);
+  const [macroId, setMacroId] = useState<string | undefined>(undefined);
   const [sendingMsg, setSendingMsg] = useState(false);
   const [convPage, setConvPage] = useState(1);
   const [convTotalPages, setConvTotalPages] = useState(1);
@@ -313,6 +321,8 @@ function MessagesTab() {
     const res = await fetch(`/api/admin/messages/${conv.id}`);
     const data = await res.json();
     setMessages(data.messages || []);
+    setIncident(data.incident || null);
+    if (data.conversation) setSelectedConv(data.conversation);
   };
 
   const sendReply = async (e: FormEvent) => {
@@ -322,10 +332,10 @@ function MessagesTab() {
     const res = await fetch(`/api/admin/messages/${selectedConv.id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: reply }),
+      body: JSON.stringify({ content: reply, isInternalNote, macroId }),
     });
     const data = await res.json();
-    if (data.ok) { setReply(""); setSuggestion(""); loadConversation(selectedConv); }
+    if (data.ok) { setReply(""); setSuggestion(""); setIsInternalNote(false); setMacroId(undefined); loadConversation(selectedConv); }
     setSendingMsg(false);
   };
 
@@ -377,16 +387,21 @@ function MessagesTab() {
               <button type="button" onClick={() => setSelectedConv(null)} className="rounded-lg px-3 py-1.5 text-xs text-[#6b7280] hover:bg-[#f3f4f6]">Back</button>
             </div>
           </div>
+          <ConversationHeaderExtras conv={selectedConv} myRole="support" myId={myId} incident={incident} onUpdated={() => loadConversation(selectedConv)} />
           <div className="flex-1 overflow-y-auto p-4">
             <div className="space-y-4">
               {messages.map((msg) => (
-                <div key={msg.id} className={`flex ${msg.sender_type === "user" ? "justify-start" : msg.sender_type === "support" ? "justify-end" : "justify-center"}`}>
+                <div key={msg.id} className={`flex ${msg.is_internal_note ? "justify-center" : msg.sender_type === "user" ? "justify-start" : msg.sender_type === "support" ? "justify-end" : "justify-center"}`}>
                   <div className={`max-w-[70%] rounded-2xl px-4 py-2.5 text-sm ${
-                    msg.sender_type === "user" ? "bg-[#f3f4f6] text-[#111827]"
+                    msg.is_internal_note ? "border border-dashed border-[#f59e0b] bg-[#fffbeb] text-[#92400e]"
+                    : msg.sender_type === "user" ? "bg-[#f3f4f6] text-[#111827]"
                     : msg.sender_type === "support" ? "bg-[#166534] text-white"
                     : msg.sender_type === "ai" ? "bg-[#e0e7ff] text-[#3730a3]"
                     : "bg-[#fef3c7] text-[#92400e]"
-                  }`}>{msg.content}</div>
+                  }`}>
+                    {msg.is_internal_note ? <p className="mb-1 text-[10px] font-bold uppercase tracking-wider">Internal note</p> : null}
+                    {msg.content}
+                  </div>
                 </div>
               ))}
               <div ref={messagesEndRef} />
@@ -404,12 +419,17 @@ function MessagesTab() {
             </div>
           )}
           <form onSubmit={sendReply} className="border-t border-[#e5e7eb] p-4">
+            <label className="mb-2 flex items-center gap-1.5 text-xs text-subtle">
+              <input type="checkbox" checked={isInternalNote} onChange={(e) => setIsInternalNote(e.target.checked)} />
+              Internal note (never shown to the customer)
+            </label>
             <div className="flex gap-2">
+              <MacroPicker onPick={(text, id) => { setReply(text); setMacroId(id); }} />
               <button type="button" onClick={() => void getSuggestion()} disabled={suggesting} className="shrink-0 rounded-lg border border-[#e5e7eb] px-3 py-2 text-sm text-[#6b7280] hover:bg-[#f3f4f6] disabled:opacity-50" title="AI suggest reply">
                 {suggesting ? "…" : "✨"}
               </button>
-              <input type="text" value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Type a reply…" disabled={sendingMsg} className="flex-1 rounded-lg border border-[#e5e7eb] px-3 py-2 text-sm focus:border-[#166534] focus:outline-none focus:ring-1 focus:ring-[#166534] disabled:opacity-50" />
-              <button type="submit" disabled={sendingMsg || !reply.trim()} className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white hover:bg-[#14532d] disabled:opacity-50">{sendingMsg ? "Sending…" : "Send"}</button>
+              <input type="text" value={reply} onChange={(e) => { setReply(e.target.value); setMacroId(undefined); }} placeholder={isInternalNote ? "Add an internal note…" : "Type a reply…"} disabled={sendingMsg} className="flex-1 rounded-lg border border-[#e5e7eb] px-3 py-2 text-sm focus:border-[#166534] focus:outline-none focus:ring-1 focus:ring-[#166534] disabled:opacity-50" />
+              <button type="submit" disabled={sendingMsg || !reply.trim()} className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${isInternalNote ? "bg-[#f59e0b] hover:bg-[#d97706]" : "bg-[#166534] hover:bg-[#14532d]"}`}>{sendingMsg ? "Sending…" : isInternalNote ? "Add note" : "Send"}</button>
             </div>
           </form>
         </div>

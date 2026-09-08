@@ -47,6 +47,10 @@ const SUPPORT_PERMS: SupportPermission[] = [
   "support.conversations.internal_note",
   "support.conversations.resolve",
   "support.conversations.reopen",
+  // Self-claim/unclaim only — the route itself restricts this permission to
+  // assignedTo === self or null; reassigning to someone ELSE requires the
+  // separate support.conversations.reassign permission (admin+ only).
+  "support.conversations.assign",
   "support.customers.view",
   "support.documents.view",
   "support.documents.download",
@@ -59,7 +63,6 @@ const SUPPORT_PERMS: SupportPermission[] = [
 
 const ADMIN_PERMS: SupportPermission[] = [
   ...SUPPORT_PERMS,
-  "support.conversations.assign",
   "support.conversations.reassign",
   "support.escalations.manage",
   "admin.support.manage",
