@@ -294,7 +294,7 @@ function fdate(iso?: string): string {
 
 async function jsPdfEmergency(invoice: Invoice): Promise<Buffer> {
   const { jsPDF } = await import("jspdf");
-  const { computeTotals, themeColor } = await import("@/lib/invoice");
+  const { computeTotals, themeColor, visibleLineItems } = await import("@/lib/invoice");
   const doc: jsPDF = new jsPDF({ unit: "pt", format: "a4", compress: true });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -381,7 +381,8 @@ async function jsPdfEmergency(invoice: Invoice): Promise<Buffer> {
   rule(doc, M, contentW, y + 3, accent, 1.4);
   y += 15;
 
-  const items = invoice.items.length > 0 ? invoice.items : [{ description: "", quantity: 1, rate: 0 }];
+  const visible = visibleLineItems(invoice);
+  const items = visible.length > 0 ? visible : [{ description: "", quantity: 1, rate: 0 }];
   for (const item of items) {
     const desc = item.description || "Item description";
     const wrapped = doc.splitTextToSize(desc, colQ - M - 10);

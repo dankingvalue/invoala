@@ -360,7 +360,7 @@ export function InvoiceForm({
       </section>
 
       <section className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-y-2">
           <h3 className="text-lg font-semibold tracking-tight text-ink">Items</h3>
           <div className="flex items-center gap-4">
             <button
@@ -378,6 +378,15 @@ export function InvoiceForm({
               + Add item
             </button>
           </div>
+          <label className="flex w-full items-center gap-2 text-sm text-subtle">
+            <input
+              type="checkbox"
+              checked={!!invoice.hideEmptyRows}
+              onChange={(e) => onChange({ hideEmptyRows: e.target.checked })}
+              className="h-4 w-4 accent-accent"
+            />
+            Hide blank rows on the final invoice
+          </label>
         </div>
 
         {servicesOpen ? (

@@ -4,6 +4,7 @@ import {
   formatDate,
   formatMoney,
   themeColor,
+  visibleLineItems,
   type Invoice,
 } from "@/lib/invoice";
 
@@ -128,7 +129,7 @@ export function InvoicePreview({
           </tr>
         </thead>
         <tbody>
-          {invoice.items.map((item) => (
+          {visibleLineItems(invoice).map((item) => (
             <tr key={item.id} className="border-b" style={{ borderColor: hairline }}>
               <td className="py-2.5 pr-4" style={{ color: item.description ? ink : faint }}>
                 {item.description || "Item description"}

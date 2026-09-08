@@ -1,4 +1,4 @@
-import { themeColor, type Invoice } from "@/lib/invoice";
+import { themeColor, visibleLineItems, type Invoice } from "@/lib/invoice";
 import { INTER_400_BASE64, INTER_600_BASE64, INTER_700_BASE64 } from "@/lib/invoice-font";
 
 // One source of truth for the *printed* invoice design — the same layout
@@ -54,7 +54,7 @@ export function buildInvoiceHtml(invoice: Invoice, { money }: { money: (n: numbe
   const clientName = invoice.clientName.trim() || "Client Name";
 
   const rows: Array<{ d: string; q: string; r: string; a: string }> = [];
-  for (const item of invoice.items) {
+  for (const item of visibleLineItems(invoice)) {
     rows.push({
       d: esc(item.description || "Item description"),
       q: String(item.quantity),

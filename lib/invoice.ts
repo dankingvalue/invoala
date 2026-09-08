@@ -72,7 +72,19 @@ export type Invoice = {
   paymentInstructions: string;
   paymentLink: string;
   theme: InvoiceTheme;
+  /** Omit untouched blank line items (no description, zero rate) from the rendered preview/PDF instead of showing them as empty rows. Off by default. */
+  hideEmptyRows?: boolean;
 };
+
+/** A row nobody has actually filled in — matches the blank item a fresh "+ Add item" click creates. */
+export function isEmptyLineItem(item: LineItem): boolean {
+  return !item.description.trim() && (Number(item.rate) || 0) === 0;
+}
+
+/** Items to actually render on the document — same list as `invoice.items` unless hideEmptyRows is on, in which case untouched blank rows are dropped. Reused by every render path (client preview, server HTML, jsPDF fallback) so they never disagree. */
+export function visibleLineItems(invoice: Invoice): LineItem[] {
+  return invoice.hideEmptyRows ? invoice.items.filter((item) => !isEmptyLineItem(item)) : invoice.items;
+}
 
 export const RECURRING_OPTIONS = [
   { value: "", label: "One-time" },
@@ -280,6 +292,7 @@ export function createDefaultInvoice(): Invoice {
     paymentInstructions: "",
     paymentLink: "",
     theme: "green",
+    hideEmptyRows: false,
   };
 }
 
