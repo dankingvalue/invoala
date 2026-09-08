@@ -35,6 +35,7 @@ type Props = {
   fxLatest?: Record<string, number> | null;
   fxInvoice?: Record<string, { usd: number; asOf: string; exact: boolean }> | null;
   initialCheckoutPlan?: string | null;
+  initialStartTrial?: boolean;
   initialTab?: string;
 };
 
@@ -224,10 +225,13 @@ export function DashboardClient({
   fxLatest = null,
   fxInvoice = null,
   initialCheckoutPlan = null,
+  initialStartTrial = false,
   initialTab = "general",
 }: Props) {
   const router = useRouter();
   const checkoutHandled = useRef(false);
+  const trialHandled = useRef(false);
+  const [trialNotice, setTrialNotice] = useState("");
 
   // Landing from a pricing page "Get …" button with a chosen term: start the
   // checkout once, then drop the ?checkout= param so refresh doesn't redo it.
@@ -248,6 +252,20 @@ export function DashboardClient({
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialCheckoutPlan]);
+
+  // Landing from a pricing page "Start free trial" link: same guarded-once
+  // pattern as the checkout effect above.
+  useEffect(() => {
+    if (!initialStartTrial) return;
+    const t = setTimeout(() => {
+      if (trialHandled.current) return;
+      trialHandled.current = true;
+      void startTrial();
+      router.replace("/dashboard?tab=billing");
+    }, 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialStartTrial]);
   // Teams are only available on the Teams/Lifetime plans (dev subs simulate
   // them). Mirrors the server-side canUseTeams check.
   const teamsEnabled = !!(
@@ -492,6 +510,22 @@ export function DashboardClient({
         return;
       }
       setNotice(json.error || "Checkout failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function startTrial() {
+    setBusy(true);
+    setTrialNotice("");
+    try {
+      const res = await fetch("/api/billing/trial", { method: "POST" });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (json.ok) {
+        router.refresh();
+      } else {
+        setTrialNotice(json.error || "Could not start your trial.");
+      }
     } finally {
       setBusy(false);
     }
@@ -1520,8 +1554,18 @@ export function DashboardClient({
                   <div>
                     <h3 className="text-[16px] font-bold text-ink">
                       Invoala {isPro ? "Pro" : "Free"}
+                      {subscription?.status === "trialing" ? (
+                        <span className="ml-2 rounded-full bg-[#166534] px-2 py-0.5 align-middle text-[11px] font-bold text-white">
+                          FREE TRIAL
+                        </span>
+                      ) : null}
                     </h3>
-                    {isPro && subscription ? (
+                    {subscription?.status === "trialing" ? (
+                      <p className="mt-1 text-[13px] text-[#6b7280]">
+                        {Math.max(0, Math.ceil((subscription.current_period_end - Date.now()) / 86_400_000))} day
+                        {Math.ceil((subscription.current_period_end - Date.now()) / 86_400_000) === 1 ? "" : "s"} left · no card on file
+                      </p>
+                    ) : isPro && subscription ? (
                       <p className="mt-1 text-[13px] text-[#6b7280]">
                         Plan: {subscription.plan.replace(/_/g, " ")} ·{" "}
                         {subscription.cancel_at_period_end ? "Cancels" : "Renews"}{" "}
@@ -1537,7 +1581,7 @@ export function DashboardClient({
                       </p>
                     )}
                   </div>
-                  {isPro ? (
+                  {isPro && subscription?.status === "active" ? (
                     <button
                       type="button"
                       onClick={() => void cancelSub()}
@@ -1547,7 +1591,18 @@ export function DashboardClient({
                       Cancel plan
                     </button>
                   ) : (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {trialNotice ? <p className="w-full text-[12px] text-[#dc2626]">{trialNotice}</p> : null}
+                      {!subscription ? (
+                        <button
+                          type="button"
+                          onClick={() => void startTrial()}
+                          disabled={busy}
+                          className="rounded-lg bg-[#166534] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#14532d] disabled:opacity-50"
+                        >
+                          Start 7-day free trial
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => void subscribe("pro_monthly")}

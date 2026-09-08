@@ -29,7 +29,7 @@ let schemaInitialized = false;
 // measurable latency on a fresh instance. This gate makes that a single
 // cheap read on every cold start except the one right after a deploy that
 // actually changed the schema.
-const SCHEMA_VERSION = "2026-09-08.1";
+const SCHEMA_VERSION = "2026-09-08.2";
 
 async function ensureSchema(): Promise<void> {
   const db = getDb();
@@ -434,6 +434,25 @@ async function ensureSchema(): Promise<void> {
       UNIQUE(user_id, skill)
     )` },
     { sql: `CREATE INDEX IF NOT EXISTS idx_agent_skills_user ON agent_skills(user_id)` },
+
+    // One free Pro trial per real person, not per account. email_hash is a
+    // normalized-email hash (strips +alias and, for gmail, dots) so the
+    // classic "sign up N times with the same inbox" trick doesn't get N
+    // trials; ip_hash and visitor_id (the existing usage-tracking cookie)
+    // are additional best-effort correlation signals. See lib/trial.ts.
+    { sql: `CREATE TABLE IF NOT EXISTS trial_claims (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      email_hash TEXT NOT NULL,
+      ip_hash TEXT,
+      visitor_id TEXT,
+      plan TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    )` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_trial_claims_email ON trial_claims(email_hash)` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_trial_claims_ip ON trial_claims(ip_hash)` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_trial_claims_visitor ON trial_claims(visitor_id)` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_trial_claims_user ON trial_claims(user_id)` },
   ]);
 
   const versionRow = await db.execute("SELECT value FROM app_settings WHERE key = 'schema_version'");

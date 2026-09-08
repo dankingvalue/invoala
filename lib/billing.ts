@@ -44,7 +44,13 @@ export async function getSubscription(userId: string): Promise<Subscription | nu
   let periodEnd = row.current_period_end;
   const now = Date.now();
 
-  if (status === "active" && periodEnd < now) {
+  if (status === "trialing" && periodEnd < now) {
+    // No card was ever collected for a trial, so there's nothing to bill —
+    // it just lapses back to Free. The row is kept (not deleted) so the
+    // user still shows as "not eligible" for a second trial.
+    status = "expired";
+    await dbRun("UPDATE subscriptions SET status = 'expired', updated_at = ? WHERE id = ?", now, row.id);
+  } else if (status === "active" && periodEnd < now) {
     // Dev provider simulates successful rebills so recurring flows stay testable.
     if (row.provider === "dev") {
       const plan = row.plan as PlanId;
@@ -75,7 +81,7 @@ export async function getSubscription(userId: string): Promise<Subscription | nu
 export async function isUserPro(userId: string, role: string): Promise<boolean> {
   if (role === "admin" || role === "superadmin") return true;
   const sub = await getSubscription(userId);
-  return !!sub && sub.status === "active";
+  return !!sub && (sub.status === "active" || sub.status === "trialing");
 }
 
 // Teams are a paid entitlement: Teams plans and Lifetime include them, dev

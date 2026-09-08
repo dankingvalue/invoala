@@ -151,6 +151,14 @@ export function ProPricing() {
                   <a href={ctaTarget} className={`mt-auto ${s.cta}`}>
                     {plan.cta}
                   </a>
+                  {plan.id === "pro" ? (
+                    <a
+                      href="/dashboard?tab=billing&trial=1"
+                      className="mt-2.5 block text-center text-[13px] font-medium text-[#166534] hover:underline"
+                    >
+                      or start a 7-day free trial — no card required
+                    </a>
+                  ) : null}
                 </div>
               </Reveal>
             );
