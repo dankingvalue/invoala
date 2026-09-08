@@ -1,6 +1,7 @@
 import { getSessionUser } from "@/lib/server-auth";
 import { dbGet, dbAll } from "@/lib/db";
 import { redactEmail } from "@/lib/redact";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser(req);
@@ -61,6 +62,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   );
 
   const isSupport = user.role === "support";
+
+  // Least-privilege access to customer financial documents (spec: "Customer
+  // Document Access") — every time an agent opens a customer's profile they
+  // see that customer's invoice documents, so this is the meaningful
+  // "document viewed" event, not the paginated all-invoices admin list.
+  await logAudit({
+    action: "document_viewed",
+    targetId: id,
+    targetType: "customer_profile",
+    details: { invoiceCount: invoices.length },
+    actor: { id: user.id, email: user.email, role: user.role },
+    req,
+  });
 
   return Response.json({
     user: {

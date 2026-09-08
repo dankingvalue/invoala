@@ -22,7 +22,7 @@ export function detectPriority(message: string): Priority {
 }
 
 const CATEGORY_PATTERNS: Array<{ category: EscalationCategory; subcategory: string; pattern: RegExp }> = [
-  { category: "payment", subcategory: "payment_failed", pattern: /payment (failed|declined)|card (declined|failed)|charged twice|double charge/i },
+  { category: "payment", subcategory: "payment_failed", pattern: /payment (failed|declined)|card.{0,20}(declined|failed)|charged twice|double charge/i },
   { category: "billing", subcategory: "billing_question", pattern: /\b(bill(ing)?|invoice (charge|question)|subscription cost)\b/i },
   { category: "account", subcategory: "login", pattern: /\b(log ?in|password|can'?t access|locked out|2fa|verification code)\b/i },
   { category: "technical_bug", subcategory: "pdf_generation", pattern: /\bpdf\b.*(fail|broken|not (working|generat))/i },
