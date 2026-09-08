@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
 import { SeoNav, SeoFooter } from "@/components/seo/SeoPage";
+import { ContactForm } from "@/components/ContactForm";
 
 export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({
@@ -24,43 +25,45 @@ export default function ContactPage() {
               Contact us
             </h1>
             <p className="mx-auto mt-6 max-w-[560px] text-[17px] leading-relaxed text-[#6b7280]">
-              The fastest way to reach us is email — or the live chat button in
-              the corner of any page.
+              Signed in? The chat bubble in the corner already knows your account
+              — Pro and Lifetime plans get 24/7 priority routing automatically,
+              nothing to mention. Otherwise, send us a message below.
             </p>
           </section>
 
           <section className="mb-14 grid gap-6 sm:grid-cols-2">
-            <div className="rounded-xl border border-[#e5e7eb] bg-white p-6">
-              <h2 className="text-[17px] font-bold tracking-tight text-[#111827]">Email</h2>
-              <p className="mt-2 text-[15px] text-[#6b7280]">
-                <a href="mailto:hello@invoala.com" className="text-[#166534] hover:underline">
-                  hello@invoala.com
-                </a>
-              </p>
-              <p className="mt-2 text-[14px] leading-relaxed text-[#6b7280]">
-                For support, feedback, billing questions, or anything else.
-              </p>
-            </div>
-            <div className="rounded-xl border border-[#e5e7eb] bg-white p-6">
-              <h2 className="text-[17px] font-bold tracking-tight text-[#111827]">Live chat</h2>
-              <p className="mt-2 text-[15px] text-[#6b7280]">
-                Use the chat bubble at the bottom-right of the screen. AI-powered
-                answers are instant; you can ask for a human when you need one.
-              </p>
-            </div>
-            <div className="rounded-xl border border-[#e5e7eb] bg-white p-6 sm:col-span-2">
-              <h2 className="text-[17px] font-bold tracking-tight text-[#111827]">Support hours</h2>
-              <p className="mt-2 text-[15px] text-[#6b7280]">
-                Monday–Friday, 9am–4pm EAT for all users.
-              </p>
-              <p className="mt-2 text-[14px] leading-relaxed text-[#6b7280]">
-                On a{" "}
-                <Link href="/pricing" className="text-[#166534] hover:underline">
-                  Pro or Lifetime plan
-                </Link>
-                ? Priority support is available 24/7 — just mention your plan when
-                you reach out.
-              </p>
+            <ContactForm />
+            <div className="flex flex-col gap-6">
+              <div className="rounded-xl border border-[#e5e7eb] bg-white p-6">
+                <h2 className="text-[17px] font-bold tracking-tight text-[#111827]">Live chat</h2>
+                <p className="mt-2 text-[15px] text-[#6b7280]">
+                  Use the chat bubble at the bottom-right of the screen. AI-powered
+                  answers are instant; you can ask for a human when you need one.
+                  Signed-in Pro and Lifetime customers are routed with priority
+                  automatically — the account is already known, so there&apos;s
+                  nothing to state.
+                </p>
+              </div>
+              <div className="rounded-xl border border-[#e5e7eb] bg-white p-6">
+                <h2 className="text-[17px] font-bold tracking-tight text-[#111827]">Support hours</h2>
+                <p className="mt-2 text-[15px] text-[#6b7280]">
+                  Monday–Friday, 9am–4pm EAT for all users.
+                </p>
+                <p className="mt-2 text-[14px] leading-relaxed text-[#6b7280]">
+                  <Link href="/pricing" className="text-[#166534] hover:underline">
+                    Pro or Lifetime
+                  </Link>{" "}
+                  plans get priority support 24/7.
+                </p>
+              </div>
+              <div className="rounded-xl border border-[#e5e7eb] bg-white p-6">
+                <h2 className="text-[17px] font-bold tracking-tight text-[#111827]">Prefer email?</h2>
+                <p className="mt-2 text-[15px] text-[#6b7280]">
+                  <a href="mailto:hello@invoala.com" className="text-[#166534] hover:underline">
+                    hello@invoala.com
+                  </a>
+                </p>
+              </div>
             </div>
           </section>
 

@@ -182,8 +182,12 @@ export function buildStatementData(
   invoices: InvoiceRow[],
   payments: (PaymentRow & { invoice_number: string })[],
 ): StatementData {
-  const currency = client.currency || business.defaultCurrency || "USD";
   const activeInvoices = invoices.filter((i) => i.status !== "void" && i.status !== "cancelled");
+  // The client record's own `currency` field is a rarely-touched preference
+  // that's usually left blank — what actually matters is what currency the
+  // client's real invoices were issued in, so prefer the most recent one.
+  const latestInvoice = [...activeInvoices].sort((a, b) => b.created_at - a.created_at)[0];
+  const currency = latestInvoice?.currency || client.currency || business.defaultCurrency || "USD";
 
   const rows: StatementRow[] = [
     ...activeInvoices.map((i) => ({ date: i.created_at, label: `Invoice ${i.number}`, debit: i.total, credit: 0 })),

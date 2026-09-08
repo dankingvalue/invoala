@@ -15,6 +15,7 @@ import {
 import { InvoiceForm } from "@/components/InvoiceForm";
 import { InvoicePreview } from "@/components/InvoicePreview";
 import { AiComposer } from "@/components/AiComposer";
+import { ProductTour, type TourStep } from "@/components/ProductTour";
 import type { ParsedInvoice } from "@/lib/parseInvoice";
 import { trackEvent } from "@/lib/analytics";
 import { copyToClipboard } from "@/lib/clipboard";
@@ -798,7 +799,8 @@ export function InvoiceGenerator({
               New invoice
             </button>
           </div>
-          <div className="mb-10">{ai ? <AiComposer onResult={applyParsed} /> : null}</div>
+          <div id="tour-ai-composer" className="mb-10">{ai ? <AiComposer onResult={applyParsed} /> : null}</div>
+          <div id="tour-invoice-form">
           <InvoiceForm
             key={formKey}
             invoice={invoice}
@@ -817,10 +819,11 @@ export function InvoiceGenerator({
             onServiceSaved={(service) => setServices((rows) => [...rows, service].sort((a, b) => a.name.localeCompare(b.name)))}
             serviceWorkspaceTeamId={activeWorkspaceTeamId()}
           />
+          </div>
         </div>
 
         <div className="lg:sticky lg:top-20">
-          <label className="mb-3 flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm text-subtle shadow-sm ring-1 ring-black/5">
+          <label id="tour-hide-empty-toggle" className="mb-3 flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm text-subtle shadow-sm ring-1 ring-black/5">
             <input
               type="checkbox"
               checked={!!invoice.hideEmptyRows}
@@ -836,7 +839,7 @@ export function InvoiceGenerator({
             </div>
           </div>
 
-          <div className="mt-5 flex flex-wrap gap-3">
+          <div id="tour-download" className="mt-5 flex flex-wrap gap-3">
             <button
               type="button"
               onClick={downloadPdf}
@@ -910,6 +913,35 @@ export function InvoiceGenerator({
           ) : null}
         </div>
       </div>
+      <ProductTour tourId="invoice-generator" steps={GENERATOR_TOUR_STEPS} />
     </div>
   );
 }
+
+const GENERATOR_TOUR_STEPS: TourStep[] = [
+  {
+    selector: "#tour-ai-composer",
+    title: "Describe it, we'll draft it",
+    body: "Type what you did in plain words — items, prices, client, tax — and the invoice fills itself in.",
+  },
+  {
+    selector: "#tour-invoice-form",
+    title: "Or fill it in yourself",
+    body: "Your business details, clients, and saved services are remembered for next time.",
+  },
+  {
+    selector: "#tour-hide-empty-toggle",
+    title: "Hide anything you leave blank",
+    body: "Turn this on to hide empty rows and fields — like address or email — on the final invoice.",
+  },
+  {
+    selector: "#invoice-paper",
+    title: "Live preview",
+    body: "Watch the invoice update as you type, exactly as your client will see it.",
+  },
+  {
+    selector: "#tour-download",
+    title: "Send it",
+    body: "Download a print-ready PDF, or email it straight to your client.",
+  },
+];

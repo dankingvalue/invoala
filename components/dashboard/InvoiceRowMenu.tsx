@@ -50,7 +50,7 @@ export function InvoiceRowMenu({
   onDelete: () => void;
 }) {
   const items: RowMenuItem[] = [];
-  if (!isDraft) items.push({ key: "view", label: "View invoice", icon: <ViewIcon />, onClick: onView });
+  items.push({ key: "view", label: isDraft ? "View draft" : "View invoice", icon: <ViewIcon />, onClick: onView });
   items.push({ key: "duplicate", label: "Duplicate invoice", icon: <DuplicateIcon />, onClick: onDuplicate });
   items.push({ key: "print", label: "Print", icon: <PrintIcon />, onClick: onPrint });
   if (!isDraft) items.push({ key: "link", label: "Copy invoice link", icon: <LinkIcon />, onClick: onCopyLink });

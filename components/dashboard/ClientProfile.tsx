@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { formatMoney, newId } from "@/lib/invoice";
 import { remainingBalance, paymentMethodLabel } from "@/lib/invoice-status";
 import type { ClientRow, InvoiceRow, PaymentRow } from "@/lib/data";
-import { BackIcon, EditIcon, PlusIcon } from "@/components/dashboard/icons";
+import { BackIcon, EditIcon, PlusIcon, SendIcon, ViewIcon, DownloadIcon } from "@/components/dashboard/icons";
+import { RowMenu, type RowMenuItem } from "@/components/dashboard/RowMenu";
 
 type ProfileData = {
   client: ClientRow;
@@ -38,6 +39,13 @@ export function ClientProfile({
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("invoices");
   const [busy, setBusy] = useState(false);
+  const [statementBusy, setStatementBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+
+  function flash(msg: string) {
+    setNotice(msg);
+    setTimeout(() => setNotice(""), 3000);
+  }
 
   useEffect(() => {
     fetch(`/api/clients/${clientId}`)
@@ -92,6 +100,49 @@ export function ClientProfile({
       const json = (await res.json()) as { url?: string };
       if (json.url) window.open(json.url, "_blank", "noopener,noreferrer");
     } catch {}
+  }
+
+  function viewStatement() {
+    window.open(`/api/clients/${clientId}/statement/pdf?inline=1`, "_blank", "noopener,noreferrer");
+  }
+
+  async function sendStatement() {
+    if (!data) return;
+    if (!data.client.email) {
+      flash("This client has no email on file.");
+      return;
+    }
+    setStatementBusy(true);
+    try {
+      const res = await fetch(`/api/clients/${clientId}/statement`, { method: "POST" });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      flash(json.ok ? "Statement sent" : json.error || "Could not send statement.");
+    } catch {
+      flash("Network error while sending the statement.");
+    }
+    setStatementBusy(false);
+  }
+
+  async function downloadStatement() {
+    if (!data) return;
+    setStatementBusy(true);
+    try {
+      const res = await fetch(`/api/clients/${clientId}/statement/pdf`);
+      if (!res.ok) {
+        const json = (await res.json().catch(() => null)) as { error?: string } | null;
+        flash(json?.error || "Could not generate the statement right now.");
+        return;
+      }
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `Statement-${data.client.name.replace(/[^\w.-]+/g, "-")}.pdf`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch {
+      flash("Network error while downloading the statement.");
+    }
+    setStatementBusy(false);
   }
 
   async function toggleArchive() {
@@ -152,6 +203,15 @@ export function ClientProfile({
           <button type="button" onClick={newInvoiceForClient} className="flex items-center gap-1.5 rounded-full bg-[#166534] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#14532d]">
             <PlusIcon /> New invoice
           </button>
+          <RowMenu
+            label="Statement actions"
+            busy={statementBusy}
+            items={[
+              { key: "view-statement", label: "View statement", icon: <ViewIcon />, onClick: viewStatement },
+              { key: "send-statement", label: "Send statement", icon: <SendIcon />, onClick: () => void sendStatement() },
+              { key: "download-statement", label: "Download statement", icon: <DownloadIcon />, onClick: () => void downloadStatement() },
+            ] satisfies RowMenuItem[]}
+          />
           <button
             type="button"
             onClick={() => void toggleArchive()}
@@ -162,6 +222,7 @@ export function ClientProfile({
           </button>
         </div>
       </div>
+      {notice ? <p className="mb-4 text-[13px] text-[#166534]">{notice}</p> : null}
 
       <div className="mb-6 grid grid-cols-3 gap-3 rounded-xl border border-[#e5e7eb] bg-white p-4">
         <div>

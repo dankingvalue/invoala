@@ -771,8 +771,15 @@ export function DashboardClient({
         body: JSON.stringify({ to: toEmail }),
       });
       const json = (await res.json()) as { ok?: boolean; error?: string };
-      if (json.ok) alert("Invoice sent!");
-      else alert(json.error || "Failed to send email.");
+      if (json.ok) {
+        alert("Invoice sent!");
+        // A draft that's just been emailed to the client is no longer
+        // meaningfully a draft — issue it the same way the "Issue" button
+        // does, so the user doesn't have to click both.
+        if (row.status === "draft") await applyRowStatus(row, "sent");
+      } else {
+        alert(json.error || "Failed to send email.");
+      }
     } catch {
       alert("Network error while emailing the invoice.");
     }
