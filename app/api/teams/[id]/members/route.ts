@@ -2,6 +2,7 @@ import { getSessionUser } from "@/lib/server-auth";
 import { getTeam, getTeamMembers, getTeamMemberCount, getTeamInvites, cancelTeamInvite, inviteToTeam, removeMember, updateTeamMemberRole, isTeamAdmin, isTeamMember, getTeamRole } from "@/lib/teams";
 import { canAssignRole, canRemoveMember, isTeamRole } from "@/lib/permissions";
 import { sendTeamInviteEmail } from "@/lib/email";
+import { requireActiveTeamsPlan } from "@/lib/entitlements";
 
 export async function GET(
   req: Request,
@@ -41,6 +42,9 @@ export async function POST(
   if (!(await isTeamAdmin(id, user.id))) {
     return Response.json({ error: "Only team admins can invite members." }, { status: 403 });
   }
+
+  const planDenied = await requireActiveTeamsPlan(team.owner_id);
+  if (planDenied) return planDenied;
 
   let email = "";
   let role = "member";

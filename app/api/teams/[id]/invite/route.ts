@@ -1,5 +1,6 @@
 import { getSessionUser } from "@/lib/server-auth";
-import { acceptInvite, declineInvite } from "@/lib/teams";
+import { acceptInvite, declineInvite, getInviteOwnerId } from "@/lib/teams";
+import { requireActiveTeamsPlan } from "@/lib/entitlements";
 
 export async function POST(
   req: Request,
@@ -9,6 +10,12 @@ export async function POST(
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
+
+  const ownerId = await getInviteOwnerId(id);
+  if (ownerId) {
+    const planDenied = await requireActiveTeamsPlan(ownerId);
+    if (planDenied) return planDenied;
+  }
 
   const accepted = await acceptInvite(id, user.id);
   if (!accepted) {

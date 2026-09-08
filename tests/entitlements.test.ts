@@ -2,10 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/billing", () => ({
   isUserPro: vi.fn(),
+  canUseTeams: vi.fn(),
+}));
+vi.mock("@/lib/db", () => ({
+  dbGet: vi.fn().mockResolvedValue({ role: "user" }),
 }));
 
-import { isUserPro } from "@/lib/billing";
-import { requireProFeature, PRO_FEATURE_LABELS } from "@/lib/entitlements";
+import { isUserPro, canUseTeams } from "@/lib/billing";
+import { requireProFeature, requireActiveTeamsPlan, PRO_FEATURE_LABELS } from "@/lib/entitlements";
 import type { SessionUser } from "@/lib/server-auth";
 
 function user(): SessionUser {
@@ -34,5 +38,22 @@ describe("requireProFeature", () => {
     for (const key of Object.keys(PRO_FEATURE_LABELS)) {
       expect(PRO_FEATURE_LABELS[key as keyof typeof PRO_FEATURE_LABELS].length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("requireActiveTeamsPlan", () => {
+  it("returns null (proceed) when the team owner has an active Teams plan", async () => {
+    vi.mocked(canUseTeams).mockResolvedValueOnce(true);
+    const res = await requireActiveTeamsPlan("owner1");
+    expect(res).toBeNull();
+  });
+
+  it("returns a 402 when the owner's Teams plan has lapsed", async () => {
+    vi.mocked(canUseTeams).mockResolvedValueOnce(false);
+    const res = await requireActiveTeamsPlan("owner1");
+    expect(res).not.toBeNull();
+    expect(res!.status).toBe(402);
+    const json = await res!.json();
+    expect(json.code).toBe("TEAMS_PLAN_REQUIRED");
   });
 });

@@ -322,6 +322,17 @@ export async function getUserInvites(userId: string): Promise<TeamInvite[]> {
   );
 }
 
+// Cheap lookup used to gate acceptance on the team owner's live plan (see
+// requireActiveTeamsPlan in lib/entitlements.ts) before actually accepting —
+// a separate check from acceptInvite's own validity/capacity checks below.
+export async function getInviteOwnerId(inviteId: string): Promise<string | null> {
+  const row = await dbGet<{ owner_id: string }>(
+    `SELECT t.owner_id FROM team_invites ti INNER JOIN teams t ON t.id = ti.team_id WHERE ti.id = ? AND ti.expires_at > ?`,
+    inviteId, Date.now(),
+  );
+  return row?.owner_id ?? null;
+}
+
 export async function acceptInvite(inviteId: string, userId: string): Promise<boolean> {
   const now = Date.now();
 
