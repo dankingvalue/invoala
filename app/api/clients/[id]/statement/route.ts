@@ -1,7 +1,7 @@
 import { getSessionUser } from "@/lib/server-auth";
 import { getClientProfile } from "@/lib/data";
 import { getWorkspaceSettings } from "@/lib/workspace-settings";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, buildBusinessSignoff } from "@/lib/email";
 import { formatMoney } from "@/lib/invoice";
 import { buildStatementData } from "@/lib/statement-html";
 import { statementPdfBuffer } from "@/lib/statement-pdf";
@@ -48,11 +48,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const closing = formatMoney(statement.closingBalance, statement.currency);
+  const signoff = buildBusinessSignoff({ name: business.businessName, email: business.businessEmail, phone: business.phone, website: business.website });
   const text = pdfAttachment
-    ? `Hi ${profile.client.name},\n\nPlease find your account statement attached.\n\nClosing balance due: ${closing}\n\n— ${business.businessName || "Invoala"}`
+    ? `Hi ${profile.client.name},\n\nPlease find your account statement attached.\n\nClosing balance due: ${closing}\n\n— ${signoff}`
     : `Hi ${profile.client.name},\n\nHere is your account statement.\n\n${statement.rows
         .map((r) => `${new Date(r.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} — ${r.label}: ${r.debit ? formatMoney(r.debit, statement.currency) : `-${formatMoney(r.credit, statement.currency)}`}`)
-        .join("\n")}\n\nClosing balance due: ${closing}\n\n— ${business.businessName || "Invoala"}`;
+        .join("\n")}\n\nClosing balance due: ${closing}\n\n— ${signoff}`;
 
   const result = await sendEmail({
     to: toEmail,

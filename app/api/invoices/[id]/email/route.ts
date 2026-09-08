@@ -1,7 +1,7 @@
 export const maxDuration = 30;
 import { getSessionUser } from "@/lib/server-auth";
 import { dbGet } from "@/lib/db";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, buildBusinessSignoff } from "@/lib/email";
 import { invoicePdfBuffer } from "@/lib/invoice-pdf";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -47,6 +47,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   } catch {}
 
   const businessName = (invoiceData.businessName as string) || user.name || "Invoala";
+  const signoff = buildBusinessSignoff({ name: businessName, email: invoiceData.businessEmail as string });
   const amount = invoice.total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   // Attach a real styled PDF (Chromium → styled-lite jsPDF emergency). If both
@@ -67,7 +68,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const result = await sendEmail({
     to: toEmail,
     subject: `Invoice #${invoice.number} from ${businessName}`,
-    text: `Hi ${invoice.client_name || "there"},\n\n${pdfAttachment ? "Please find attached" : "Your invoice is below"}:\n\nInvoice #${invoice.number} — ${amount} ${invoice.currency}\n${invoiceData.notes ? `\nNotes: ${invoiceData.notes}\n` : ""}Thank you for your business!\n\n— ${businessName}`,
+    text: `Hi ${invoice.client_name || "there"},\n\n${pdfAttachment ? "Please find attached" : "Your invoice is below"}:\n\nInvoice #${invoice.number} — ${amount} ${invoice.currency}\n${invoiceData.notes ? `\nNotes: ${invoiceData.notes}\n` : ""}Thank you for your business!\n\n— ${signoff}`,
     attachments: pdfAttachment ? [pdfAttachment] : undefined,
     userId: user.id,
     teamId: invoice.team_id,

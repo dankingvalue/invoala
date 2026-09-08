@@ -5,6 +5,25 @@ const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 export type EmailKind = "invoice" | "quote" | "receipt" | "reminder" | "statement" | "other";
 
+// A bare business name in an email sign-off gives a recipient nothing to
+// verify — some people won't open an attachment from a sender they don't
+// recognize by name alone. Include whatever real contact details are on
+// file (email, phone, website) so the sign-off itself is a trust signal;
+// falls back to just the name when nothing else is available.
+export function buildBusinessSignoff(business: {
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  website?: string | null;
+}): string {
+  const name = business.name.trim() || "Invoala";
+  const contactBits = [business.email, business.phone, business.website]
+    .map((v) => (v || "").trim())
+    .filter(Boolean);
+  if (contactBits.length === 0) return name;
+  return `${name}\n${contactBits.join(" · ")}`;
+}
+
 export async function sendEmail(opts: {
   to: string;
   subject: string;

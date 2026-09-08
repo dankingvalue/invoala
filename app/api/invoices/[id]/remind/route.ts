@@ -1,6 +1,6 @@
 import { getSessionUser } from "@/lib/server-auth";
 import { getInvoice } from "@/lib/data";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, buildBusinessSignoff } from "@/lib/email";
 import { invoicePdfBuffer } from "@/lib/invoice-pdf";
 import { remainingBalance } from "@/lib/invoice-status";
 
@@ -28,6 +28,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const businessName = row.data.businessName || user.name || "Invoala";
+  const signoff = buildBusinessSignoff({ name: businessName, email: row.data.businessEmail });
   const balance = remainingBalance(row.total, Number(row.data.amountPaid) || 0);
   const amount = balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -45,7 +46,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const result = await sendEmail({
     to: toEmail,
     subject: `Reminder: Invoice #${row.number} from ${businessName}`,
-    text: `Hi ${row.client_name || "there"},\n\nThis is a friendly reminder that Invoice #${row.number} — ${amount} ${row.currency} — is still outstanding.\n\n${pdfAttachment ? "The invoice is attached." : `Amount due: ${amount} ${row.currency}.`}\n\nThank you!\n\n— ${businessName}`,
+    text: `Hi ${row.client_name || "there"},\n\nThis is a friendly reminder that Invoice #${row.number} — ${amount} ${row.currency} — is still outstanding.\n\n${pdfAttachment ? "The invoice is attached." : `Amount due: ${amount} ${row.currency}.`}\n\nThank you!\n\n— ${signoff}`,
     attachments: pdfAttachment ? [pdfAttachment] : undefined,
     userId: user.id,
     teamId: row.team_id,
