@@ -21,10 +21,19 @@ const CHROMIUM_INCLUDES = [
 const nextConfig: NextConfig = {
   serverExternalPackages: ["playwright-core", "@sparticuz/chromium"],
   outputFileTracingIncludes: {
-    // Keys are glob patterns: "[id]" would be read as a character class, not a
-    // literal, so per-dynamic-route keys silently omit the Chromium binary
-    // from those bundles. Wildcards avoid that failure mode entirely.
-    "/api/**": CHROMIUM_INCLUDES,
+    // Keys are glob patterns: "[id]" is read as a character class, not a
+    // literal, so a dynamic segment must use "*" instead (verified against
+    // real Node File Trace output). Only these routes call Chromium, so
+    // don't broaden this back to "/api/**" — that bundled the ~80MB
+    // Chromium+Playwright binary into all 100+ API routes and was the
+    // actual cause of Vercel's function storage ballooning to tens of GB.
+    "/api/invoices/*/pdf": CHROMIUM_INCLUDES,
+    "/api/invoices/*/email": CHROMIUM_INCLUDES,
+    "/api/invoices/*/remind": CHROMIUM_INCLUDES,
+    "/api/clients/*/statement": CHROMIUM_INCLUDES,
+    "/api/clients/*/statement/pdf": CHROMIUM_INCLUDES,
+    "/api/pdf-engine": CHROMIUM_INCLUDES,
+    "/api/cron/recurring": CHROMIUM_INCLUDES,
     // Dashboard can lazily trigger recurring (PDF) generation for Pro users.
     "/dashboard": CHROMIUM_INCLUDES,
   },
