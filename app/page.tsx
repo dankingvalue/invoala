@@ -9,6 +9,7 @@ import { CURRENCIES } from "@/lib/invoice";
 import { getFlags } from "@/lib/flags.server";
 import { ProPricing } from "@/components/ProPricing";
 import { ProductShowcase } from "@/components/ProductShowcase";
+import { Testimonials } from "@/components/Testimonials";
 import { SignupPrompt } from "@/components/SignupPrompt";
 import { getCurrentUser } from "@/lib/server-auth";
 import { hreflangAlternates } from "@/lib/i18n";
@@ -277,6 +278,9 @@ export default async function Home() {
 
       {/* Product showcase — a closer look inside */}
       <ProductShowcase />
+
+      {/* Testimonials */}
+      <Testimonials />
 
       {/* How it works */}
       <section id="how" className="scroll-mt-16 bg-[#f3f4f6] px-6 py-16 md:py-28">
