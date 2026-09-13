@@ -501,9 +501,9 @@ export default async function Home() {
               <Link href="/roadmap" className="transition-colors hover:text-ink">Roadmap</Link>
               <Link href="/privacy" className="transition-colors hover:text-ink">Privacy</Link>
               <Link href="/terms" className="transition-colors hover:text-ink">Terms</Link>
-              <a href="mailto:hello@invoala.com" className="transition-colors hover:text-ink">
+              <Link href="/contact" className="transition-colors hover:text-ink">
                 Contact
-              </a>
+              </Link>
             </nav>
             <p>&copy; 2026 Invoala. All rights reserved.</p>
           </div>
