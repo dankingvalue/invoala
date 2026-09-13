@@ -299,7 +299,7 @@ export function createDefaultInvoice(): Invoice {
     paymentInstructions: "",
     paymentLink: "",
     theme: "green",
-    hideEmptyRows: false,
+    hideEmptyRows: true,
   };
 }
 

@@ -15,6 +15,7 @@ import { ConfirmDialog, Modal } from "@/components/dashboard/Modal";
 import { InvoiceRowMenu } from "@/components/dashboard/InvoiceRowMenu";
 import { DownloadIcon, EmailIcon, RecordPaymentIcon, EditIcon, SendIcon, SearchIcon } from "@/components/dashboard/icons";
 import { ClientsTab } from "@/components/dashboard/ClientsTab";
+import { ServicesTab } from "@/components/dashboard/ServicesTab";
 import { TeamsTab } from "@/components/dashboard/TeamsTab";
 import { GeneralSettings } from "@/components/dashboard/GeneralSettings";
 import { WorkspaceSwitcher, type WorkspaceTeam, type WorkspaceValue } from "@/components/dashboard/WorkspaceSwitcher";
@@ -39,9 +40,9 @@ type Props = {
   initialTab?: string;
 };
 
-type Tab = "general" | "documents" | "clients" | "teams" | "billing" | "security" | "messages";
+type Tab = "general" | "documents" | "clients" | "services" | "teams" | "billing" | "security" | "messages";
 
-const VALID_TABS: Tab[] = ["general", "documents", "clients", "teams", "billing", "security", "messages"];
+const VALID_TABS: Tab[] = ["general", "documents", "clients", "services", "teams", "billing", "security", "messages"];
 
 const PLAN_KEY_FOR: Record<string, string> = {
   pro: "pro_monthly",
@@ -164,6 +165,17 @@ const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
         <circle cx="9" cy="7" r="4" />
         <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
         <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
+  },
+  {
+    key: "services",
+    label: "Services",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+        <path d="M9.5 13.5 11 15l3.5-3.5" />
       </svg>
     ),
   },
@@ -1530,6 +1542,9 @@ export function DashboardClient({
             <ClientsTab teams={teams.map((t) => ({ id: t.id, name: t.name }))} workspace={activeWorkspace} isPro={isPro} />
           )}
 
+          {/* Services Tab */}
+          {tab === "services" && <ServicesTab workspace={activeWorkspace} />}
+
           {/* Teams Tab */}
           {tab === "teams" && (
             <TeamsTab
@@ -1645,7 +1660,7 @@ export function DashboardClient({
                 <div className="grid gap-4 sm:grid-cols-3">
                   {[
                     { title: "Recurring invoices", desc: "Automatically generate and send invoices on a schedule." },
-                    { title: "Saved clients", desc: "Client book with history and auto-fill on new invoices." },
+                    { title: "Unlimited clients & services", desc: "Free plan saves up to 5 of each — Pro removes the cap." },
                     { title: "Quotes & estimates", desc: "Create professional quotes before starting work." },
                   ].map((f) => (
                     <div key={f.title} className="rounded-lg border border-[#e5e7eb] p-4">

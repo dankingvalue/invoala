@@ -49,6 +49,16 @@ export async function listServiceItems(userId: string, teamId?: string | null): 
   );
 }
 
+// Personal (non-team) services only — what the Free plan's 5-saved cap
+// counts against.
+export async function countPersonalServiceItems(userId: string): Promise<number> {
+  const row = await dbGet<{ n: number }>(
+    "SELECT COUNT(*) AS n FROM service_items WHERE user_id = ? AND team_id IS NULL",
+    userId,
+  );
+  return row?.n ?? 0;
+}
+
 export type ServiceItemInput = { name: string; description?: string; rate?: number };
 
 export async function createServiceItem(

@@ -150,6 +150,11 @@ export function ClientsTab({ teams, workspace = "personal", isPro = false }: { t
     return rows;
   }, [clients, financials, search, statusFilter, sortKey]);
 
+  // Free plan: up to 5 personal (non-team) saved clients, unlimited on Pro —
+  // matches the cap enforced server-side in app/api/clients/route.ts.
+  const personalCount = clients.filter((c) => !c.team_id).length;
+  const atFreeCap = !isPro && personalCount >= 5;
+
   const totalClients = clients.length;
   const activeClients = clients.filter((c) => c.status !== "archived").length;
   const totalInvoiced = Object.values(financials).reduce((s, f) => s + f.total_invoiced, 0);
@@ -264,7 +269,7 @@ export function ClientsTab({ teams, workspace = "personal", isPro = false }: { t
   }
 
   function openNewClient() {
-    if (!isPro) {
+    if (atFreeCap) {
       window.location.assign("/dashboard?tab=billing");
       return;
     }
@@ -286,16 +291,21 @@ export function ClientsTab({ teams, workspace = "personal", isPro = false }: { t
 
   return (
     <div>
-      <div className="mb-5 flex justify-end">
+      <div className="mb-5 flex items-center justify-end gap-3">
+        {!isPro ? (
+          <p className="text-[12px] text-[#6b7280]">
+            {personalCount}/5 saved <span className="text-[#9ca3af]">(Free plan)</span>
+          </p>
+        ) : null}
         <button
           id="tour-new-client"
           type="button"
           onClick={openNewClient}
-          title={!isPro ? "Saved clients is a Pro feature" : undefined}
+          title={atFreeCap ? "Free plan is limited to 5 saved clients — upgrade for unlimited" : undefined}
           className="flex items-center gap-1.5 rounded-full bg-[#166534] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#14532d]"
         >
           <PlusIcon /> New client
-          {!isPro ? <ProBadge /> : null}
+          {atFreeCap ? <ProBadge /> : null}
         </button>
       </div>
 
@@ -361,14 +371,14 @@ export function ClientsTab({ teams, workspace = "personal", isPro = false }: { t
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-fog text-[#9ca3af]"><BuildingIcon /></div>
           <p className="text-[15px] font-medium text-ink">No clients yet</p>
           <p className="mt-1 text-[13px] text-[#6b7280]">
-            {isPro ? "Add your first client to start creating invoices faster." : "Saved clients is a Pro feature."}
+            {isPro ? "Add your first client to start creating invoices faster." : "Add your first client — free plan saves up to 5."}
           </p>
           <button
             type="button"
             onClick={openNewClient}
             className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#166534] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#14532d]"
           >
-            <PlusIcon /> {isPro ? "Add client" : "Upgrade to add clients"}
+            <PlusIcon /> Add client
           </button>
         </div>
       ) : filtered.length === 0 ? (

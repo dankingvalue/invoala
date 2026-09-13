@@ -889,11 +889,9 @@ export function InvoiceGenerator({
             <button
               type="button"
               onClick={() => void saveToAccount()}
-              title={user && !user.isPro && !savedId ? "Saving new invoices to your account is a Pro feature" : undefined}
               className="flex items-center gap-1.5 rounded-full border border-hairline px-5 py-2 text-sm font-medium text-ink transition hover:border-accent hover:text-accent"
             >
               {savedId ? "Update saved invoice" : user ? "Save to dashboard" : "Save to account"}
-              {user && !user.isPro && !savedId ? <ProBadge /> : null}
             </button>
             {saveNote ? <span className="text-xs text-subtle">{saveNote}</span> : null}
           </div>

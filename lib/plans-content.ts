@@ -23,6 +23,7 @@ export const PLAN_PITCHES: PlanPitch[] = [
     features: [
       "Invoice, quote, estimate & receipt generator",
       "Unlimited documents — no monthly caps",
+      "Save up to 5 invoices, clients & services to your dashboard",
       "All 154 currencies with automatic totals",
       "Tax (VAT/GST/sales), discounts & shipping",
       "AI line-item composer from plain English",
@@ -42,8 +43,8 @@ export const PLAN_PITCHES: PlanPitch[] = [
     cta: "Get Pro",
     features: [
       "Everything in Free",
-      "Save invoices to the cloud — access from any device",
-      "Client book with history & one-click auto-fill",
+      "Unlimited saved invoices — access from any device",
+      "Unlimited saved clients & services — with history & one-click auto-fill",
       "Client account statements — view, send, or download",
       "Email invoices straight to your client",
       "Public share links with open/view notifications",

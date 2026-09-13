@@ -1,7 +1,7 @@
 import { getSessionUser } from "@/lib/server-auth";
-import { createClient, listClients, listClientsForWorkspace, upsertClient, getClientFinancials, type ClientInput } from "@/lib/data";
+import { createClient, listClients, listClientsForWorkspace, upsertClient, getClientFinancials, countPersonalClients, type ClientInput } from "@/lib/data";
 import { getTeamMemberRole, isTeamMember } from "@/lib/teams";
-import { requireProFeature } from "@/lib/entitlements";
+import { requireUnderFreeSaveLimit } from "@/lib/entitlements";
 
 export async function GET(req: Request) {
   const user = await getSessionUser(req);
@@ -38,8 +38,6 @@ const ERROR_MESSAGES: Record<string, string> = {
 export async function POST(req: Request) {
   const user = await getSessionUser(req);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  const denied = await requireProFeature(user, "client_book");
-  if (denied) return denied;
   let body: Partial<ClientInput> & { teamId?: string | null; quickSave?: boolean };
   try {
     body = await req.json();
@@ -58,6 +56,13 @@ export async function POST(req: Request) {
       return Response.json({ error: "You are not a member of that team." }, { status: 403 });
     }
     teamId = body.teamId;
+  }
+
+  // Personal clients are free up to a cap, unlimited on Pro — a team client
+  // is governed by the team's own (Teams-plan) membership instead, not this.
+  if (!teamId) {
+    const denied = await requireUnderFreeSaveLimit(user, "client_book", await countPersonalClients(user.id));
+    if (denied) return denied;
   }
 
   // The invoice generator's "save as a new client" dropdown option calls

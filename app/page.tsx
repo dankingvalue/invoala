@@ -63,7 +63,7 @@ const faqs = [
   },
   {
     q: "Can I save clients for reuse?",
-    a: "Yes. Save client details once and select them from a dropdown on future invoices. All data stays in your browser.",
+    a: "Yes. Create a free account and save client details once — up to 5 on the Free plan, unlimited on Pro — then pick them from a dropdown on future invoices.",
   },
   {
     q: "What file format does it export?",

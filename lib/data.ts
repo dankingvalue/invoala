@@ -60,6 +60,17 @@ export async function listInvoices(userId: string, teamId?: string | null): Prom
   return rows.map((r) => ({ ...r, data: safeParse(r.data) }));
 }
 
+// Personal (non-team) saved documents only — what the Free plan's 5-saved
+// cap counts against. Every doc_type counts (invoice/quote/estimate/
+// receipt) since they all occupy the same "saved to your account" slot.
+export async function countPersonalInvoices(userId: string): Promise<number> {
+  const row = await dbGet<{ n: number }>(
+    "SELECT COUNT(*) AS n FROM invoices WHERE user_id = ? AND team_id IS NULL",
+    userId,
+  );
+  return row?.n ?? 0;
+}
+
 // Widened (safely — only adds access, never removes it) to also cover an
 // invoice shared to a team the caller belongs to, not just ones they
 // personally created.
@@ -647,6 +658,17 @@ export async function listClientsForWorkspace(userId: string, teamId: string | n
      WHERE c.team_id = ? ORDER BY c.name COLLATE NOCASE LIMIT 500`,
     teamId,
   );
+}
+
+// Personal (non-team) clients only — what the Free plan's 5-saved-client
+// cap counts against. Team clients aren't included: creating them already
+// requires a Teams plan via a separate gate.
+export async function countPersonalClients(userId: string): Promise<number> {
+  const row = await dbGet<{ n: number }>(
+    "SELECT COUNT(*) AS n FROM clients WHERE user_id = ? AND team_id IS NULL",
+    userId,
+  );
+  return row?.n ?? 0;
 }
 
 // Per-client rollups computed from the invoices/payments ledger in one pass

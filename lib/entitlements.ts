@@ -9,8 +9,6 @@ import { dbGet } from "@/lib/db";
 // PRO_FEATURE_LABELS too, so the wording never drifts between "why is this
 // locked" (UI) and "why did this 402" (API).
 export const PRO_FEATURE_LABELS = {
-  save_invoice: "Saving invoices to your account",
-  client_book: "Saved clients",
   client_statement: "Client statements",
   email_invoice: "Emailing invoices to clients",
   share_link: "Public share links",
@@ -29,6 +27,38 @@ export async function requireProFeature(user: SessionUser, feature: ProFeature):
   if (pro) return null;
   return Response.json(
     { error: `${PRO_FEATURE_LABELS[feature]} is a Pro feature.`, code: "PRO_REQUIRED", feature },
+    { status: 402 },
+  );
+}
+
+// Saved invoices/clients/services are free up to a small cap, unlimited on
+// Pro — unlike requireProFeature above, this never blocks outright, so the
+// caller passes in a fresh count (not aggregated here) and this only
+// decides whether one more save is allowed.
+export const FREE_SAVE_LIMIT = 5;
+
+export const FREE_SAVE_LABELS = {
+  save_invoice: "Saved invoices",
+  client_book: "Saved clients",
+  saved_service: "Saved services",
+} as const;
+
+export type FreeSaveFeature = keyof typeof FREE_SAVE_LABELS;
+
+export async function requireUnderFreeSaveLimit(
+  user: SessionUser,
+  feature: FreeSaveFeature,
+  currentCount: number,
+): Promise<Response | null> {
+  const pro = await isUserPro(user.id, user.role);
+  if (pro || currentCount < FREE_SAVE_LIMIT) return null;
+  return Response.json(
+    {
+      error: `${FREE_SAVE_LABELS[feature]} is limited to ${FREE_SAVE_LIMIT} on the Free plan. Upgrade to Pro for unlimited.`,
+      code: "FREE_LIMIT_REACHED",
+      feature,
+      limit: FREE_SAVE_LIMIT,
+    },
     { status: 402 },
   );
 }

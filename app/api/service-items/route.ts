@@ -1,6 +1,7 @@
 import { getSessionUser } from "@/lib/server-auth";
-import { listServiceItems, createServiceItem, type ServiceItemInput } from "@/lib/service-items";
+import { listServiceItems, createServiceItem, countPersonalServiceItems, type ServiceItemInput } from "@/lib/service-items";
 import { isTeamMember } from "@/lib/teams";
+import { requireUnderFreeSaveLimit } from "@/lib/entitlements";
 
 // Same ?workspace= convention as /api/invoices and /api/clients: omitted
 // returns everything the user can see (own + every team's), personal/team:<id>
@@ -45,6 +46,13 @@ export async function POST(req: Request) {
       return Response.json({ error: "You are not a member of that team." }, { status: 403 });
     }
     teamId = body.teamId;
+  }
+
+  // Personal services are free up to a cap, unlimited on Pro — a team
+  // service is governed by the team's own (Teams-plan) membership instead.
+  if (!teamId) {
+    const denied = await requireUnderFreeSaveLimit(user, "saved_service", await countPersonalServiceItems(user.id));
+    if (denied) return denied;
   }
 
   const result = await createServiceItem(
