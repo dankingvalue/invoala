@@ -33,7 +33,7 @@ export function initAnalytics() {
 }
 
 // Events that count toward "an invoice got generated" also get a durable
-// server-side record (see /api/track and lib/usage.ts) — GA alone can't
+// server-side record (see /api/usage and lib/usage.ts) — GA alone can't
 // answer "how many invoices has this product generated" from our own admin.
 const USAGE_EVENTS = new Set([
   "invoice_downloaded",
@@ -51,9 +51,9 @@ function persistUsageEvent(name: string) {
   // "generates a PDF and goes offline" case this needs to survive.
   if (navigator.sendBeacon) {
     const blob = new Blob([body], { type: "application/json" });
-    navigator.sendBeacon("/api/track", blob);
+    navigator.sendBeacon("/api/usage", blob);
   } else {
-    fetch("/api/track", { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true }).catch(() => {});
+    fetch("/api/usage", { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true }).catch(() => {});
   }
 }
 
