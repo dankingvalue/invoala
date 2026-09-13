@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 
-const CONSENT_KEY = "invoala.cookie_consent";
+export const CONSENT_KEY = "invoala.cookie_consent";
 
 export function CookieConsent() {
   const [show, setShow] = useState(false);
