@@ -6,7 +6,7 @@ import { CONSENT_KEY } from "@/components/CookieConsent";
 
 export function Analytics() {
   useEffect(() => {
-    if (!process.env.NEXT_PUBLIC_GA_ID) return;
+    if (!process.env.NEXT_PUBLIC_GA_ID && !process.env.NEXT_PUBLIC_POSTHOG_KEY) return;
 
     // Strictly opt-in: only ever loads after an explicit "Accept" (matches
     // the promise in the cookie banner's copy). A returning visitor who

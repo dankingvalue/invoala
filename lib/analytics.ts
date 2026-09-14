@@ -1,3 +1,5 @@
+import type { PostHog } from "posthog-js";
+
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void;
@@ -7,24 +9,51 @@ declare global {
 }
 
 let initialized = false;
+let posthogInstance: PostHog | null = null;
 
-export function initAnalytics() {
+export async function initAnalytics() {
   if (typeof window === "undefined") return;
   const gaId = process.env.NEXT_PUBLIC_GA_ID;
-  if (!gaId || initialized) return;
+  const phKey = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+  if ((!gaId && !phKey) || initialized) return;
   initialized = true;
 
-  const script = document.createElement("script");
-  script.async = true;
-  script.src = `https://www.googletagmanager.com/gtag/js?id=${gaId}`;
-  document.head.appendChild(script);
+  if (gaId) {
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${gaId}`;
+    document.head.appendChild(script);
 
-  window.dataLayer = window.dataLayer || [];
-  window.gtag = function gtag(...args: unknown[]) {
-    window.dataLayer!.push(args);
-  };
-  window.gtag("js", new Date());
-  window.gtag("config", gaId, { anonymize_ip: true });
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function gtag(...args: unknown[]) {
+      window.dataLayer!.push(args);
+    };
+    window.gtag("js", new Date());
+    window.gtag("config", gaId, { anonymize_ip: true });
+  }
+
+  if (phKey) {
+    // Dynamically imported so the ~50KB SDK never ships to a visitor who
+    // hasn't consented — same lazy-load-only-after-consent rule the gtag.js
+    // script above already follows.
+    const { default: posthog } = await import("posthog-js");
+    posthog.init(phKey, {
+      api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",
+      // Anonymous visitors are the vast majority of traffic here (the
+      // free generator needs no account) — only identified users (signed
+      // in, trackEvent's persistUsageEvent counterpart) create a billed
+      // person profile, so anonymous browsing doesn't burn quota.
+      person_profiles: "identified_only",
+      capture_pageview: true,
+      // Off by default: the invoice preview panel renders real client
+      // names, emails, and amounts on screen, and this product's own
+      // cookie banner already promises no more than essential tracking —
+      // turning replay on requires deliberately configuring input/text
+      // masking first, not just flipping this flag.
+      disable_session_recording: true,
+    });
+    posthogInstance = posthog;
+  }
 
   // Flush any events tracked before initialization
   const queued = window._invoalaEvents || [];
@@ -66,4 +95,5 @@ export function trackEvent(name: string, params: Record<string, unknown> = {}) {
     return;
   }
   window.gtag?.("event", name, params);
+  posthogInstance?.capture(name, params);
 }
