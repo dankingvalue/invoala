@@ -983,6 +983,33 @@ function SettingsTab() {
 function DangerTab() {
   const [confirmText, setConfirmText] = useState("");
   const [confirmText2, setConfirmText2] = useState("");
+  const [wiping, setWiping] = useState(false);
+  const [wipeResult, setWipeResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  async function deleteAllData() {
+    if (confirmText !== "DELETE ALL DATA" || wiping) return;
+    setWiping(true);
+    setWipeResult(null);
+    try {
+      const res = await fetch("/api/admin/danger/delete-all-data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: confirmText }),
+      });
+      const json = (await res.json()) as { ok?: boolean; deleted?: Record<string, number>; error?: string };
+      if (res.ok && json.ok) {
+        const rows = Object.values(json.deleted || {}).reduce((s, n) => s + n, 0);
+        setWipeResult({ ok: true, message: `Done — ${rows.toLocaleString()} rows deleted across every user-data table. You've been signed out.` });
+        setConfirmText("");
+      } else {
+        setWipeResult({ ok: false, message: json.error || "Could not complete the wipe." });
+      }
+    } catch {
+      setWipeResult({ ok: false, message: "Network error while wiping data." });
+    } finally {
+      setWiping(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -991,11 +1018,26 @@ function DangerTab() {
         <div className="mt-6 space-y-6">
           <div className="rounded-xl border-2 border-red-200 bg-red-50 p-5">
             <h3 className="text-sm font-semibold text-red-800">Delete all user data</h3>
-            <p className="mt-1 text-sm text-red-600">Permanently remove all users, invoices, teams, conversations, and subscriptions. This cannot be undone.</p>
+            <p className="mt-1 text-sm text-red-600">
+              Permanently remove all users, invoices, teams, clients, services, payments, conversations & messages,
+              subscriptions, notifications, the audit trail, usage/activity history, and the newsletter email list.
+              Platform content you manage yourself (roadmap, knowledge base, macros, SEO rules, site settings) is not
+              touched. This cannot be undone — and includes your own account.
+            </p>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} placeholder='Type "DELETE ALL DATA" to confirm' className="w-full max-w-72 flex-1 rounded-lg border border-red-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500" />
-              <button type="button" disabled={confirmText !== "DELETE ALL DATA"} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed">Delete everything</button>
+              <button
+                type="button"
+                onClick={() => void deleteAllData()}
+                disabled={confirmText !== "DELETE ALL DATA" || wiping}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {wiping ? "Deleting…" : "Delete everything"}
+              </button>
             </div>
+            {wipeResult ? (
+              <p className={`mt-3 text-sm font-medium ${wipeResult.ok ? "text-red-800" : "text-red-600"}`}>{wipeResult.message}</p>
+            ) : null}
           </div>
 
           <div className="rounded-xl border-2 border-red-200 bg-red-50 p-5">
