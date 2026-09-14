@@ -37,7 +37,7 @@ const faqs = [
   {
     question: "Quels moyens de paiement acceptez-vous ?",
     answer:
-      "Le paiement est géré par Polar et accepte toutes les principales cartes de crédit et de débit, ainsi que des moyens de paiement locaux populaires lorsqu'ils sont disponibles.",
+      "Le paiement est géré par Whop et accepte toutes les principales cartes de crédit et de débit, ainsi que des moyens de paiement locaux populaires lorsqu'ils sont disponibles.",
   },
   {
     question: "Proposez-vous des remboursements ?",

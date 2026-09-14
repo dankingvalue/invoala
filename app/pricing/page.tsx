@@ -35,7 +35,7 @@ const faqs = [
   {
     question: "What payment methods do you accept?",
     answer:
-      "Checkout is handled by Polar and accepts all major credit and debit cards, plus popular local payment methods where available.",
+      "Checkout is handled by Whop and accepts all major credit and debit cards, plus popular local payment methods where available.",
   },
   {
     question: "Do you offer refunds?",

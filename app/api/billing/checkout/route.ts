@@ -1,8 +1,7 @@
 import { getSessionUser } from "@/lib/server-auth";
-import { isPlan, PLANS } from "@/lib/billing";
+import { isPlan } from "@/lib/billing";
 import { getUserTeams } from "@/lib/teams";
-import { createPolarCheckout } from "@/lib/polar";
-import { getActivePromo } from "@/lib/promo";
+import { createWhopCheckout } from "@/lib/whop";
 
 export async function POST(req: Request) {
   const user = await getSessionUser(req);
@@ -26,17 +25,9 @@ export async function POST(req: Request) {
     }
   }
 
-  // Auto-apply the new-account 50% Lifetime offer when it's still valid.
-  // The discount only targets the Lifetime product, so it only attaches there.
-  let discountId: string | null = null;
-  if (plan === "lifetime") {
-    const promo = await getActivePromo(user.id).catch(() => null);
-    discountId = promo?.polar_discount_id ?? null;
-  }
+  const whopConfigured = !!process.env.WHOP_API_KEY;
 
-  const polarConfigured = !!process.env.POLAR_ACCESS_TOKEN;
-
-  if (!polarConfigured) {
+  if (!whopConfigured) {
     return Response.json({
       error: "Payment processing is not configured yet. We're working on integrating a payment provider — stay tuned!",
       mode: "not_configured",
@@ -44,20 +35,16 @@ export async function POST(req: Request) {
   }
 
   const origin = req.headers.get("origin") || new URL(req.url).origin;
-  const successUrl = `${origin}/dashboard?upgraded=1&plan=${plan}`;
-  const returnUrl = `${origin}/dashboard?upgraded=0`;
+  const redirectUrl = `${origin}/dashboard?upgraded=1&plan=${plan}`;
 
   try {
-    const url = await createPolarCheckout({
+    const url = await createWhopCheckout({
       plan,
       userId: user.id,
       email: user.email,
-      name: user.name,
-      successUrl,
-      returnUrl,
-      discountId,
+      redirectUrl,
     });
-    return Response.json({ ok: true, mode: "polar", url });
+    return Response.json({ ok: true, mode: "whop", url });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Could not create a checkout.";
     return Response.json({ error: message }, { status: 502 });

@@ -37,7 +37,7 @@ const faqs = [
   {
     question: "Welche Zahlungsmethoden akzeptieren Sie?",
     answer:
-      "Der Checkout wird von Polar abgewickelt und akzeptiert alle gängigen Kredit- und Debitkarten sowie beliebte lokale Zahlungsmethoden, sofern verfügbar.",
+      "Der Checkout wird von Whop abgewickelt und akzeptiert alle gängigen Kredit- und Debitkarten sowie beliebte lokale Zahlungsmethoden, sofern verfügbar.",
   },
   {
     question: "Bieten Sie Rückerstattungen an?",

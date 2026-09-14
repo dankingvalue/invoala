@@ -4,7 +4,7 @@ import { dbRun } from "@/lib/db";
 // Deliberately narrow: only clears data that can ONLY be test/dev noise —
 // usage_events (pure analytics tracking, no customer-facing meaning) and
 // subscriptions created via the admin "Grant Pro" dev buttons (provider =
-// 'dev', never a real Stripe/Polar payment). Never touches users, invoices,
+// 'dev', never a real Whop payment). Never touches users, invoices,
 // real subscriptions, or email history — those can't be reliably told apart
 // from real customer data, so this doesn't guess.
 export async function POST(req: Request) {

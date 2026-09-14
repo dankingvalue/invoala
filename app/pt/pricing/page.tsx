@@ -37,7 +37,7 @@ const faqs = [
   {
     question: "Quais métodos de pagamento vocês aceitam?",
     answer:
-      "O checkout é processado pela Polar e aceita todos os principais cartões de crédito e débito, além de métodos de pagamento locais populares onde disponíveis.",
+      "O checkout é processado pela Whop e aceita todos os principais cartões de crédito e débito, além de métodos de pagamento locais populares onde disponíveis.",
   },
   {
     question: "Vocês oferecem reembolsos?",
