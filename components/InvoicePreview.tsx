@@ -17,9 +17,15 @@ const hairline = "#e8e8ed";
 export function InvoicePreview({
   invoice,
   innerRef,
+  showBranding = true,
 }: {
   invoice: Invoice;
   innerRef?: React.RefObject<HTMLDivElement | null>;
+  // Free-plan documents show a small "Made with Invoala" credit line;
+  // Pro/Teams/Lifetime don't. Defaults true so a caller that forgets to
+  // pass it fails toward showing the credit line, not silently omitting it
+  // — same convention as invoicePdfBuffer's showBranding on the server side.
+  showBranding?: boolean;
 }) {
   const { subtotal, taxAmount, total, discountAmount, shipping } = computeTotals(invoice);
   const hideEmpty = invoice.hideEmptyRows;
@@ -282,6 +288,15 @@ export function InvoicePreview({
           </p>
           <p className="mt-1.5 whitespace-pre-line text-xs leading-relaxed" style={{ color: subtle }}>
             {invoice.notes}
+          </p>
+        </div>
+      ) : null}
+
+      {showBranding ? (
+        <div className="mt-10 border-t pt-2.5 text-center" style={{ borderColor: hairline }}>
+          <p className="text-[9px]" style={{ color: faint }}>
+            Made with Invoala — free invoice generator ·{" "}
+            <a href="https://invoala.com" style={{ color: faint }}>invoala.com</a>
           </p>
         </div>
       ) : null}

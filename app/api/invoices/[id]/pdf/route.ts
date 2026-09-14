@@ -1,6 +1,7 @@
 import { getSessionUser } from "@/lib/server-auth";
 import { dbGet } from "@/lib/db";
 import { invoicePdfBuffer } from "@/lib/invoice-pdf";
+import { documentIsPaid } from "@/lib/entitlements";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -10,8 +11,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const row = await dbGet<{ number: string; data: string }>(
-    `SELECT number, data FROM invoices WHERE id = ?
+  const row = await dbGet<{ number: string; data: string; team_id: string | null }>(
+    `SELECT number, data, team_id FROM invoices WHERE id = ?
      AND (user_id = ? OR team_id IN (SELECT team_id FROM team_members WHERE user_id = ?))`,
     id,
     user.id,
@@ -29,9 +30,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const url = new URL(req.url);
   const inline = url.searchParams.get("inline") === "1";
 
+  const isPaid = await documentIsPaid(user.id, user.role, row.team_id);
+
   let pdf: { buffer: Buffer; engine: "chromium" | "emergency" };
   try {
-    pdf = await invoicePdfBuffer(invoice as never);
+    pdf = await invoicePdfBuffer(invoice as never, !isPaid);
   } catch (err) {
     console.error("[pdf] styled render failed", err);
     return Response.json(

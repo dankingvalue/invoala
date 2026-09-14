@@ -68,7 +68,7 @@ export const TEMPLATES: TemplateDef[] = [
       {
         question: "Is this template free to use?",
         answer:
-          "Yes — fill it in, preview it, and download a print-ready PDF. No watermark and no account required.",
+          "Yes — fill it in, preview it, and download a print-ready PDF. No account required.",
       },
     ],
     related: [
@@ -162,9 +162,9 @@ export const TEMPLATES: TemplateDef[] = [
           "Add them as separate line items at your per-image rate. Itemizing extras keeps the bill transparent and easier for the client to approve.",
       },
       {
-        question: "Can I add a watermark to my invoice?",
+        question: "Does Invoala add a watermark to my invoice?",
         answer:
-          "Invoala never adds watermarks to your invoices — the PDF you download is clean and professional.",
+          "Free invoices include a small \"Made with Invoala\" credit line at the very bottom — no bulky stamp across your content. Upgrading to Pro removes it entirely.",
       },
     ],
     related: [

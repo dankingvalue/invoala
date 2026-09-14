@@ -86,7 +86,7 @@ export default function InvoiceTemplateFr() {
           <p className="mt-4 text-[18px] leading-relaxed text-[#6b7280]">
             Choisissez un secteur, remplissez les champs, téléchargez un
             PDF soigné. Chaque modèle est gratuit — sans inscription,
-            sans filigrane, sans limite.
+            sans limite.
           </p>
           <Link
             href="/#generate"

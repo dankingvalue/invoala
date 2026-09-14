@@ -32,7 +32,7 @@ const faqs = [
   },
   {
     q: "Invoala est-il un logiciel de facturation gratuit ?",
-    a: "Oui. Invoala est entièrement gratuit — sans essai, sans mur payant, sans filigrane. Créez des factures illimitées, téléchargez des PDF et suivez les paiements sans dépenser un centime.",
+    a: "Oui. Invoala est entièrement gratuit — sans essai, sans mur payant. Créez des factures illimitées, téléchargez des PDF et suivez les paiements sans dépenser un centime.",
   },
   {
     q: "Puis-je utiliser un logiciel de facturation pour ma petite entreprise ?",

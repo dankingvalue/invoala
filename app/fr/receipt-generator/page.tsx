@@ -41,7 +41,7 @@ const faqs = [
   },
   {
     q: "Ce générateur de reçus est-il gratuit ?",
-    a: "Oui. Créez des reçus illimités sans filigrane et sans inscription. Remplissez le formulaire, prévisualisez-le en direct et téléchargez un PDF prêt à imprimer.",
+    a: "Oui. Créez des reçus illimités sans inscription. Remplissez le formulaire, prévisualisez-le en direct et téléchargez un PDF prêt à imprimer.",
   },
   {
     q: "Puis-je ajouter mon logo et les informations de mon entreprise ?",
@@ -124,7 +124,7 @@ export default async function ReceiptGeneratorPageFr() {
               a été payé, quand et par qui, puis téléchargez un PDF soigné.
             </p>
             <p className="mt-4 text-[14px] text-[#9ca3af]">
-              Gratuit pour toujours &middot; Sans inscription &middot; Sans filigrane
+              Gratuit pour toujours &middot; Sans inscription &middot; Sans carte bancaire
             </p>
           </section>
 

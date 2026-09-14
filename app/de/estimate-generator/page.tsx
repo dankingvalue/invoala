@@ -49,7 +49,7 @@ const faqs = [
   },
   {
     q: "Ist der Kostenvoranschlag-Generator kostenlos?",
-    a: "Ja — keine Anmeldung, kein Wasserzeichen, keine Limits. Laden Sie so viele Kostenvoranschlag-PDFs herunter, wie Sie brauchen.",
+    a: "Ja — keine Anmeldung, keine Limits. Laden Sie so viele Kostenvoranschlag-PDFs herunter, wie Sie brauchen.",
   },
 ];
 
@@ -122,7 +122,7 @@ export default async function EstimateGeneratorPageDe() {
               Kunde zustimmt.
             </p>
             <p className="mt-4 text-[14px] text-[#9ca3af]">
-              Für immer kostenlos &middot; Keine Anmeldung &middot; Kein Wasserzeichen
+              Für immer kostenlos &middot; Keine Anmeldung &middot; Keine Kreditkarte nötig
             </p>
           </section>
 

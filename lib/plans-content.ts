@@ -31,7 +31,8 @@ export const PLAN_PITCHES: PlanPitch[] = [
       "Logo upload, themes & custom fields",
       "A4-accurate PDF download & print",
       "One-tap share to any phone app",
-      "No sign-up · no watermark · no credit card",
+      "No sign-up · no credit card required",
+      "Small \"Made with Invoala\" credit line on PDFs",
     ],
   },
   {
@@ -43,6 +44,7 @@ export const PLAN_PITCHES: PlanPitch[] = [
     cta: "Get Pro",
     features: [
       "Everything in Free",
+      "Removes the \"Made with Invoala\" credit line",
       "Unlimited saved invoices — access from any device",
       "Unlimited saved clients & services — with history & one-click auto-fill",
       "Client account statements — view, send, or download",

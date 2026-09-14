@@ -49,7 +49,7 @@ const faqs = [
   },
   {
     q: "¿El generador de presupuestos es gratis?",
-    a: "Sí — sin registro, sin marca de agua, sin límites. Descarga tantos PDFs de presupuesto como necesites.",
+    a: "Sí — sin registro, sin límites. Descarga tantos PDFs de presupuesto como necesites.",
   },
 ];
 
@@ -121,7 +121,7 @@ export default async function EstimateGeneratorPageEs() {
               factura cuando el cliente diga que sí.
             </p>
             <p className="mt-4 text-[14px] text-[#9ca3af]">
-              Gratis para siempre &middot; Sin registro &middot; Sin marca de agua
+              Gratis para siempre &middot; Sin registro &middot; Sin tarjeta de crédito
             </p>
           </section>
 

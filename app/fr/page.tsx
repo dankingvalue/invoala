@@ -17,7 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({
     title: "Invoala — Générateur de Factures Gratuit pour Freelances",
     description:
-      "Créez des factures professionnelles en ligne gratuitement. Ajoutez des articles, la taxe et votre logo, puis téléchargez un PDF soigné en quelques secondes. Sans inscription. Sans filigrane.",
+      "Créez des factures professionnelles en ligne gratuitement. Ajoutez des articles, la taxe et votre logo, puis téléchargez un PDF soigné en quelques secondes. Sans inscription.",
     path: "/fr/",
     keywords: [
       "générateur de factures gratuit",
@@ -35,7 +35,7 @@ export async function generateMetadata(): Promise<Metadata> {
 const faqs = [
   {
     q: "Invoala est-il vraiment gratuit ?",
-    a: "Oui. Créez, prévisualisez et téléchargez des factures illimitées gratuitement — sans essai, sans mur payant, sans filigrane sur vos PDF.",
+    a: "Oui. Créez, prévisualisez et téléchargez des factures illimitées gratuitement — sans essai, sans mur payant. Les PDF gratuits portent une petite mention « Made with Invoala » en bas de page ; Pro la supprime.",
   },
   {
     q: "Dois-je créer un compte ?",
@@ -59,7 +59,7 @@ const faqs = [
   },
   {
     q: "Puis-je ajouter mon propre logo ?",
-    a: "Oui. Téléchargez votre logo et il apparaîtra en haut de chaque facture. Les utilisateurs gratuits obtiennent un PDF sans filigrane.",
+    a: "Oui. Téléchargez votre logo et il apparaîtra en haut de chaque facture.",
   },
   {
     q: "Calcule-t-il les taxes automatiquement ?",

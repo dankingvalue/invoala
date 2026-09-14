@@ -42,7 +42,10 @@ export function docTitle(docType: string): string {
   return map[docType] || "Invoice";
 }
 
-export function buildInvoiceHtml(invoice: Invoice, { money }: { money: (n: number) => string }): string {
+export function buildInvoiceHtml(
+  invoice: Invoice,
+  { money, showBranding = true }: { money: (n: number) => string; showBranding?: boolean },
+): string {
   const accent = themeColor(invoice.theme || "green");
   const isQuote = invoice.docType === "quote" || invoice.docType === "estimate";
   const isReceipt = invoice.docType === "receipt";
@@ -247,9 +250,10 @@ export function buildInvoiceHtml(invoice: Invoice, { money }: { money: (n: numbe
 
   ${invoice.notes ? `<div class="notes"><div class="sec">Notes</div><div class="body">${esc(invoice.notes)}</div></div>` : ""}
 
+  ${showBranding ? `
   <div class="promo-footer">
     Made with Invoala — free invoice generator · <a href="https://invoala.com">invoala.com</a>
-  </div>
+  </div>` : ""}
 </div>
 </body>
 </html>`;

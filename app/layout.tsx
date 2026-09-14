@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     template: "%s — Invoala",
   },
   description:
-    "Create professional invoices online for free. Add line items, tax, and your logo, then download a polished PDF in seconds. No sign-up. No watermark.",
+    "Create professional invoices online for free. Add line items, tax, and your logo, then download a polished PDF in seconds. No sign-up.",
   keywords: [
     "free invoice generator",
     "invoice maker",
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     siteName: "Invoala",
     title: "Invoala — Free Invoice Generator for Freelancers",
     description:
-      "Create professional invoices online for free. Download a polished PDF in seconds. No sign-up, no watermark.",
+      "Create professional invoices online for free. Download a polished PDF in seconds. No sign-up required.",
     images: [
       {
         url: "https://www.invoala.com/api/og",

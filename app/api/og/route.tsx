@@ -24,7 +24,7 @@ export async function GET() {
             Free Invoice Generator for Freelancers
           </div>
           <div style={{ fontSize: "20px", marginTop: "12px", color: "#86efac" }}>
-            Professional invoices in seconds. No sign-up. No watermark.
+            Professional invoices in seconds. No sign-up required.
           </div>
         </div>
       </div>

@@ -41,7 +41,7 @@ const faqs = [
   },
   {
     q: "¿Este generador de recibos es gratis?",
-    a: "Sí. Crea recibos ilimitados sin marca de agua y sin registro. Completa el formulario, previsualízalo en vivo y descarga un PDF listo para imprimir.",
+    a: "Sí. Crea recibos ilimitados sin registro. Completa el formulario, previsualízalo en vivo y descarga un PDF listo para imprimir.",
   },
   {
     q: "¿Puedo agregar mi logotipo y datos del negocio?",
@@ -124,7 +124,7 @@ export default async function ReceiptGeneratorPageEs() {
               cuándo y por quién, luego descarga un PDF pulido.
             </p>
             <p className="mt-4 text-[14px] text-[#9ca3af]">
-              Gratis para siempre &middot; Sin registro &middot; Sin marca de agua
+              Gratis para siempre &middot; Sin registro &middot; Sin tarjeta de crédito
             </p>
           </section>
 

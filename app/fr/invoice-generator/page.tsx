@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     q: "Le générateur de factures est-il vraiment gratuit ?",
-    a: "Oui. Aucun frais caché, aucun filigrane et aucune limite. Créez autant de factures que vous le souhaitez, pour toujours.",
+    a: "Oui. Aucun frais caché et aucune limite. Créez autant de factures que vous le souhaitez, pour toujours.",
   },
   {
     q: "Dois-je créer un compte pour utiliser le générateur ?",
@@ -124,8 +124,8 @@ export default async function InvoiceGeneratorPageFr() {
             </h1>
             <p className="mx-auto mt-6 max-w-[640px] text-[18px] leading-relaxed text-[#6b7280]">
               Créez des factures professionnelles en quelques secondes.
-              Sans inscription, sans carte bancaire, sans filigrane. Juste
-              un PDF soigné prêt à envoyer à votre client.
+              Sans inscription, sans carte bancaire. Juste un PDF soigné
+              prêt à envoyer à votre client.
             </p>
           </section>
 

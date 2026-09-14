@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     q: "Ist der Rechnungsgenerator wirklich kostenlos?",
-    a: "Ja. Keine versteckten Gebühren, keine Wasserzeichen und keine Limits. Erstellen Sie so viele Rechnungen, wie Sie brauchen — für immer.",
+    a: "Ja. Keine versteckten Gebühren und keine Limits. Erstellen Sie so viele Rechnungen, wie Sie brauchen — für immer.",
   },
   {
     q: "Muss ich ein Konto erstellen, um den Generator zu nutzen?",
@@ -124,8 +124,8 @@ export default async function InvoiceGeneratorPageDe() {
             </h1>
             <p className="mx-auto mt-6 max-w-[640px] text-[18px] leading-relaxed text-[#6b7280]">
               Erstellen Sie in Sekunden professionelle Rechnungen. Keine
-              Anmeldung, keine Kreditkarte, keine Wasserzeichen. Einfach
-              ein sauberes PDF, bereit zum Versand an Ihren Kunden.
+              Anmeldung, keine Kreditkarte. Einfach ein sauberes PDF,
+              bereit zum Versand an Ihren Kunden.
             </p>
           </section>
 

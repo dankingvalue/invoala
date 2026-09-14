@@ -31,7 +31,7 @@ const faqs = [
   },
   {
     q: "Is Invoala free invoicing software?",
-    a: "Yes. Invoala is completely free — no trials, no paywalls, no watermarks. Create unlimited invoices, download PDFs, and track payments without spending a cent.",
+    a: "Yes. Invoala is completely free — no trials, no paywalls. Create unlimited invoices, download PDFs, and track payments without spending a cent.",
   },
   {
     q: "Can I use invoicing software for my small business?",

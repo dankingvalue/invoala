@@ -81,7 +81,7 @@ export const COMPARISONS: CompareDef[] = [
       },
       {
         heading: "The free generators",
-        body: "Pure invoice generators — like Invoala's — do one job: turn your details into a professional PDF. No account, no limits, no watermark. The trade-off: no saved history or automation unless you upgrade.",
+        body: "Pure invoice generators — like Invoala's — do one job: turn your details into a professional PDF. No account, no limits. Free PDFs carry a small credit line; the trade-off otherwise is no saved history or automation unless you upgrade.",
       },
       {
         heading: "Upgrading when it's worth it",
@@ -94,12 +94,12 @@ export const COMPARISONS: CompareDef[] = [
       {
         question: "Does Invoala's free invoice generator have limits?",
         answer:
-          "No — unlimited invoices, no watermark, no sign-up. Optional Pro features like saved clients and quotes exist for those who want them.",
+          "No — unlimited invoices, no sign-up. Free PDFs carry a small \"Made with Invoala\" credit line at the bottom; Pro removes it and adds saved clients, quotes, and more.",
       },
       {
         question: "Why do some free tools add watermarks?",
         answer:
-          "A watermark is a form of branding — the tool advertises itself on your invoice. It's how some free tiers stay free. Check before you send a client-facing invoice.",
+          "A watermark or credit line is a form of branding — the tool advertises itself on your invoice. It's a common way free tiers stay sustainable, ours included: free Invoala PDFs carry a small credit line, removed once you're on Pro.",
       },
       {
         question: "Can I export my invoices from a free tool?",
@@ -281,7 +281,7 @@ export const COMPARISONS: CompareDef[] = [
       },
       {
         heading: "What Invoala is",
-        body: "A free invoice generator and invoicing tool: professional PDFs, unlimited invoices, no watermark, no sign-up. It makes money on optional paid features like saved client history and team billing — not on payment processing.",
+        body: "A free invoice generator and invoicing tool: professional PDFs, unlimited invoices, no sign-up. Free PDFs carry a small credit line; the business makes money on optional paid features like removing that, saved client history, and team billing — not on payment processing.",
       },
       {
         heading: "The honest trade-off",

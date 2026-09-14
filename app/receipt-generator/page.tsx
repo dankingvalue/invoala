@@ -39,7 +39,7 @@ const faqs = [
   },
   {
     q: "Is this receipt generator free?",
-    a: "Yes. Create unlimited receipts with no watermark and no sign-up. Fill in the form, preview it live, and download a print-ready PDF.",
+    a: "Yes. Create unlimited receipts with no sign-up required. Fill in the form, preview it live, and download a print-ready PDF.",
   },
   {
     q: "Can I add my logo and business details?",
@@ -121,7 +121,7 @@ export default async function ReceiptGeneratorPage() {
               whom, then download a polished PDF.
             </p>
             <p className="mt-4 text-[14px] text-[#9ca3af]">
-              Free forever &middot; No sign-up &middot; No watermark
+              Free forever &middot; No sign-up &middot; No credit card required
             </p>
           </section>
 

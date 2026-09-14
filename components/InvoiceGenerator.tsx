@@ -836,7 +836,7 @@ export function InvoiceGenerator({
 
           <div className="rounded-[28px] bg-white p-3 shadow-lg ring-1 ring-black/5">
             <div id="invoice-paper" className="overflow-hidden rounded-2xl ring-1 ring-black/5">
-              <InvoicePreview invoice={invoice} innerRef={previewRef} />
+              <InvoicePreview invoice={invoice} innerRef={previewRef} showBranding={!user?.isPro} />
             </div>
           </div>
 
@@ -911,7 +911,7 @@ export function InvoiceGenerator({
           )}
           {!user?.isPro ? (
             <p className="mt-3 text-center text-xs text-subtle">
-              Free · No watermark · No credit card required
+              Free · No credit card required
             </p>
           ) : null}
         </div>

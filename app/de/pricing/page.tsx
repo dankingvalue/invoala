@@ -22,7 +22,7 @@ const faqs = [
   {
     question: "Ist Invoala wirklich kostenlos?",
     answer:
-      "Ja. Der Rechnungsgenerator ist für immer kostenlos: unbegrenzte Rechnungen, professionelle PDFs, kein Wasserzeichen, keine Anmeldung erforderlich. Es gibt keine Testphase, die endet.",
+      "Ja. Der Rechnungsgenerator ist für immer kostenlos: unbegrenzte Rechnungen, professionelle PDFs, keine Anmeldung erforderlich. Es gibt keine Testphase, die endet. Kostenlose PDFs tragen unten einen kleinen „Made with Invoala“-Hinweis — Pro entfernt ihn.",
   },
   {
     question: "Was bietet der Pro-Plan zusätzlich?",

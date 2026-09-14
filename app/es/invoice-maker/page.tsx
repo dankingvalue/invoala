@@ -35,7 +35,7 @@ const faqs = [
   },
   {
     q: "¿El creador de facturas es gratis?",
-    a: "Sí. El creador de facturas de Invoala es completamente gratis — sin pruebas, sin muros de pago, sin marcas de agua. Crea facturas ilimitadas y descarga PDFs profesionales sin pagar nada.",
+    a: "Sí. El creador de facturas de Invoala es completamente gratis — sin pruebas, sin muros de pago. Crea facturas ilimitadas y descarga PDFs profesionales sin pagar nada.",
   },
   {
     q: "¿Necesito habilidades técnicas para hacer una factura?",

@@ -35,7 +35,7 @@ const faqs = [
   },
   {
     q: "Ist der Rechnungsersteller kostenlos?",
-    a: "Ja. Invoalas Rechnungsersteller ist komplett kostenlos — keine Testphasen, keine Bezahlschranken, keine Wasserzeichen. Erstellen Sie unbegrenzt Rechnungen und laden Sie professionelle PDFs herunter, ohne etwas zu bezahlen.",
+    a: "Ja. Invoalas Rechnungsersteller ist komplett kostenlos — keine Testphasen, keine Bezahlschranken. Erstellen Sie unbegrenzt Rechnungen und laden Sie professionelle PDFs herunter, ohne etwas zu bezahlen.",
   },
   {
     q: "Brauche ich technische Fähigkeiten, um eine Rechnung zu erstellen?",

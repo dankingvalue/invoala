@@ -17,7 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({
     title: "Invoala — Kostenloser Rechnungsgenerator für Freelancer",
     description:
-      "Erstellen Sie professionelle Rechnungen online kostenlos. Fügen Sie Positionen, Steuern und Ihr Logo hinzu, dann laden Sie in Sekunden ein makelloses PDF herunter. Keine Anmeldung. Kein Wasserzeichen.",
+      "Erstellen Sie professionelle Rechnungen online kostenlos. Fügen Sie Positionen, Steuern und Ihr Logo hinzu, dann laden Sie in Sekunden ein makelloses PDF herunter. Keine Anmeldung.",
     path: "/de/",
     keywords: [
       "kostenloser Rechnungsgenerator",
@@ -35,7 +35,7 @@ export async function generateMetadata(): Promise<Metadata> {
 const faqs = [
   {
     q: "Ist Invoala wirklich kostenlos?",
-    a: "Ja. Erstellen, sehen und laden Sie unbegrenzt Rechnungen kostenlos herunter — keine Testphasen, keine Bezahlschranken, keine Wasserzeichen auf Ihren PDFs.",
+    a: "Ja. Erstellen, sehen und laden Sie unbegrenzt Rechnungen kostenlos herunter — keine Testphasen, keine Bezahlschranken. Kostenlose PDFs tragen unten einen kleinen „Made with Invoala“-Hinweis; Pro entfernt ihn.",
   },
   {
     q: "Muss ich ein Konto erstellen?",
@@ -59,7 +59,7 @@ const faqs = [
   },
   {
     q: "Kann ich mein eigenes Logo hinzufügen?",
-    a: "Ja. Laden Sie Ihr Logo hoch, und es erscheint oben auf jeder Rechnung. Kostenlose Nutzer erhalten ein PDF ohne Wasserzeichen.",
+    a: "Ja. Laden Sie Ihr Logo hoch, und es erscheint oben auf jeder Rechnung.",
   },
   {
     q: "Berechnet es Steuern automatisch?",

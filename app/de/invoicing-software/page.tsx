@@ -31,7 +31,7 @@ const faqs = [
   },
   {
     q: "Ist Invoala eine kostenlose Rechnungssoftware?",
-    a: "Ja. Invoala ist komplett kostenlos — keine Testphasen, keine Bezahlschranken, keine Wasserzeichen. Erstellen Sie unbegrenzt Rechnungen, laden Sie PDFs herunter und verfolgen Sie Zahlungen, ohne einen Cent auszugeben.",
+    a: "Ja. Invoala ist komplett kostenlos — keine Testphasen, keine Bezahlschranken. Erstellen Sie unbegrenzt Rechnungen, laden Sie PDFs herunter und verfolgen Sie Zahlungen, ohne einen Cent auszugeben.",
   },
   {
     q: "Kann ich Rechnungssoftware für mein Kleinunternehmen nutzen?",

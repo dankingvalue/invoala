@@ -47,7 +47,7 @@ const faqs = [
   },
   {
     q: "Is the estimate generator free?",
-    a: "Yes — no sign-up, no watermark, no limits. Download as many estimate PDFs as you need.",
+    a: "Yes — no sign-up, no limits. Download as many estimate PDFs as you need.",
   },
 ];
 
@@ -117,7 +117,7 @@ export default async function EstimateGeneratorPage() {
               convert it to an invoice when the client says yes.
             </p>
             <p className="mt-4 text-[14px] text-[#9ca3af]">
-              Free forever &middot; No sign-up &middot; No watermark
+              Free forever &middot; No sign-up &middot; No credit card required
             </p>
           </section>
 

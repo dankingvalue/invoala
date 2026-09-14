@@ -94,7 +94,9 @@ export async function generateDueRecurringInvoice(row: RecurringRow): Promise<bo
     // schedule so no duplicate child is created tomorrow.
     let pdf: Buffer | null = null;
     try {
-      const { buffer } = await invoicePdfBuffer(childInvoice);
+      // No "Made with Invoala" footer: recurring invoices are already a
+      // Pro-only feature (the active-subscription check above).
+      const { buffer } = await invoicePdfBuffer(childInvoice, false);
       pdf = buffer;
     } catch (err) {
       console.error("[recurring] PDF generation failed — sending text summary", err);

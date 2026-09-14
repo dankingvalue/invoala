@@ -63,6 +63,21 @@ export async function requireUnderFreeSaveLimit(
   );
 }
 
+// Whether a specific document is on a paid plan — the cue for whether the
+// "Made with Invoala" PDF footer shows. A personal (non-team) document
+// follows the downloading user's own plan; a team document follows the
+// team OWNER's plan instead, since a team member can have no personal
+// subscription of their own while still working inside a paid workspace.
+export async function documentIsPaid(userId: string, role: string, teamId: string | null): Promise<boolean> {
+  if (!teamId) return isUserPro(userId, role);
+  const owner = await dbGet<{ owner_id: string; role: string }>(
+    "SELECT t.owner_id, u.role FROM teams t JOIN users u ON u.id = t.owner_id WHERE t.id = ?",
+    teamId,
+  );
+  if (!owner) return isUserPro(userId, role);
+  return isUserPro(owner.owner_id, owner.role);
+}
+
 // Team creation itself already checks canUseTeams (see app/api/teams/route.ts)
 // — but that was the ONLY place it was checked. A team, once created, kept
 // functioning as a permanent entitlement forever: invites and invite-

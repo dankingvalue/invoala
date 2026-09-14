@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     q: "O gerador de faturas é realmente gratuito?",
-    a: "Sim. Não há taxas ocultas, marcas d'água ou limites. Crie quantas faturas precisar, para sempre.",
+    a: "Sim. Não há taxas ocultas ou limites. Crie quantas faturas precisar, para sempre.",
   },
   {
     q: "Preciso criar uma conta para usar o gerador?",
@@ -124,8 +124,8 @@ export default async function InvoiceGeneratorPagePt() {
             </h1>
             <p className="mx-auto mt-6 max-w-[640px] text-[18px] leading-relaxed text-[#6b7280]">
               Crie faturas profissionais em segundos. Sem cadastro, sem
-              cartão de crédito, sem marcas d&apos;água. Apenas um PDF
-              limpo pronto para enviar ao seu cliente.
+              cartão de crédito. Apenas um PDF limpo pronto para enviar
+              ao seu cliente.
             </p>
           </section>
 

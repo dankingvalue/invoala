@@ -49,7 +49,7 @@ const faqs = [
   },
   {
     q: "O gerador de orçamentos é gratuito?",
-    a: "Sim — sem cadastro, sem marca d'água, sem limites. Baixe quantos PDFs de orçamento você precisar.",
+    a: "Sim — sem cadastro, sem limites. Baixe quantos PDFs de orçamento você precisar.",
   },
 ];
 
@@ -121,7 +121,7 @@ export default async function EstimateGeneratorPagePt() {
               cliente disser sim.
             </p>
             <p className="mt-4 text-[14px] text-[#9ca3af]">
-              Grátis para sempre &middot; Sem cadastro &middot; Sem marca d&apos;água
+              Grátis para sempre &middot; Sem cadastro &middot; Sem cartão de crédito
             </p>
           </section>
 

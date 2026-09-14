@@ -70,7 +70,7 @@ export const SOLUTIONS: SolutionDef[] = [
       {
         question: "Is Invoala free for freelancers?",
         answer:
-          "The invoice generator is free forever — unlimited invoices, no watermark, no sign-up. Optional Pro features such as saved client history and quotes are available if you want them.",
+          "The invoice generator is free forever — unlimited invoices, no sign-up required. Free PDFs include a small Invoala credit line at the bottom; upgrading to Pro removes it, plus adds saved client history and quotes.",
       },
     ],
     related: [
@@ -348,7 +348,7 @@ export const SOLUTIONS: SolutionDef[] = [
     name: "Photographers",
     metaTitle: "Invoicing for Photographers — Sessions, Packages & Usage | Invoala",
     description:
-      "Photographer invoicing for sessions, packages, and usage rights. Deposit-friendly, deliverable-focused, and watermark-free.",
+      "Photographer invoicing for sessions, packages, and usage rights. Deposit-friendly and deliverable-focused.",
     intro:
       "Your photos are your product — and your invoice is how you get paid for them. Itemized, deposit-friendly invoices make the business side of photography feel as clean as your portfolio.",
     sections: [
@@ -399,9 +399,9 @@ export const SOLUTIONS: SolutionDef[] = [
           "Add usage rights as their own line item (e.g., 'Commercial web license — 12 months') and define the terms in your notes or contract.",
       },
       {
-        question: "Should I watermark my invoices?",
+        question: "Does Invoala add a watermark to my invoices?",
         answer:
-          "Invoala never adds watermarks to invoices — your PDF is always clean and client-ready.",
+          "Free invoices include a small \"Made with Invoala\" credit line at the very bottom — no bulky stamp across your content. Upgrading to Pro removes it entirely.",
       },
     ],
     related: [

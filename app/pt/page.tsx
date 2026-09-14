@@ -16,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({
     title: "Invoala — Gerador de Faturas Grátis para Freelancers",
     description:
-      "Crie faturas profissionais online grátis. Adicione itens, impostos e seu logotipo, depois baixe um PDF impecável em segundos. Sem cadastro. Sem marca d'água.",
+      "Crie faturas profissionais online grátis. Adicione itens, impostos e seu logotipo, depois baixe um PDF impecável em segundos. Sem cadastro.",
     path: "/pt/",
     keywords: [
       "gerador de faturas grátis",
@@ -34,7 +34,7 @@ export async function generateMetadata(): Promise<Metadata> {
 const faqs = [
   {
     q: "A Invoala é realmente gratuita?",
-    a: "Sim. Crie, visualize e baixe faturas ilimitadas gratuitamente — sem testes, sem paywalls, sem marcas d'água nos seus PDFs.",
+    a: "Sim. Crie, visualize e baixe faturas ilimitadas gratuitamente — sem testes, sem paywalls. PDFs gratuitos trazem uma pequena marca \"Made with Invoala\" no rodapé; o Pro remove essa marca.",
   },
   {
     q: "Preciso criar uma conta?",
@@ -58,7 +58,7 @@ const faqs = [
   },
   {
     q: "Posso adicionar meu próprio logotipo?",
-    a: "Sim. Envie seu logotipo e ele aparecerá no topo de cada fatura. Usuários gratuitos recebem um PDF sem marca d'água.",
+    a: "Sim. Envie seu logotipo e ele aparecerá no topo de cada fatura.",
   },
   {
     q: "Calcula impostos automaticamente?",

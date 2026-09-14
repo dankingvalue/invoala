@@ -27,7 +27,7 @@ export default function TemplatesPage() {
             <p className="mx-auto mt-6 max-w-[640px] text-[18px] leading-relaxed text-[#6b7280]">
               Every template below is a real, working invoice — fill it in,
               preview it live, and download a clean PDF. No account, no
-              watermark, no limits.
+              limits.
             </p>
           </section>
 

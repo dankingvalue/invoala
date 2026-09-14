@@ -347,7 +347,7 @@ export const TOOLS: ToolDef[] = [
       {
         question: "Is the template generator really free?",
         answer:
-          "Yes — create, preview, and download unlimited invoices with no watermark and no account required.",
+          "Yes — create, preview, and download unlimited invoices with no account required.",
       },
       {
         question: "Can I edit the template after downloading?",

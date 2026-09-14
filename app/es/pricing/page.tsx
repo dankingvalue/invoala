@@ -22,7 +22,7 @@ const faqs = [
   {
     question: "¿Invoala es realmente gratis?",
     answer:
-      "Sí. El generador de facturas es gratis para siempre: facturas ilimitadas, PDFs profesionales, sin marca de agua, sin necesidad de registro. No hay una prueba que termine.",
+      "Sí. El generador de facturas es gratis para siempre: facturas ilimitadas, PDFs profesionales, sin necesidad de registro. No hay una prueba que termine. Los PDFs gratuitos llevan una pequeña marca «Made with Invoala» al pie — Pro la elimina.",
   },
   {
     question: "¿Qué añade el plan Pro?",

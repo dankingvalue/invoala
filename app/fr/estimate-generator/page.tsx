@@ -49,7 +49,7 @@ const faqs = [
   },
   {
     q: "Le générateur de devis est-il gratuit ?",
-    a: "Oui — sans inscription, sans filigrane, sans limite. Téléchargez autant de PDF de devis que nécessaire.",
+    a: "Oui — sans inscription, sans limite. Téléchargez autant de PDF de devis que nécessaire.",
   },
 ];
 
@@ -121,7 +121,7 @@ export default async function EstimateGeneratorPageFr() {
               facture quand le client dit oui.
             </p>
             <p className="mt-4 text-[14px] text-[#9ca3af]">
-              Gratuit pour toujours &middot; Sans inscription &middot; Sans filigrane
+              Gratuit pour toujours &middot; Sans inscription &middot; Sans carte bancaire
             </p>
           </section>
 

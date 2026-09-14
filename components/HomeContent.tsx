@@ -17,7 +17,7 @@ import { SignupPrompt } from "@/components/SignupPrompt";
 const faqs = [
   {
     q: "Is Invoala really free?",
-    a: "Yes. Create, preview, and download unlimited invoices for free — no trials, no paywalls, no watermarks on your PDFs.",
+    a: "Yes. Create, preview, and download unlimited invoices for free — no trials, no paywalls. Free PDFs carry a small \"Made with Invoala\" credit line at the bottom; Pro removes it.",
   },
   {
     q: "Do I need to create an account?",
@@ -41,7 +41,7 @@ const faqs = [
   },
   {
     q: "Can I add my own logo?",
-    a: "Yes. Upload your logo and it appears at the top of every invoice. Free users get a watermark-free PDF.",
+    a: "Yes. Upload your logo and it appears at the top of every invoice.",
   },
   {
     q: "Does it calculate tax automatically?",

@@ -37,7 +37,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   let pdfAttachment: { filename: string; content: string } | undefined;
   try {
-    const { buffer } = await invoicePdfBuffer(row.data);
+    // No "Made with Invoala" footer: this route is already Pro-gated above.
+    const { buffer } = await invoicePdfBuffer(row.data, false);
     pdfAttachment = {
       filename: `Invoice-${row.number.replace(/[^\w.-]+/g, "-")}.pdf`,
       content: buffer.toString("base64"),

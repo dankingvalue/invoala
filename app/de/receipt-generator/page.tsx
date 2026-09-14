@@ -41,7 +41,7 @@ const faqs = [
   },
   {
     q: "Ist dieser Quittungsgenerator kostenlos?",
-    a: "Ja. Erstellen Sie unbegrenzt Quittungen ohne Wasserzeichen und ohne Anmeldung. Füllen Sie das Formular aus, sehen Sie sich die Live-Vorschau an und laden Sie eine druckfertige PDF herunter.",
+    a: "Ja. Erstellen Sie unbegrenzt Quittungen ohne Anmeldung. Füllen Sie das Formular aus, sehen Sie sich die Live-Vorschau an und laden Sie eine druckfertige PDF herunter.",
   },
   {
     q: "Kann ich mein Logo und meine Firmendaten hinzufügen?",
@@ -125,7 +125,7 @@ export default async function ReceiptGeneratorPageDe() {
               wurde, und laden Sie dann ein makelloses PDF herunter.
             </p>
             <p className="mt-4 text-[14px] text-[#9ca3af]">
-              Für immer kostenlos &middot; Keine Anmeldung &middot; Kein Wasserzeichen
+              Für immer kostenlos &middot; Keine Anmeldung &middot; Keine Kreditkarte nötig
             </p>
           </section>
 

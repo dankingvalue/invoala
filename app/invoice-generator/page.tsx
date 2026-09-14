@@ -34,7 +34,7 @@ const faqs = [
   },
   {
     q: "Is the invoice generator really free?",
-    a: "Yes. There are no hidden fees, no watermarks, and no limits. Create as many invoices as you need — forever.",
+    a: "Yes. There are no hidden fees and no limits. Create as many invoices as you need — forever.",
   },
   {
     q: "Do I need to create an account to use the generator?",
@@ -121,8 +121,7 @@ export default async function InvoiceGeneratorPage() {
             </h1>
             <p className="mx-auto mt-6 max-w-[640px] text-[18px] leading-relaxed text-[#6b7280]">
               Create professional invoices in seconds. No sign-up, no credit
-              card, no watermarks. Just a clean PDF ready to send to your
-              client.
+              card. Just a clean PDF ready to send to your client.
             </p>
           </section>
 

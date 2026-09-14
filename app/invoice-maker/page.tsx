@@ -34,7 +34,7 @@ const faqs = [
   },
   {
     q: "Is the invoice maker free to use?",
-    a: "Yes. Invoala's invoice maker is completely free — no trials, no paywalls, no watermarks. Create unlimited invoices and download professional PDFs without paying anything.",
+    a: "Yes. Invoala's invoice maker is completely free — no trials, no paywalls. Create unlimited invoices and download professional PDFs without paying anything.",
   },
   {
     q: "Do I need technical skills to make an invoice?",

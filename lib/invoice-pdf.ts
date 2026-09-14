@@ -194,6 +194,7 @@ export async function renderHtmlToPdf(html: string): Promise<Buffer> {
 async function renderStyledPdfWithMeta(
   invoice: Invoice,
   html: string,
+  showBranding: boolean,
 ): Promise<{ buffer: Buffer; engine: "chromium" | "emergency" }> {
   try {
     const buffer = await renderHtmlToPdf(html);
@@ -203,7 +204,7 @@ async function renderStyledPdfWithMeta(
     // COMPLETE invoice (styled-lite jsPDF with all data, accents and layout) —
     // an invoice app must never block on sending.
     try {
-      return { buffer: await jsPdfEmergency(invoice), engine: "emergency" as const };
+      return { buffer: await jsPdfEmergency(invoice, showBranding), engine: "emergency" as const };
     } catch (err2) {
       console.error("[invoice-pdf] emergency render also failed", err2);
       throw new Error("The invoice PDF engine is unavailable right now; no document was generated.");
@@ -211,13 +212,19 @@ async function renderStyledPdfWithMeta(
   }
 }
 
+// showBranding: whether to append the "Made with Invoala" footer — true for
+// free-plan documents, false once the account is Pro/Teams/Lifetime.
+// Defaults true so any caller that forgets to pass it fails toward showing
+// the credit line rather than silently omitting it.
 export async function invoicePdfBuffer(
   invoice: Invoice,
+  showBranding = true,
 ): Promise<{ buffer: Buffer; engine: "chromium" | "emergency" }> {
   const html = buildInvoiceHtml(invoice, {
     money: (n) => formatMoney(n, invoice.currency || "USD"),
+    showBranding,
   });
-  return renderStyledPdfWithMeta(invoice, html);
+  return renderStyledPdfWithMeta(invoice, html, showBranding);
 }
 
 // Public status for the /api/pdf-engine diagnostic + tests. Performs a real
@@ -305,7 +312,7 @@ function fdate(iso?: string): string {
     : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-async function jsPdfEmergency(invoice: Invoice): Promise<Buffer> {
+async function jsPdfEmergency(invoice: Invoice, showBranding: boolean): Promise<Buffer> {
   const { jsPDF } = await import("jspdf");
   const { computeTotals, themeColor, visibleLineItems, displayField } = await import("@/lib/invoice");
   const hideEmpty = invoice.hideEmptyRows;
@@ -515,6 +522,18 @@ async function jsPdfEmergency(invoice: Invoice): Promise<Buffer> {
   }
   if (invoice.notes) {
     y = block("Notes", invoice.notes);
+  }
+
+  if (showBranding) {
+    doc.setPage(doc.getNumberOfPages());
+    rule(doc, M, contentW, pageH - 34, F_HAIR, 0.4);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    setC(doc, F_FAINT);
+    doc.textWithLink("Made with Invoala — free invoice generator · invoala.com", pageW / 2, pageH - 26, {
+      align: "center",
+      url: "https://invoala.com",
+    });
   }
 
   return Buffer.from(doc.output("arraybuffer") as ArrayBuffer);

@@ -36,8 +36,8 @@ export default function AboutPage() {
             <p className="mt-4 text-[16px] leading-relaxed text-[#374151]">
               An invoicing tool that does the job in minutes: fill in the
               details, watch the preview update live, and download a
-              professional PDF. No sign-up, no watermark, no invoice limits —
-              because the core act of billing should be free.
+              professional PDF. No sign-up, no invoice limits — because the
+              core act of billing should be free.
             </p>
             <p className="mt-4 text-[16px] leading-relaxed text-[#374151]">
               When you grow — saved clients, quotes, teams, multi-business

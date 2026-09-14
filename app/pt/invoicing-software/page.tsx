@@ -31,7 +31,7 @@ const faqs = [
   },
   {
     q: "A Invoala é um software de faturamento gratuito?",
-    a: "Sim. A Invoala é totalmente gratuita — sem testes, sem paywalls, sem marcas d'água. Crie faturas ilimitadas, baixe PDFs e acompanhe pagamentos sem gastar um centavo.",
+    a: "Sim. A Invoala é totalmente gratuita — sem testes, sem paywalls. Crie faturas ilimitadas, baixe PDFs e acompanhe pagamentos sem gastar um centavo.",
   },
   {
     q: "Posso usar software de faturamento para minha pequena empresa?",

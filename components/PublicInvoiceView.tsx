@@ -79,7 +79,10 @@ export function PublicInvoiceView({ invoice }: { invoice: Invoice }) {
 
         <div className="rounded-[28px] bg-white p-3 shadow-lg ring-1 ring-black/5">
           <div className="overflow-hidden rounded-2xl ring-1 ring-black/5">
-            <InvoicePreview invoice={invoice} innerRef={previewRef} />
+            {/* No "Made with Invoala" footer: creating a public share link
+                is already a Pro-only feature, so every invoice reachable
+                here belongs to a paying account. */}
+            <InvoicePreview invoice={invoice} innerRef={previewRef} showBranding={false} />
           </div>
         </div>
 

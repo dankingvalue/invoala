@@ -20,7 +20,7 @@ const faqs = [
   {
     question: "Is Invoala really free?",
     answer:
-      "Yes. The invoice generator is free forever: unlimited invoices, professional PDFs, no watermark, no sign-up required. There's no trial that ends.",
+      "Yes. The invoice generator is free forever: unlimited invoices, professional PDFs, no sign-up required. There's no trial that ends. Free PDFs carry a small \"Made with Invoala\" credit line at the bottom — Pro removes it.",
   },
   {
     question: "What does the Pro plan add?",

@@ -85,7 +85,7 @@ export default function InvoiceTemplateDe() {
           <p className="mt-4 text-[18px] leading-relaxed text-[#6b7280]">
             Wählen Sie eine Branche, füllen Sie die Lücken aus, laden
             Sie ein makelloses PDF herunter. Jede Vorlage ist kostenlos
-            — keine Anmeldung, kein Wasserzeichen, keine Limits.
+            — keine Anmeldung, keine Limits.
           </p>
           <Link
             href="/#generate"

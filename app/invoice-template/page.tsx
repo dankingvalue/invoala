@@ -83,7 +83,7 @@ export default function InvoiceTemplate() {
           </h1>
           <p className="mt-4 text-[18px] leading-relaxed text-[#6b7280]">
             Pick an industry, fill in the blanks, download a polished PDF. Every
-            template is free — no sign-up, no watermark, no limits.
+            template is free — no sign-up, no limits.
           </p>
           <Link
             href="/#generate"

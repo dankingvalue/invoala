@@ -58,7 +58,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // delivering the invoice; the incident alert has already fired.
   let pdfAttachment: { filename: string; content: string } | undefined;
   try {
-    const { buffer } = await invoicePdfBuffer(invoiceData as never);
+    // No "Made with Invoala" footer: this route is already Pro-gated above.
+    const { buffer } = await invoicePdfBuffer(invoiceData as never, false);
     pdfAttachment = {
       filename: `Invoice-${invoice.number.replace(/[^\w.-]+/g, "-")}.pdf`,
       content: buffer.toString("base64"),
