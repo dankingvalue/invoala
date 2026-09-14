@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; checkout?: string; trial?: string }>;
+  searchParams: Promise<{ tab?: string; checkout?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
@@ -40,7 +40,6 @@ export default async function DashboardPage({
   // A pricing-page "Get Pro/Teams" button lands here with the chosen term.
   const checkoutPlan =
     typeof params.checkout === "string" && isPlan(params.checkout) ? params.checkout : null;
-  const startTrial = params.trial === "1" && !subscription;
 
   // FX: latest snapshot for display-currency conversion + a per-invoice
   // USD factor at the invoice's creation date (nearest stored daily snapshot).
@@ -98,7 +97,6 @@ export default async function DashboardPage({
             fxLatest={fxLatest}
             fxInvoice={fxInvoice}
             initialCheckoutPlan={checkoutPlan}
-            initialStartTrial={startTrial}
             initialTab={params.tab || "general"}
           />
         </div>

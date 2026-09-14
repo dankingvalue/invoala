@@ -36,7 +36,6 @@ type Props = {
   fxLatest?: Record<string, number> | null;
   fxInvoice?: Record<string, { usd: number; asOf: string; exact: boolean }> | null;
   initialCheckoutPlan?: string | null;
-  initialStartTrial?: boolean;
   initialTab?: string;
 };
 
@@ -236,13 +235,10 @@ export function DashboardClient({
   fxLatest = null,
   fxInvoice = null,
   initialCheckoutPlan = null,
-  initialStartTrial = false,
   initialTab = "general",
 }: Props) {
   const router = useRouter();
   const checkoutHandled = useRef(false);
-  const trialHandled = useRef(false);
-  const [trialNotice, setTrialNotice] = useState("");
 
   // Landing from a pricing page "Get …" button with a chosen term: start the
   // checkout once, then drop the ?checkout= param so refresh doesn't redo it.
@@ -264,19 +260,6 @@ export function DashboardClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialCheckoutPlan]);
 
-  // Landing from a pricing page "Start free trial" link: same guarded-once
-  // pattern as the checkout effect above.
-  useEffect(() => {
-    if (!initialStartTrial) return;
-    const t = setTimeout(() => {
-      if (trialHandled.current) return;
-      trialHandled.current = true;
-      void startTrial();
-      router.replace("/dashboard?tab=billing");
-    }, 350);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialStartTrial]);
   // Teams are only available on the Teams/Lifetime plans (dev subs simulate
   // them). Mirrors the server-side canUseTeams check.
   const teamsEnabled = !!(
@@ -521,22 +504,6 @@ export function DashboardClient({
         return;
       }
       setNotice(json.error || "Checkout failed.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function startTrial() {
-    setBusy(true);
-    setTrialNotice("");
-    try {
-      const res = await fetch("/api/billing/trial", { method: "POST" });
-      const json = (await res.json()) as { ok?: boolean; error?: string };
-      if (json.ok) {
-        router.refresh();
-      } else {
-        setTrialNotice(json.error || "Could not start your trial.");
-      }
     } finally {
       setBusy(false);
     }
@@ -1607,17 +1574,6 @@ export function DashboardClient({
                     </button>
                   ) : (
                     <div className="flex flex-wrap items-center gap-2">
-                      {trialNotice ? <p className="w-full text-[12px] text-[#dc2626]">{trialNotice}</p> : null}
-                      {!subscription ? (
-                        <button
-                          type="button"
-                          onClick={() => void startTrial()}
-                          disabled={busy}
-                          className="rounded-lg bg-[#166534] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#14532d] disabled:opacity-50"
-                        >
-                          Start 7-day free trial
-                        </button>
-                      ) : null}
                       <button
                         type="button"
                         onClick={() => void subscribe("pro_monthly")}

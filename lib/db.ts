@@ -435,11 +435,10 @@ async function ensureSchema(): Promise<void> {
     )` },
     { sql: `CREATE INDEX IF NOT EXISTS idx_agent_skills_user ON agent_skills(user_id)` },
 
-    // One free Pro trial per real person, not per account. email_hash is a
-    // normalized-email hash (strips +alias and, for gmail, dots) so the
-    // classic "sign up N times with the same inbox" trick doesn't get N
-    // trials; ip_hash and visitor_id (the existing usage-tracking cookie)
-    // are additional best-effort correlation signals. See lib/trial.ts.
+    // Free Pro trial system (lib/trial.ts) was removed — no new rows are
+    // written here. Left in place, unread, rather than reverse-migrated:
+    // existing rows just document who already used the trial that used to
+    // exist.
     { sql: `CREATE TABLE IF NOT EXISTS trial_claims (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
