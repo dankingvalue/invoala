@@ -42,9 +42,11 @@ export async function createWhopCheckout(opts: {
     );
   }
 
-  const res = await whopFetch("/checkout-configurations", {
+  const res = await whopFetch("/checkout_configurations", {
     method: "POST",
     body: JSON.stringify({
+      mode: "payment",
+      account_id: process.env.WHOP_ACCOUNT_ID,
       plan_id: planId,
       redirect_url: opts.redirectUrl,
       metadata: {
